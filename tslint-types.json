@@ -1,0 +1,28 @@
+{
+  "extends": "dtslint/dtslint.json",
+  "rules": {
+    "await-promise": false,
+    "expect": false,
+    "interface-name": false,
+    "max-classes-per-file": false,
+    "max-line-length": [true, 120],
+    "no-boolean-literal-compare": false,
+    "no-for-in-array": false,
+    "no-implicit-dependencies": [true, "dev", "optional"],
+    "no-import-default-of-export-equals": false,
+    "no-mergeable-namespace": false,
+    "no-relative-import-in-test": false,
+    "no-void-expression": false,
+    "no-unnecessary-generics": false,
+    "no-unnecessary-qualifier": false,
+    "no-unnecessary-type-assertion": false,
+    "object-literal-sort-keys": false,
+    "ordered-imports": false,
+    "prefer-object-spread": false,
+    "prefer-readonly": false,
+    "quotemark": [true, "single", "avoid-escape"],
+    "strict-export-declare-modifiers": false,
+    "use-default-type-parameter": false,
+    "variable-name": [true, "ban-keywords", "check-format", "allow-trailing-underscore"]
+  }
+}

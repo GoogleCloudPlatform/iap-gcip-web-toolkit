@@ -1,0 +1,16 @@
+.idea
+.vscode
+.DS_Store
+npm-debug.log
+
+lib/
+dist/
+.tmp/
+.rpt2_cache/
+typings/
+coverage/
+node_modules/
+.nyc_output/
+
+# Release tarballs should not be checked in
+cicp-iap-js-*.tgz
