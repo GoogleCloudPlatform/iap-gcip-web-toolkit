@@ -15,7 +15,7 @@
     "test:browser": "run-s test:browser:unit test:browser:integration",
     "test:browser:unit": "karma start karma.config.js --type=unit",
     "test:browser:integration": "karma start karma.config.js --type=integration",
-    "lint:src": "tslint --format stylish -p tsconfig.json",
+    "lint:src": "tslint --format stylish -p tsconfig.json src/**/*.ts src/index.ts",
     "lint:unit": "tslint -c tslint-test.json --format stylish test/unit/*.ts test/unit/**/*.ts",
     "lint:integration": "tslint -c tslint-test.json --format stylish test/integration/*.ts",
     "lint:typings": "tslint -c tslint-types.json --format stylish src/index.d.ts"

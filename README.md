@@ -139,15 +139,15 @@ const uiConfigs = {
   tenantId2: {
     // Tenant2 supports OIDC providers.
     signInOptions: [
-      provider: 'oidc.myProvider1',
-      provider: 'oidc.myProvider2',
+      {provider: 'oidc.myProvider1'},
+      {provider: 'oidc.myProvider2'},
     ]
   },
   tenantId3: {
     // Tenant3 supports SAML providers.
     signInOptions: [
-      provider: 'saml.myProvider1',
-      provider: 'saml.myProvider2',
+      {provider: 'saml.myProvider1'},
+      {provider: 'saml.myProvider2'},
     ]
   },
 };

@@ -16,3 +16,8 @@
 
 // Auth
 import './ciap/auth.spec';
+
+// Utils
+import './utils/http-client.spec';
+import './utils/validator.spec';
+import './utils/index.spec';
