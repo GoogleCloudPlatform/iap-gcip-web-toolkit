@@ -16,7 +16,7 @@
 import * as _ from 'lodash';
 import {expect} from 'chai';
 import {
-  addReadonlyGetter, removeUndefinedFields,
+  addReadonlyGetter, removeUndefinedFields, formatString,
 } from '../../../src/utils/index';
 
 interface Obj {
@@ -69,5 +69,60 @@ describe('removeUndefinedFields()', () => {
     const actualOutput = removeUndefinedFields(obj);
     expect(actualOutput).to.deep.equal(expectedOutput);
     expect(actualOutput).to.equal(obj);
+  });
+});
+
+describe('formatString()', () => {
+  it('should keep string as is if not parameters are provided', () =>  {
+    const str = 'projects/{projectId}/{api}/path/api/projectId';
+    expect(formatString(str)).to.equal(str);
+  });
+
+  it('should substitute parameters in string', () => {
+    const str = 'projects/{projectId}/{api}/path/api/projectId';
+    const expectedOutput = 'projects/PROJECT_ID/API/path/api/projectId';
+    const params = {
+      projectId: 'PROJECT_ID',
+      api: 'API',
+      notFound: 'NOT_FOUND',
+    };
+    expect(formatString(str, params)).to.equal(expectedOutput);
+  });
+
+  it('should keep string as is if braces are not matching', () =>  {
+    const str = 'projects/projectId}/{api/path/api/projectId';
+    const params = {
+      projectId: 'PROJECT_ID',
+      api: 'API',
+    };
+    expect(formatString(str, params)).to.equal(str);
+  });
+
+  it('should handle multiple successive braces', () =>  {
+    const str = 'projects/{{projectId}}/path/{{api}}/projectId';
+    const expectedOutput = 'projects/{PROJECT_ID}/path/{API}/projectId';
+    const params = {
+      projectId: 'PROJECT_ID',
+      api: 'API',
+    };
+    expect(formatString(str, params)).to.equal(expectedOutput);
+  });
+
+  it('should substitute multiple occurrences of the same parameter', () => {
+    const str = 'projects/{projectId}/{api}/path/api/{projectId}';
+    const expectedOutput = 'projects/PROJECT_ID/API/path/api/PROJECT_ID';
+    const params = {
+      projectId: 'PROJECT_ID',
+      api: 'API',
+    };
+    expect(formatString(str, params)).to.equal(expectedOutput);
+  });
+
+  it('should keep string as is if parameters are not found', () => {
+    const str = 'projects/{projectId}/{api}/path/api/projectId';
+    const params = {
+      notFound: 'value',
+    };
+    expect(formatString(str, params)).to.equal(str);
   });
 });

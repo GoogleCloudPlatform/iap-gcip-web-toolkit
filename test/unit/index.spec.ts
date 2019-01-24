@@ -21,3 +21,5 @@ import './ciap/auth.spec';
 import './utils/http-client.spec';
 import './utils/validator.spec';
 import './utils/index.spec';
+import './utils/deep-copy.spec';
+import './utils/api-requester.spec';

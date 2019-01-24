@@ -52,3 +52,24 @@ export function removeUndefinedFields<T>(obj: T): T {
   }
   return obj;
 }
+
+/**
+ * Formats a string of form 'project/{projectId}/{api}' and replaces
+ * with corresponding arguments {projectId: '1234', api: 'resource'}
+ * and returns output: 'project/1234/resource'.
+ *
+ * @param {string} str The original string where the param need to be
+ *     replaced.
+ * @param {object=} params The optional parameters to replace in the
+ *     string.
+ * @return {string} The resulting formatted string.
+ */
+export function formatString(str: string, params?: object): string {
+  let formatted = str;
+  Object.keys(params || {}).forEach((key) => {
+    formatted = formatted.replace(
+        new RegExp('{' + key + '}', 'g'),
+        (params as {[key: string]: string})[key]);
+  });
+  return formatted;
+}
