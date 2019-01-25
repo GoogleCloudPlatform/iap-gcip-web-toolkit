@@ -21,7 +21,7 @@ import * as chaiAsPromised from 'chai-as-promised';
 
 import {
   isArray, isNonEmptyArray, isBoolean, isNumber, isString, isNonEmptyString,
-  isNonNullObject, isObject,
+  isNonNullObject, isObject, isAuthorizedDomain, isURL,
 } from '../../../src/utils/validator';
 
 
@@ -268,5 +268,130 @@ describe('isNonNullObject()', () => {
 
   it('should return true given a non-empty object', () => {
     expect(isNonNullObject({ a: 1 })).to.be.true;
+  });
+});
+
+describe('isAuthorizedDomain()', () => {
+  it('should return false when no authorized domains are provided', () => {
+    const authorizedDomains = [];
+    const url = 'http://localhost';
+    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
+  });
+
+  it('should return false on partial matches', () => {
+    const authorizedDomains = [
+      'abcdefghijklmnopqrstuvwxyz123456_suffix',
+      'prefix_abcdefghijklmnopqrstuvwxyz123456',
+      'prefix_abcdefghijklmnopqrstuvwxyz123456_suffix',
+    ];
+    const url = 'htt://aihpiglmnhnhijdnjghpfnlledckkhja/abc?a=1#b=2';
+    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
+  });
+
+  it('should return false when no domains match', () => {
+    const authorizedDomains = ['other.com', 'example.com'];
+    const url = 'http://www.domain.com/abc?a=1#b=2';
+    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
+  });
+
+  it('should return false on top level domain mismatch', () => {
+    const authorizedDomains = ['domain.com', 'domain.com.mx'];
+    const url = 'http://www.domain.com.lb/abc?a=1#b=2';
+    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
+  });
+
+  it('should return false on partial subdomain match', () => {
+    const authorizedDomains = ['site.example.com'];
+    const url = 'http://prefix-site.example.com';
+    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
+  });
+
+  it('should return false on IP address mismatch', () => {
+    const authorizedDomains = ['132.0.0.1'];
+    const url = 'http://127.0.0.1:8080/?redirect=132.0.0.1';
+    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
+  });
+
+  it('should return false for non http/https domains', () => {
+    const authorizedDomains = ['abcdefghijklmnopqrstuvwxyz123456'];
+    const url = 'file://abcdefghijklmnopqrstuvwxyz123456';
+    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
+  });
+
+  it('should return false even when matching non-http domains', () => {
+    const authorizedDomains = ['chrome-extension://abcdefghijklmnopqrstuvwxyz123456'];
+    const url = 'chrome-extension://abcdefghijklmnopqrstuvwxyz123456';
+    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
+  });
+
+  it('should return true on exact domain match', () => {
+    const authorizedDomains = ['other.com', 'domain.com'];
+    const url = 'http://www.domain.com/abc?a=1#b=2';
+    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.true;
+  });
+
+  it('should return true on exact domain and top level match', () => {
+    const authorizedDomains = ['domain.com', 'domain.com.lb'];
+    const url = 'http://www.domain.com.lb:8080/abc?a=1#b=2';
+    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.true;
+  });
+
+  it('should return true on subdomain match', () => {
+    const authorizedDomains = ['site.example.com'];
+    const url = 'https://www.site.example.com';
+    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.true;
+  });
+
+  it('should return true on IP address match', () => {
+    const authorizedDomains = ['127.0.0.1'];
+    const url = 'http://127.0.0.1:8080/?redirect=132.0.0.1';
+    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.true;
+  });
+});
+
+describe('isURL()', () => {
+  it('should return false with a null input', () => {
+    expect(isURL(null)).to.be.false;
+  });
+
+  it('should return false with an undefined input', () => {
+    expect(isURL(undefined)).to.be.false;
+  });
+
+  it('should return false with a non string', () => {
+    expect(isURL(['http://www.google.com'])).to.be.false;
+  });
+
+  it('show return true with a valid web URL string', () => {
+    expect(isURL('https://www.example.com:8080')).to.be.true;
+    expect(isURL('https://www.example.com')).to.be.true;
+    expect(isURL('http://localhost/path/name/')).to.be.true;
+    expect(isURL('https://www.example.com:8080/path/name/index.php?a=1&b=2&c=3#abcd'))
+      .to.be.true;
+    expect(isURL('http://www.example.com:8080/path/name/index.php?a=1&b=2&c=3#abcd'))
+      .to.be.true;
+    expect(isURL('http://localhost/path/name/index.php?a=1&b=2&c=3#abcd')).to.be.true;
+    expect(isURL('http://127.0.0.1/path/name/index.php?a=1&b=2&c=3#abcd')).to.be.true;
+    expect(isURL('http://a--b.c-c.co-uk/')).to.be.true;
+    expect(isURL('https://storage.googleapis.com/example-bucket/cat%20pic.jpeg?GoogleAccessId=e@' +
+      'example-project.iam.gserviceaccount.com&Expires=1458238630&Signature=VVUgfqviDCov%2B%2BKn' +
+      'mVOkwBR2olSbId51kSibuQeiH8ucGFyOfAVbH5J%2B5V0gDYIioO2dDGH9Fsj6YdwxWv65HE71VEOEsVPuS8CVb%2' +
+      'BVeeIzmEe8z7X7o1d%2BcWbPEo4exILQbj3ROM3T2OrkNBU9sbHq0mLbDMhiiQZ3xCaiCQdsrMEdYVvAFggPuPq%2' +
+      'FEQyQZmyJK3ty%2Bmr7kAFW16I9pD11jfBSD1XXjKTJzgd%2FMGSde4Va4J1RtHoX7r5i7YR7Mvf%2Fb17zlAuGlz' +
+      'VUf%2FzmhLPqtfKinVrcqdlmamMcmLoW8eLG%2B1yYW%2F7tlS2hvqSfCW8eMUUjiHiSWgZLEVIG4Lw%3D%3D'))
+      .to.be.true;
+  });
+
+  it('should return false with an invalid web URL string', () => {
+    expect(isURL('ftp://www.example.com:8080/path/name/file.png')).to.be.false;
+    expect(isURL('example.com')).to.be.false;
+    expect(isURL('')).to.be.false;
+    expect(isURL('5356364326')).to.be.false;
+    expect(isURL('http://www.exam[].com')).to.be.false;
+    expect(isURL('http://`a--b.com')).to.be.false;
+    expect(isURL('http://.com')).to.be.false;
+    expect(isURL('http://abc.com.')).to.be.false;
+    expect(isURL('http://-abc.com')).to.be.false;
+    expect(isURL('http://www._abc.com')).to.be.false;
   });
 });

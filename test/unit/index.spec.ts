@@ -16,6 +16,7 @@
 
 // Auth
 import './ciap/auth.spec';
+import './ciap/cicp-request.spec';
 
 // Utils
 import './utils/http-client.spec';
