@@ -20,10 +20,9 @@ import * as sinon from 'sinon';
 import * as sinonChai from 'sinon-chai';
 import * as chaiAsPromised from 'chai-as-promised';
 import {
-  HttpClient, HttpResponse, HttpRequestConfig,
+  HttpClient, HttpResponse,
 } from '../../../src/utils/http-client';
 import {CICPRequestHandler} from '../../../src/ciap/cicp-request';
-import {deepCopy} from '../../../src/utils/deep-copy';
 import { isNonNullObject } from '../../../src/utils/validator';
 
 chai.should();

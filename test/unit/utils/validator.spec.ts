@@ -21,7 +21,7 @@ import * as chaiAsPromised from 'chai-as-promised';
 
 import {
   isArray, isNonEmptyArray, isBoolean, isNumber, isString, isNonEmptyString,
-  isNonNullObject, isObject, isAuthorizedDomain, isURL,
+  isNonNullObject, isObject, isAuthorizedDomain, isURL, isHttpsURL,
 } from '../../../src/utils/validator';
 
 
@@ -393,5 +393,55 @@ describe('isURL()', () => {
     expect(isURL('http://abc.com.')).to.be.false;
     expect(isURL('http://-abc.com')).to.be.false;
     expect(isURL('http://www._abc.com')).to.be.false;
+  });
+});
+
+describe('isHttpsURL()', () => {
+  it('should return false with a null input', () => {
+    expect(isHttpsURL(null)).to.be.false;
+  });
+
+  it('should return false with an undefined input', () => {
+    expect(isHttpsURL(undefined)).to.be.false;
+  });
+
+  it('should return false with a non string', () => {
+    expect(isHttpsURL(['https://www.google.com'])).to.be.false;
+  });
+
+  it('show return true with a valid HTTPS URL string', () => {
+    expect(isHttpsURL('https://www.example.com:8080')).to.be.true;
+    expect(isHttpsURL('https://www.example.com')).to.be.true;
+    expect(isHttpsURL('https://www.example.com:8080/path/name/index.php?a=1&b=2&c=3#abcd'))
+      .to.be.true;
+    expect(isHttpsURL('https://www.example.com:8080/path/name/index.php?a=1&b=2&c=3#abcd'))
+      .to.be.true;
+    expect(isHttpsURL('https://localhost/path/name/index.php?a=1&b=2&c=3#abcd')).to.be.true;
+    expect(isHttpsURL('https://127.0.0.1/path/name/index.php?a=1&b=2&c=3#abcd')).to.be.true;
+    expect(isHttpsURL('https://a--b.c-c.co-uk/')).to.be.true;
+    expect(isHttpsURL('https://storage.googleapis.com/example-bucket/cat%20pic.jpeg?GoogleAccessId=e@' +
+      'example-project.iam.gserviceaccount.com&Expires=1458238630&Signature=VVUgfqviDCov%2B%2BKn' +
+      'mVOkwBR2olSbId51kSibuQeiH8ucGFyOfAVbH5J%2B5V0gDYIioO2dDGH9Fsj6YdwxWv65HE71VEOEsVPuS8CVb%2' +
+      'BVeeIzmEe8z7X7o1d%2BcWbPEo4exILQbj3ROM3T2OrkNBU9sbHq0mLbDMhiiQZ3xCaiCQdsrMEdYVvAFggPuPq%2' +
+      'FEQyQZmyJK3ty%2Bmr7kAFW16I9pD11jfBSD1XXjKTJzgd%2FMGSde4Va4J1RtHoX7r5i7YR7Mvf%2Fb17zlAuGlz' +
+      'VUf%2FzmhLPqtfKinVrcqdlmamMcmLoW8eLG%2B1yYW%2F7tlS2hvqSfCW8eMUUjiHiSWgZLEVIG4Lw%3D%3D'))
+      .to.be.true;
+  });
+
+  it('should return false with a valid HTTP URL', () => {
+    expect(isHttpsURL('http://www.google.com')).to.be.false;
+  });
+
+  it('should return false with an invalid HTTPS URL string', () => {
+    expect(isHttpsURL('ftp://www.example.com:8080/path/name/file.png')).to.be.false;
+    expect(isHttpsURL('example.com')).to.be.false;
+    expect(isHttpsURL('')).to.be.false;
+    expect(isHttpsURL('5356364326')).to.be.false;
+    expect(isHttpsURL('https://www.exam[].com')).to.be.false;
+    expect(isHttpsURL('https://`a--b.com')).to.be.false;
+    expect(isHttpsURL('https://.com')).to.be.false;
+    expect(isHttpsURL('https://abc.com.')).to.be.false;
+    expect(isHttpsURL('https://-abc.com')).to.be.false;
+    expect(isHttpsURL('https://www._abc.com')).to.be.false;
   });
 });

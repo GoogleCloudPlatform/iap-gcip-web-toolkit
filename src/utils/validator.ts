@@ -196,3 +196,13 @@ export function isURL(urlStr: any): boolean {
   }
   return true;
 }
+
+/**
+ * Validates that a string is a valid HTTPS URL.
+ *
+ * @param {any} urlStr The string to validate.
+ * @return {boolean} Whether the string is valid HTTPS URL or not.
+ */
+export function isHttpsURL(urlStr: any): boolean {
+  return isURL(urlStr) && new URL(urlStr).protocol === 'https:';
+}
