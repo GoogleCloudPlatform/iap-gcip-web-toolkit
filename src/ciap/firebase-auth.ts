@@ -21,6 +21,7 @@ interface User {
 }
 
 export interface FirebaseAuth {
+  tenantId?: string;
   onAuthStateChanged(
     nextOrObserver: ((a: User | null) => any),
     error?: (a: Error) => any,

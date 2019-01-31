@@ -22,8 +22,10 @@ const files = [
 ];
 const testType = argv.type || 'unit';
 if (testType === 'unit') {
+  files.push('test/resources/**/*.ts');
   files.push('test/unit/**/*.ts');
 } else if (testType === 'integration') {
+  files.push('test/resources/**/*.ts');
   files.push('test/integration/**/*.ts')
 }
 

@@ -14,26 +14,7 @@
  * limitations under the License.
  */
 
-import { FirebaseAuth, UserCredential } from './firebase-auth';
-
-export interface AuthenticationHandler {
-  // Returns the Auth instance for the corresponding tenant.
-  getAuth(tenantId: string): FirebaseAuth;
-  // Starts sign in with the corresponding Auth instance. Developer is expected to show
-  // the corresponding sign in options based on auth.tenantId.
-  startSignIn(
-      auth: FirebaseAuth,
-      onSuccess: ((result: UserCredential) => void),
-      locale?: string,
-  ): Promise<void>;
-  // Triggered after user is signed out from all tenants.
-  // This is optional to provide the developer the ability to render their own
-  // UI on signout.
-  // This is not called on single tenant sign out.
-  completeSignout?(): Promise<void>;
-  showProgressBar?(): void;
-  hideProgressBar?(): void;
-}
+import {AuthenticationHandler} from './authentication-handler';
 
 export class Authentication {
 
