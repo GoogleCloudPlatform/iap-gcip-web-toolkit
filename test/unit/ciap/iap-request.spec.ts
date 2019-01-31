@@ -24,6 +24,7 @@ import {
 } from '../../../src/utils/http-client';
 import {IAPRequestHandler, RedirectServerResponse} from '../../../src/ciap/iap-request';
 import * as validator from '../../../src/utils/validator';
+import * as utils from '../../../src/utils/index';
 
 chai.should();
 chai.use(sinonChai);
@@ -311,6 +312,94 @@ describe('IAPRequestHandler', () => {
         .catch((error) => {
           expect(error).to.equal(expectedError);
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+  });
+
+  describe('signOutWithRedirect()', () => {
+    const requestHandler = new IAPRequestHandler(httpClient);
+    const expectedData = {
+      id_token_tenant_id: tenantId,
+      state,
+    };
+
+    it('should resolve on success', () => {
+      const stub = sinon.stub(utils, 'formSubmitWithRedirect');
+      stubs.push(stub);
+
+      return requestHandler.signOutWithRedirect(iapRedirectServerUrl, tenantId, state)
+        .then((response: any) => {
+          expect(response).to.be.undefined;
+          expect(stub).to.have.been.calledOnce.and
+            .calledWith(document, iapRedirectServerUrl, 'POST', expectedData);
+        });
+    });
+
+    it('should reject on invalid URL', () => {
+      const invalidUrl = 'invalid';
+      const stub = sinon.stub(utils, 'formSubmitWithRedirect');
+      stubs.push(stub);
+
+      return requestHandler.signOutWithRedirect(invalidUrl, tenantId, state)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(isHttpsUrlSpy).to.have.been.calledOnce
+            .and.calledWith(invalidUrl)
+            .and.returned(false);
+          expect(error).to.have.property('message', 'Invalid URL');
+          expect(stub).to.not.have.been.called;
+        });
+    });
+
+    const invalidNonEmptyStrings = [null, NaN, 0, 1, true, false, [], '', ['a'], {}, { a: 1 }, _.noop];
+    invalidNonEmptyStrings.forEach((invalidNonEmptyString) => {
+      it('should reject on invalid tenantId: ' + JSON.stringify(invalidNonEmptyString), () => {
+        const stub = sinon.stub(utils, 'formSubmitWithRedirect');
+        stubs.push(stub);
+
+        return requestHandler.signOutWithRedirect(
+            iapRedirectServerUrl,
+            invalidNonEmptyString as any,
+            state).then(() => {
+              throw new Error('Unexpected success');
+            })
+            .catch((error) => {
+              expect(error).to.have.property('message', 'Invalid request');
+              expect(stub).to.not.have.been.called;
+            });
+      });
+
+      it('should reject on invalid state: ' + JSON.stringify(invalidNonEmptyString), () => {
+        const stub = sinon.stub(utils, 'formSubmitWithRedirect');
+        stubs.push(stub);
+
+        return requestHandler.signOutWithRedirect(
+            iapRedirectServerUrl,
+            tenantId,
+            invalidNonEmptyString as any).then(() => {
+              throw new Error('Unexpected success');
+            })
+            .catch((error) => {
+              expect(error).to.have.property('message', 'Invalid request');
+              expect(stub).to.not.have.been.called;
+            });
+      });
+    });
+
+    it('should reject on underlying form submit error', () => {
+      const expectedError = new Error('server side error');
+      const stub = sinon.stub(utils, 'formSubmitWithRedirect').throws(expectedError);
+      stubs.push(stub);
+      return requestHandler.signOutWithRedirect(iapRedirectServerUrl, tenantId, state)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.equal(expectedError);
+          expect(stub).to.have.been.calledOnce.and
+            .calledWith(document, iapRedirectServerUrl, 'POST', expectedData);
         });
     });
   });

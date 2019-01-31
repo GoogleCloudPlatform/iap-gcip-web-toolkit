@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-import { isArray, isNonEmptyString, isHttpsURL } from '../utils/validator';
+import { isNonEmptyString, isHttpsURL } from '../utils/validator';
 import { HttpResponse, HttpRequestConfig, HttpClient } from '../utils/http-client';
 import { ApiRequester } from '../utils/api-requester';
+import { formSubmitWithRedirect } from '../utils/index';
 
 /**
  * IAP request timeout duration in milliseconds. This should become variable depending on
@@ -147,5 +148,36 @@ export class IAPRequestHandler {
         .then((response: HttpResponse) => {
           // Do nothing.
         });
+  }
+
+  /**
+   * Submits form-urlencoded state and tenantId to IAP redirect server. This will also result with a
+   * redirect to that URL.
+   *
+   * @param {string} iapRedirectServerUrl The IAP redirect server URL passed via query string.
+   * @param {string} tenantId The tenant ID.
+   * @param {string} state The state JWT.
+   * @return {Promise<void>} A promise that resolves on successful submission.
+   */
+  public signOutWithRedirect(
+      iapRedirectServerUrl: string,
+      tenantId: string,
+      state: string): Promise<void> {
+    return Promise.resolve().then(() => {
+      if (!isHttpsURL(iapRedirectServerUrl)) {
+        throw new Error('Invalid URL');
+      }
+      if (!isNonEmptyString(tenantId) || !isNonEmptyString(state)) {
+        throw new Error('Invalid request');
+      }
+      formSubmitWithRedirect(
+          window.document,
+          iapRedirectServerUrl,
+          'POST',
+          {
+            id_token_tenant_id: tenantId,
+            state,
+          });
+    });
   }
 }

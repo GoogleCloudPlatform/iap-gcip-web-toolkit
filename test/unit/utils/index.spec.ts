@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 import * as _ from 'lodash';
+import * as sinon from 'sinon';
 import {expect} from 'chai';
 import {
   addReadonlyGetter, removeUndefinedFields, formatString,
+  formSubmitWithRedirect, getCurrentUrl,
 } from '../../../src/utils/index';
 
 interface Obj {
@@ -124,5 +126,101 @@ describe('formatString()', () => {
       notFound: 'value',
     };
     expect(formatString(str, params)).to.equal(str);
+  });
+});
+
+describe('formSubmitWithRedirect()', () => {
+  const stubs: sinon.SinonStub[] = [];
+
+  afterEach(() => {
+    stubs.forEach((s) => s.restore());
+  });
+
+  it('should POST submit the provided data to the requested URL', () => {
+    // Catch FORM element submits.
+    const stub = sinon.stub(HTMLFormElement.prototype, 'submit');
+    stubs.push(stub);
+    const data = {a: 'value', b: 2, c: false, d: -3.56};
+    const url = 'https://example.com/handler';
+
+    formSubmitWithRedirect(document, url, 'POST', data);
+
+    expect(stub).to.have.been.calledOnce;
+    const form = document.body.lastElementChild;
+    // Confirm expected form submitted.
+    expect(stub.getCall(0).thisValue).to.equal(form);
+    expect(form.tagName).to.equal('FORM');
+    expect(form.getAttribute('method')).to.equal('POST');
+    expect(form.getAttribute('action')).to.equal(url);
+    expect(form.children.length).to.equal(Object.keys(data).length);
+    Object.keys(data).forEach((key: string, index: number) => {
+      expect(form.children[index].tagName).to.equal('INPUT');
+      expect(form.children[index].getAttribute('type')).to.equal('hidden');
+      expect(form.children[index].getAttribute('name')).to.equal(key);
+      expect(form.children[index].getAttribute('value')).to.equal(data[key].toString());
+    });
+  });
+
+  it('should GET submit the provided data to the requested URL', () => {
+    // Catch FORM element submits.
+    const stub = sinon.stub(HTMLFormElement.prototype, 'submit');
+    stubs.push(stub);
+    const data = {a: 'value', b: 2, c: false, d: -3.56};
+    const url = 'https://example.com/handler';
+
+    formSubmitWithRedirect(document, url, 'GET', data);
+
+    expect(stub).to.have.been.calledOnce;
+    const form = document.body.lastElementChild;
+    // Confirm expected form submitted.
+    expect(stub.getCall(0).thisValue).to.equal(form);
+    expect(form.tagName).to.equal('FORM');
+    expect(form.getAttribute('method')).to.equal('GET');
+    expect(form.getAttribute('action')).to.equal(url);
+    expect(form.children.length).to.equal(Object.keys(data).length);
+    Object.keys(data).forEach((key: string, index: number) => {
+      expect(form.children[index].tagName).to.equal('INPUT');
+      expect(form.children[index].getAttribute('type')).to.equal('hidden');
+      expect(form.children[index].getAttribute('name')).to.equal(key);
+      expect(form.children[index].getAttribute('value')).to.equal(data[key].toString());
+    });
+  });
+
+  it('should ignore undefined and null values', () => {
+    // Catch FORM element submits.
+    const stub = sinon.stub(HTMLFormElement.prototype, 'submit');
+    stubs.push(stub);
+    const data = {a: 'value', b: null, c: undefined};
+    const expectedData = {a: 'value'};
+    const url = 'https://example.com/handler';
+
+    formSubmitWithRedirect(document, url, 'POST', data);
+
+    expect(stub).to.have.been.calledOnce;
+    const form = document.body.lastElementChild;
+    // Confirm expected form submitted.
+    expect(stub.getCall(0).thisValue).to.equal(form);
+    expect(form.tagName).to.equal('FORM');
+    expect(form.getAttribute('method')).to.equal('POST');
+    expect(form.getAttribute('action')).to.equal(url);
+    // Expected data used and null/undefined values ignored.
+    expect(form.children.length).to.equal(Object.keys(expectedData).length);
+    Object.keys(expectedData).forEach((key: string, index: number) => {
+      expect(form.children[index].tagName).to.equal('INPUT');
+      expect(form.children[index].getAttribute('type')).to.equal('hidden');
+      expect(form.children[index].getAttribute('name')).to.equal(key);
+      expect(form.children[index].getAttribute('value')).to.equal(data[key].toString());
+    });
+  });
+});
+
+describe('getCurrentUrl()', () => {
+  it('should return current URL when a valid window instance is provided', () => {
+    const href = 'https://www.example.com/path/index.html?a=1&b=2#c';
+    expect(getCurrentUrl({location: {href}} as any)).to.equal(href);
+  });
+
+  it('should return null when an invalid window instance is provided', () => {
+    expect(getCurrentUrl({} as any)).to.be.null;
   });
 });

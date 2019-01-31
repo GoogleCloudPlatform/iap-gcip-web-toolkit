@@ -73,3 +73,47 @@ export function formatString(str: string, params?: object): string {
   });
   return formatted;
 }
+
+/**
+ * Submits the provided data to a URL using the provided HTTP method via a hidden form.
+ * This will also redirect the current page to the provided URL.
+ * All data values will be converted to string formats before they are sent to server and all
+ * null and undefined values will be ignored.
+ *
+ * @param {HTMLDocument} doc The HTML document instance.
+ * @param {string} url The form action URL.
+ * @param {string} httpMethod The form HTTP method.
+ * @param {object<string, *>} data The data to be form-urlencoded and sent along to URL.
+ */
+export function formSubmitWithRedirect(
+    doc: HTMLDocument,
+    url: string,
+    httpMethod: 'GET' | 'POST',
+    data: {[key: string]: any}) {
+  const form: HTMLFormElement = doc.createElement('form');
+  form.setAttribute('method', httpMethod);
+  form.setAttribute('action', url);
+  for (const key in data) {
+    if (data.hasOwnProperty(key) &&
+        typeof data[key] !== 'undefined' &&
+        data[key] !== null) {
+      const hiddenField: HTMLInputElement = doc.createElement('input');
+      hiddenField.type = 'hidden';
+      hiddenField.name = key;
+      hiddenField.value = data[key].toString();
+      form.appendChild(hiddenField);
+    }
+  }
+  doc.body.appendChild(form);
+  form.submit();
+}
+
+/**
+ * Returns the current URL if available.
+ *
+ * @param {Window} windowInstance The window reference.
+ * @return {?string} The current URL if available.
+ */
+export function getCurrentUrl(windowInstance: Window) {
+  return (windowInstance && windowInstance.location && windowInstance.location.href) || null;
+}
