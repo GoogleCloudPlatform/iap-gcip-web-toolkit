@@ -15,9 +15,10 @@
  */
 
 import { isNonEmptyString, isHttpsURL } from '../utils/validator';
-import { HttpResponse, HttpRequestConfig, HttpClient } from '../utils/http-client';
+import { HttpResponse, HttpRequestConfig, HttpClient, LowLevelError } from '../utils/http-client';
 import { ApiRequester } from '../utils/api-requester';
 import { formSubmitWithRedirect } from '../utils/index';
+import { HttpCIAPError } from '../utils/error';
 
 /**
  * IAP request timeout duration in milliseconds. This should become variable depending on
@@ -27,6 +28,14 @@ const IAP_TIMEOUT = 30000;
 /** IAP request headers. */
 const IAP_HEADERS = {
   'Content-Type': 'application/json',
+};
+
+/** IAP error code number to string mappings. */
+const IAP_ERROR_CODE: {[key: string]: string} = {
+  8: 'AUTHENTICATION_URI_FAIL',
+  37: 'CICP_TOKEN_INVALID',
+  38: 'RESOURCE_MISSING_CICP_TENANT_ID',
+  39: 'CICP_REDIRECT_INVALID',
 };
 
 /** Defines EXCHANGE_ID_TOKEN response interface. */
@@ -127,6 +136,9 @@ export class IAPRequestHandler {
     return IAPRequestHandler.EXCHANGE_ID_TOKEN.process(this.httpClient, urlParams, requestData)
         .then((response: HttpResponse) => {
           return response.data as RedirectServerResponse;
+        })
+        .catch((error: Error) => {
+          throw this.translateLowLevelCanonicalError(error);
         });
   }
 
@@ -147,6 +159,9 @@ export class IAPRequestHandler {
     return IAPRequestHandler.SET_COOKIE.process(this.httpClient, urlParams, null, headers)
         .then((response: HttpResponse) => {
           // Do nothing.
+        })
+        .catch((error: Error) => {
+          throw this.translateLowLevelTextError(error);
         });
   }
 
@@ -179,5 +194,74 @@ export class IAPRequestHandler {
             state,
           });
     });
+  }
+
+  /**
+   * Translates a LowLevelError canonical error thrown by IAP redirect server to an HttpCIAPError.
+   * Sample error code (JSON formatted):
+   * {
+   *   "error": {
+   *     "code": 400,
+   *     "message": "Request contains an invalid argument.",
+   *     "status": "INVALID_ARGUMENT",
+   *     "details": [
+   *       {
+   *         "@type": "type.googleapis.com/google.rpc.DebugInfo",
+   *         "detail": "[ORIGINAL ERROR] generic::invalid_argument: state_jwt cannot be empty"
+   *       }
+   *     ]
+   *   }
+   * }
+   *
+   * @param {Error} error The error caught when calling the IAP redirect server.
+   * @return {Error} The translated error.
+   */
+  private translateLowLevelCanonicalError(error: Error): Error {
+    // Check if low level error, otherwise pass it through.
+    if ('status' in error) {
+      let statusCode: string;
+      let message: string;
+      const lowLevelResponse = (error as LowLevelError).response;
+      if (lowLevelResponse &&
+          lowLevelResponse.data &&
+          (lowLevelResponse.data as any).error &&
+          (lowLevelResponse.data as any).error.status) {
+        const errorResponse = lowLevelResponse.data as any;
+        statusCode = errorResponse.error.status;
+        message = errorResponse.error.details && errorResponse.error.details.length &&
+            errorResponse.error.details[0] && errorResponse.error.details[0].detail;
+      }
+      return new HttpCIAPError((error as LowLevelError).status, statusCode, message, error);
+    }
+    return error;
+  }
+
+  /**
+   * Translates a LowLevelError text error thrown by IAP targetUri to an HttpCIAPError.
+   * Sample error code (Text formatted and error code needs to be parsed separately):
+   * "An internal server error occurred while authorizing your request. Error XYZ code."
+   *
+   * @param {Error} error The error caught when calling the target URI.
+   * @return {Error} The translated error.
+   */
+  private translateLowLevelTextError(error: Error): Error {
+    // Low level error.
+    if ('status' in error) {
+      let message: string;
+      let statusCode: string;
+      const lowLevelResponse = (error as LowLevelError).response;
+      if (lowLevelResponse && lowLevelResponse.data) {
+        message = lowLevelResponse.data as string;
+        if (isNonEmptyString(message)) {
+          const matchServerErrorCode = message.match(/Error\s(\d+)\scode/);
+          if (matchServerErrorCode.length > 1 &&
+              typeof IAP_ERROR_CODE[matchServerErrorCode[1]] !== 'undefined') {
+            statusCode = IAP_ERROR_CODE[matchServerErrorCode[1]];
+          }
+        }
+      }
+      return new HttpCIAPError((error as LowLevelError).status, statusCode, message, error);
+    }
+    return error;
   }
 }

@@ -79,7 +79,7 @@ interface LowLevelResponse {
  * The expectation is that the service using this utility will catch this error and translate
  * it into a common format that can be consumed downstream.
  */
-interface LowLevelError extends Error {
+export interface LowLevelError extends Error {
   config: HttpRequestConfig;
   request?: RequestInit;
   response?: LowLevelResponse;

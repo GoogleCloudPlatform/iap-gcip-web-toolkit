@@ -17,8 +17,9 @@
 import {
   isArray, isAuthorizedDomain, isNonEmptyString, isURL,
 } from '../utils/validator';
-import { HttpResponse, HttpRequestConfig, HttpClient } from '../utils/http-client';
+import { HttpResponse, LowLevelError, HttpClient } from '../utils/http-client';
 import { ApiRequester } from '../utils/api-requester';
+import { HttpCIAPError } from '../utils/error';
 
 
 /** CICP backend host. */
@@ -96,6 +97,75 @@ export class CICPRequestHandler {
         .then((response: HttpResponse) => {
           const responseJson = response.data as GetProjectConfigResponse;
           return isAuthorizedDomain(responseJson.authorizedDomains, url);
+        })
+        .catch((error: Error) => {
+          throw this.translateLowLevelError(error);
         });
+  }
+
+  /**
+   * Translates a LowLevelError error thrown by CICP server to an HttpCIAPError.
+   * Sample error code (JSON formatted):
+   * {
+   *   "error": {
+   *     "code": 400,
+   *     "message": "CREDENTIAL_TOO_OLD_LOGIN_AGAIN",
+   *     // Details can be returned from Auth server in format:
+   *     // "message": "CREDENTIAL_TOO_OLD_LOGIN_AGAIN: detailed message",
+   *     "errors": [
+   *       {
+   *         "message": "CREDENTIAL_TOO_OLD_LOGIN_AGAIN",
+   *         "domain": "global",
+   *         "reason": "invalid"
+   *       }
+   *     ]
+   *   }
+   * }
+   *
+   * There are cases where status field is returned.
+   * {
+   *   "error": {
+   *     "code": 400,
+   *     "message": "API key not valid. Please pass a valid API key.",
+   *     "errors": [
+   *       {
+   *         "message": "API key not valid. Please pass a valid API key.",
+   *         "domain": "global",
+   *         "reason": "badRequest"
+   *       }
+   *     ],
+   *     "status": "INVALID_ARGUMENT"
+   *   }
+   * }
+   *
+   * @param {Error} error The error caught when calling the CICP server.
+   * @return {Error} The translated error.
+   */
+  private translateLowLevelError(error: Error): Error {
+    // Check if low level error, otherwise pass it through.
+    if ('status' in error) {
+      let statusCode: string;
+      let message: string;
+      const lowLevelResponse = (error as LowLevelError).response;
+      if (lowLevelResponse &&
+          lowLevelResponse.data &&
+          (lowLevelResponse.data as any).error &&
+          (lowLevelResponse.data as any).error.message) {
+        const errorResponse = lowLevelResponse.data as any;
+        if (isNonEmptyString(errorResponse.error.status)) {
+          // If status is vailable, use that as status code.
+          statusCode = errorResponse.error.status;
+          message = errorResponse.error.message;
+        } else {
+          // Otherwise, get code from response.error.message.
+          const components = (errorResponse.error.message || '').split(':');
+          statusCode = components.length > 1 ? components[0].trim() : errorResponse.error.message;
+          // TODO: add default error messages for common Auth error codes when no server message is provided.
+          message = components.length > 1 ? components[1].trim() : undefined;
+        }
+      }
+      return new HttpCIAPError((error as LowLevelError).status, statusCode, message, error);
+    }
+    return error;
   }
 }

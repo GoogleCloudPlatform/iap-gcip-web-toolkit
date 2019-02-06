@@ -25,6 +25,8 @@ import {
 import {IAPRequestHandler, RedirectServerResponse} from '../../../src/ciap/iap-request';
 import * as validator from '../../../src/utils/validator';
 import * as utils from '../../../src/utils/index';
+import { createMockLowLevelError } from '../../resources/utils';
+import { HttpCIAPError } from '../../../src/utils/error';
 
 chai.should();
 chai.use(sinonChai);
@@ -235,6 +237,41 @@ describe('IAPRequestHandler', () => {
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
     });
+
+    it('should translate underlying LowLevelError to expected HttpCIAPError error', () => {
+      const jsonError = {
+        error: {
+          code: 400,
+          message: 'Request contains an invalid argument.',
+          status: 'INVALID_ARGUMENT',
+          details: [
+            {
+              '@type': 'type.googleapis.com/google.rpc.DebugInfo',
+              'detail': '[ORIGINAL ERROR] generic::invalid_argument: state_jwt cannot be empty',
+            },
+          ],
+        },
+      };
+      // Simulate RPC rejects with LowLevelError.
+      const serverLowLevelError = createMockLowLevelError(
+          'Server responded with status 400',
+          400,
+          {data: jsonError});
+      // Expected translated error to be thrown.
+      const expectedError = new HttpCIAPError(
+          400, 'INVALID_ARGUMENT', jsonError.error.details[0].detail, serverLowLevelError);
+      const stub = sinon.stub(HttpClient.prototype, 'send').rejects(serverLowLevelError);
+      stubs.push(stub);
+
+      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, tenantId, state)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error.toJSON()).to.deep.equal(expectedError.toJSON());
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
   });
 
   describe('setCookieAtTargetUrl()', () => {
@@ -311,6 +348,54 @@ describe('IAPRequestHandler', () => {
         })
         .catch((error) => {
           expect(error).to.equal(expectedError);
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+
+    it('should translate underlying LowLevelError to expected HttpCIAPError error', () => {
+      const serverMessage = 'An internal server error occurred while authorizing your request. Error 37 code.';
+      // Simulate RPC rejects with LowLevelError.
+      const serverLowLevelError = createMockLowLevelError(
+          'Server responded with status 403',
+          403,
+          {data: serverMessage});
+      // Expected translated error to be thrown.
+      const expectedError = new HttpCIAPError(
+          403, 'CICP_TOKEN_INVALID', serverMessage, serverLowLevelError);
+      const stub = sinon.stub(HttpClient.prototype, 'send').rejects(serverLowLevelError);
+      stubs.push(stub);
+
+      return requestHandler.setCookieAtTargetUrl(targetUri, redirectToken)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error.toJSON()).to.deep.equal(expectedError.toJSON());
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+
+    it('should translate underlying LowLevelError with unknown error code to expected HttpCIAPError error', () => {
+      // Simulate unknown error code.
+      const serverMessage = 'An internal server error occurred while authorizing your request. Error 101 code.';
+      // Simulate RPC rejects with LowLevelError.
+      const serverLowLevelError = createMockLowLevelError(
+          'Server responded with status 403',
+          403,
+          {data: serverMessage});
+      // Expected translated error to be thrown with default status code used since the code was not found in
+      // our mapping.
+      const expectedError = new HttpCIAPError(
+          403, 'PERMISSION_DENIED', serverMessage, serverLowLevelError);
+      const stub = sinon.stub(HttpClient.prototype, 'send').rejects(serverLowLevelError);
+      stubs.push(stub);
+
+      return requestHandler.setCookieAtTargetUrl(targetUri, redirectToken)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error.toJSON()).to.deep.equal(expectedError.toJSON());
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
     });

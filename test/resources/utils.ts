@@ -15,7 +15,9 @@
  */
 
 import { FirebaseAuth } from '../../src/ciap/firebase-auth';
+import { addReadonlyGetter } from '../../src/utils/index';
 import { AuthenticationHandler } from '../../src/ciap/authentication-handler';
+import { LowLevelError, HttpRequestConfig } from '../../src/utils/http-client';
 
  /**
  * Creates the mock URL for testing configuration URLs.
@@ -67,4 +69,25 @@ export function createMockAuthenticationHandler(
     getAuth,
     startSignIn: () => Promise.resolve(),
   };
+}
+
+/**
+ * Creates a mock LowLevelError using the parameters provided.
+ *
+ * @param {string} message The error message.
+ * @param {number} status The HTTP error code.
+ * @param {object|string=} response The low level response.
+ * @param {HttpRequestConfig=} config The original HTTP request configuration.
+ * @param {Request=} request The original Request object.
+ * @return {LowLevelError} The corresponding mock LowLevelError.
+ */
+export function createMockLowLevelError(
+    message: string, status: number, response?: {data: string | object},
+    config?: HttpRequestConfig, request?: RequestInit): LowLevelError {
+  const error = new Error(message);
+  addReadonlyGetter(error, 'status', status);
+  addReadonlyGetter(error, 'config', config);
+  addReadonlyGetter(error, 'request', request);
+  addReadonlyGetter(error, 'response', response);
+  return error as LowLevelError;
 }
