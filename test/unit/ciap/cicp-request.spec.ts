@@ -24,6 +24,8 @@ import {
 } from '../../../src/utils/http-client';
 import {CICPRequestHandler} from '../../../src/ciap/cicp-request';
 import { isNonNullObject } from '../../../src/utils/validator';
+import { createMockLowLevelError } from '../../resources/utils';
+import { HttpCIAPError } from '../../../src/utils/error';
 
 chai.should();
 chai.use(sinonChai);
@@ -169,12 +171,118 @@ describe('CICPRequestHandler', () => {
       const expectedError = new Error('server side error');
       const stub = sinon.stub(HttpClient.prototype, 'send').rejects(expectedError);
       stubs.push(stub);
+
       return requestHandler.isAuthorizedDomain(url)
         .then(() => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
           expect(error).to.equal(expectedError);
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+
+    it('should translate underlying LowLevelError without custom message to expected HttpCIAPError error', () => {
+      const jsonError = {
+        error: {
+          code: 400,
+          message: 'TOO_MANY_ATTEMPTS_TRY_LATER',
+          errors: [
+            {
+              message: 'TOO_MANY_ATTEMPTS_TRY_LATER',
+              domain: 'global',
+              reason: 'invalid',
+            },
+          ],
+        },
+      };
+      // Simulate RPC rejects with LowLevelError.
+      const serverLowLevelError = createMockLowLevelError(
+          'Server responded with status 400',
+          400,
+          {data: jsonError});
+      // Expected translated error to be thrown.
+      const expectedError = new HttpCIAPError(
+          400, 'TOO_MANY_ATTEMPTS_TRY_LATER', undefined, serverLowLevelError);
+      const stub = sinon.stub(HttpClient.prototype, 'send').rejects(serverLowLevelError);
+      stubs.push(stub);
+
+      return requestHandler.isAuthorizedDomain(url)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error.toJSON()).to.deep.equal(expectedError.toJSON());
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+
+    it('should translate underlying LowLevelError with custom message to expected HttpCIAPError error', () => {
+      const jsonError = {
+        error: {
+          code: 400,
+          message: 'TOO_MANY_ATTEMPTS_TRY_LATER : custom error message',
+          errors: [
+            {
+              message: 'TOO_MANY_ATTEMPTS_TRY_LATER : custom error message',
+              domain: 'global',
+              reason: 'invalid',
+            },
+          ],
+        },
+      };
+      // Simulate RPC rejects with LowLevelError.
+      const serverLowLevelError = createMockLowLevelError(
+          'Server responded with status 400',
+          400,
+          {data: jsonError});
+      // Expected translated error to be thrown with custom message populated.
+      const expectedError = new HttpCIAPError(
+          400, 'TOO_MANY_ATTEMPTS_TRY_LATER', 'custom error message', serverLowLevelError);
+      const stub = sinon.stub(HttpClient.prototype, 'send').rejects(serverLowLevelError);
+      stubs.push(stub);
+      return requestHandler.isAuthorizedDomain(url)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error.toJSON()).to.deep.equal(expectedError.toJSON());
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+
+    it('should translate underlying LowLevelError with status field to expected HttpCIAPError error', () => {
+      const jsonError = {
+        error: {
+          code: 400,
+          message: 'API key not valid. Please pass a valid API key.',
+          errors: [
+            {
+              message: 'API key not valid. Please pass a valid API key.',
+              domain: 'global',
+              reason: 'badRequest',
+            },
+          ],
+          status: 'INVALID_ARGUMENT',
+        },
+      };
+      // Simulate RPC rejects with LowLevelError.
+      const serverLowLevelError = createMockLowLevelError(
+          'Server responded with status 400',
+          400,
+          {data: jsonError});
+      // Expected translated error to be thrown with INVALID_ARGUMENT status and response.error.message
+      // populated as error message.
+      const expectedError = new HttpCIAPError(
+          400, 'INVALID_ARGUMENT', jsonError.error.message, serverLowLevelError);
+      const stub = sinon.stub(HttpClient.prototype, 'send').rejects(serverLowLevelError);
+      stubs.push(stub);
+      return requestHandler.isAuthorizedDomain(url)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error.toJSON()).to.deep.equal(expectedError.toJSON());
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
     });
