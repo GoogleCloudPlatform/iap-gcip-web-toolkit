@@ -24,9 +24,8 @@ declare namespace ciap {
     // the corresponding sign in options based on auth.tenantId.
     startSignIn(
         auth: FirebaseAuth,
-        onSuccess: ((result: UserCredential) => void),
         locale?: string,
-    ): Promise<void>;
+    ): Promise<UserCredential>;
     // Triggered after user is signed out from all tenants.
     // This is optional to provide the developer the ability to render their own
     // UI on signout.

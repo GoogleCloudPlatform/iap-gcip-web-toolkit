@@ -22,7 +22,7 @@ import { AuthenticationHandler } from '../../../src/ciap/authentication-handler'
 import { CICPRequestHandler } from '../../../src/ciap/cicp-request';
 import { IAPRequestHandler } from '../../../src/ciap/iap-request';
 import {
-  createMockUrl, createMockAuth, createMockAuthenticationHandler,
+  createMockUrl, createMockAuth, createMockAuthenticationHandler, MockAuthenticationHandler,
 } from '../../resources/utils';
 
 /**
@@ -35,7 +35,7 @@ class ConcreteOperationHandler extends BaseOperationHandler {
     * @param {AuthenticationHandler} handler The Authentication handler instance.
     * @constructor
     */
-  constructor(config: Config, handler: AuthenticationHandler) {
+  constructor(config: Config, handler: MockAuthenticationHandler) {
     super(config, handler);
   }
 
@@ -70,6 +70,20 @@ class ConcreteOperationHandler extends BaseOperationHandler {
     expect(this.state).to.equal(config.state);
     expect(this.languageCode).to.equal(config.hl);
     expect(this.config).to.equal(config);
+    expect(this.isProgressBarVisible()).to.be.false;
+    expect((this.handler as MockAuthenticationHandler).isProgressBarVisible()).to.be.false;
+    this.showProgressBar();
+    expect(this.isProgressBarVisible()).to.be.true;
+    expect((this.handler as MockAuthenticationHandler).isProgressBarVisible()).to.be.true;
+    this.showProgressBar();
+    expect(this.isProgressBarVisible()).to.be.true;
+    expect((this.handler as MockAuthenticationHandler).isProgressBarVisible()).to.be.true;
+    this.hideProgressBar();
+    expect(this.isProgressBarVisible()).to.be.false;
+    expect((this.handler as MockAuthenticationHandler).isProgressBarVisible()).to.be.false;
+    this.hideProgressBar();
+    expect(this.isProgressBarVisible()).to.be.false;
+    expect((this.handler as MockAuthenticationHandler).isProgressBarVisible()).to.be.false;
   }
 }
 
@@ -81,14 +95,12 @@ describe('BaseOperationHandler', () => {
   const redirectUri = `https://iap.googleapis.com/v1alpha1/cicp/tenantIds/${tid}:handleRedirect`;
   // Dummy FirebaseAuth instance.
   const auth = createMockAuth(tid);
+  const tenant2Auth: {[key: string]: FirebaseAuth} = {};
+  tenant2Auth[tid] = auth;
 
   it('should initialize all underlying parameters as expected', () => {
     // Dummy authentication handler.
-    const authenticationHandler = createMockAuthenticationHandler((actualTenantId: string) => {
-      // Confirm expected tid passed to getAuth.
-      expect(actualTenantId).to.equal(tid);
-      return auth;
-    });
+    const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
     const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
 
     const concreteInstance = new ConcreteOperationHandler(config, authenticationHandler);

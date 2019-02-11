@@ -15,18 +15,19 @@
  */
 
 import {expect} from 'chai';
-import { isAuthenticationHandler } from '../../../src/ciap/authentication-handler';
-import {
-  createMockAuth, createMockAuthenticationHandler,
-} from '../../resources/utils';
+import { isAuthenticationHandler, AuthenticationHandler } from '../../../src/ciap/authentication-handler';
+import { createMockAuth } from '../../resources/utils';
 
 describe('isAuthenticationHandler()', () => {
   const auth = createMockAuth();
   const nonFunctions = [null, NaN, 0, 1, '', 'a', true, false, {}, [], { a: 1 }];
-  const getAuth = (tenantId: string) => auth;
+  const mockAuthenticationHandler: AuthenticationHandler = {
+    getAuth: (tenantId: string) => auth,
+    startSignIn: () => Promise.resolve({} as any),
+  };
 
   it('should return true for valid AuthenticationHandler', () => {
-    const handler = createMockAuthenticationHandler(getAuth);
+    const handler = mockAuthenticationHandler;
     delete handler.completeSignout;
     delete handler.showProgressBar;
     delete handler.hideProgressBar;
@@ -34,7 +35,7 @@ describe('isAuthenticationHandler()', () => {
   });
 
   it('should return true for a valid AuthenticationHandler with all optional parameters', () => {
-    const handler = createMockAuthenticationHandler(getAuth);
+    const handler = mockAuthenticationHandler;
     // Add all additional optional parameters.
     handler.completeSignout = () => Promise.resolve();
     handler.showProgressBar = () => {/** Null function. */};
@@ -44,35 +45,35 @@ describe('isAuthenticationHandler()', () => {
 
   nonFunctions.forEach((nonFunction) => {
     it('should return false when provided with an invalid getAuth: ' + JSON.stringify(nonFunction), () => {
-      const handler = createMockAuthenticationHandler(getAuth);
+      const handler = mockAuthenticationHandler;
       handler.getAuth = nonFunction as any;
       expect(isAuthenticationHandler(handler)).to.be.false;
     });
   });
 
   it('should return false when getAuth is not provided', () => {
-    const handler = createMockAuthenticationHandler(getAuth);
+    const handler = mockAuthenticationHandler;
     delete handler.getAuth;
     expect(isAuthenticationHandler(handler)).to.be.false;
   });
 
   nonFunctions.forEach((nonFunction) => {
     it('should return false when provided with an invalid startSignIn: ' + JSON.stringify(nonFunction), () => {
-      const handler = createMockAuthenticationHandler(getAuth);
+      const handler = mockAuthenticationHandler;
       handler.startSignIn = nonFunction as any;
       expect(isAuthenticationHandler(handler)).to.be.false;
     });
   });
 
   it('should return false when startSignIn is not provided', () => {
-    const handler = createMockAuthenticationHandler(getAuth);
+    const handler = mockAuthenticationHandler;
     delete handler.startSignIn;
     expect(isAuthenticationHandler(handler)).to.be.false;
   });
 
   nonFunctions.forEach((nonFunction) => {
     it('should return false when provided with an invalid showProgressBar: ' + JSON.stringify(nonFunction), () => {
-      const handler = createMockAuthenticationHandler(getAuth);
+      const handler = mockAuthenticationHandler;
       handler.showProgressBar = 'invalid' as any;
       expect(isAuthenticationHandler(handler)).to.be.false;
     });
@@ -80,7 +81,7 @@ describe('isAuthenticationHandler()', () => {
 
   nonFunctions.forEach((nonFunction) => {
     it('should return false when provided with an invalid hideProgressBar: ' + JSON.stringify(nonFunction), () => {
-      const handler = createMockAuthenticationHandler(getAuth);
+      const handler = mockAuthenticationHandler;
       handler.hideProgressBar = 'invalid' as any;
       expect(isAuthenticationHandler(handler)).to.be.false;
     });
@@ -88,7 +89,7 @@ describe('isAuthenticationHandler()', () => {
 
   nonFunctions.forEach((nonFunction) => {
     it('should return false when provided with an invalid completeSignout: ' + JSON.stringify(nonFunction), () => {
-      const handler = createMockAuthenticationHandler(getAuth);
+      const handler = mockAuthenticationHandler;
       handler.completeSignout = 'invalid' as any;
       expect(isAuthenticationHandler(handler)).to.be.false;
     });

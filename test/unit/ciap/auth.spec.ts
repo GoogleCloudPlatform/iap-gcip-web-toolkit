@@ -16,6 +16,7 @@
 
 import {expect} from 'chai';
 import * as sinon from 'sinon';
+import { FirebaseAuth } from '../../../src/ciap/firebase-auth';
 import { Authentication } from '../../../src/ciap/auth';
 import {
   createMockAuth, createMockAuthenticationHandler, createMockUrl,
@@ -32,28 +33,27 @@ describe('Authentication', () => {
   const hl = 'en-US';
   const redirectUri = `https://iap.googleapis.com/v1alpha1/cicp/tenantIds/${tid}:handleRedirect`;
   const auth = createMockAuth(tid);
-  const handler = createMockAuthenticationHandler((actualTenantId: string) => {
-    expect(actualTenantId).to.equal(tid);
-    return auth;
-  });
+  const tenant2Auth: {[key: string]: FirebaseAuth} = {};
+  tenant2Auth[tid] = auth;
+  const handler = createMockAuthenticationHandler(tenant2Auth);
   let signInOperationHandlerSpy: sinon.SinonSpy;
   let signOutOperationHandlerSpy: sinon.SinonSpy;
-  let startSignInOperationHandlerSpy: sinon.SinonSpy;
-  let startSignOutOperationHandlerSpy: sinon.SinonSpy;
+  let startSignInOperationHandlerStub: sinon.SinonStub;
+  let startSignOutOperationHandlerStub: sinon.SinonStub;
 
   beforeEach(() => {
     signInOperationHandlerSpy = sinon.spy(signIn, 'SignInOperationHandler');
     signOutOperationHandlerSpy = sinon.spy(signOut, 'SignOutOperationHandler');
-    startSignInOperationHandlerSpy = sinon.spy(signIn.SignInOperationHandler.prototype, 'start');
-    startSignOutOperationHandlerSpy = sinon.spy(signOut.SignOutOperationHandler.prototype, 'start');
+    startSignInOperationHandlerStub = sinon.stub(signIn.SignInOperationHandler.prototype, 'start').resolves();
+    startSignOutOperationHandlerStub = sinon.stub(signOut.SignOutOperationHandler.prototype, 'start').resolves();
+    stubs.push(startSignInOperationHandlerStub);
+    stubs.push(startSignOutOperationHandlerStub);
   });
 
   afterEach(() => {
     stubs.forEach((s) => s.restore());
     signInOperationHandlerSpy.restore();
     signOutOperationHandlerSpy.restore();
-    startSignInOperationHandlerSpy.restore();
-    startSignOutOperationHandlerSpy.restore();
   });
 
   describe('Constructor', () => {
@@ -126,7 +126,7 @@ describe('Authentication', () => {
       const authenticationInstance = new Authentication(handler);
       expect(authenticationInstance.start()).to.be.fulfilled;
       // Confirm signInOperationHandler.start called under the hood.
-      expect(startSignInOperationHandlerSpy).to.have.been.calledOnce;
+      expect(startSignInOperationHandlerStub).to.have.been.calledOnce;
     });
 
     it('should eventually be fullfilled for re-auth mode', () => {
@@ -137,7 +137,7 @@ describe('Authentication', () => {
       const authenticationInstance = new Authentication(handler);
       expect(authenticationInstance.start()).to.be.fulfilled;
       // Confirm signInOperationHandler.start called under the hood.
-      expect(startSignInOperationHandlerSpy).to.have.been.calledOnce;
+      expect(startSignInOperationHandlerStub).to.have.been.calledOnce;
     });
 
     it('should eventually be fullfilled for signout mode', () => {
@@ -148,7 +148,7 @@ describe('Authentication', () => {
       const authenticationInstance = new Authentication(handler);
       expect(authenticationInstance.start()).to.be.fulfilled;
       // Confirm signOutOperationHandler.start called under the hood.
-      expect(startSignOutOperationHandlerSpy).to.have.been.calledOnce;
+      expect(startSignOutOperationHandlerStub).to.have.been.calledOnce;
     });
   });
 });

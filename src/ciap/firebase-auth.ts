@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-type Unsubscribe = () => void;
+export type Unsubscribe = () => void;
 
-interface User {
+export interface User {
   getIdToken(forceRefresh?: boolean): Promise<string>;
 }
 
 export interface FirebaseAuth {
+  currentUser: User | null;
   tenantId?: string;
   onAuthStateChanged(
     nextOrObserver: ((a: User | null) => any),

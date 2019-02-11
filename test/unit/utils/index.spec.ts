@@ -18,7 +18,7 @@ import * as sinon from 'sinon';
 import {expect} from 'chai';
 import {
   addReadonlyGetter, removeUndefinedFields, formatString,
-  formSubmitWithRedirect, getCurrentUrl,
+  formSubmitWithRedirect, getCurrentUrl, setCurrentUrl, runIfDefined,
 } from '../../../src/utils/index';
 
 interface Obj {
@@ -222,5 +222,45 @@ describe('getCurrentUrl()', () => {
 
   it('should return null when an invalid window instance is provided', () => {
     expect(getCurrentUrl({} as any)).to.be.null;
+  });
+});
+
+describe('setCurrentUrl()', () => {
+  it('should assign location on window', () => {
+    const expectedUrl = 'https://www.example.com/path/page?a=1#b=2';
+    const assignStub: sinon.SinonStub = sinon.stub();
+
+    setCurrentUrl({location: {assign: assignStub}} as any, expectedUrl);
+
+    expect(assignStub).to.have.been.calledOnce.and.calledWith(expectedUrl);
+  });
+});
+
+describe('runIfDefined()', () => {
+  it('should not throw when called with undefined', () => {
+    expect(() => {
+      runIfDefined(undefined);
+    }).not.to.throw();
+  });
+
+  it('should not throw when called with invalid function', () => {
+    expect(() => {
+      runIfDefined('invalid' as any);
+    }).not.to.throw();
+  });
+
+  it('should trigger callback when called with a valid function and pass through returned value', () => {
+    const expectedReturnedValue = {a: 1, b: 2};
+    const cb = sinon.stub().returns(expectedReturnedValue);
+
+    expect(runIfDefined(cb)).to.equal(expectedReturnedValue);
+    expect(cb).to.be.calledOnce;
+  });
+
+  it('should trigger callback when called with a valid function and return undefined when nothing is returned', () => {
+    const cb = sinon.stub();
+
+    expect(runIfDefined(cb)).to.be.undefined;
+    expect(cb).to.be.calledOnce;
   });
 });

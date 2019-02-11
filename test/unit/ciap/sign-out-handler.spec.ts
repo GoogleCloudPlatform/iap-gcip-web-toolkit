@@ -21,6 +21,7 @@ import { OperationType } from '../../../src/ciap/base-operation-handler';
 import {
   createMockUrl, createMockAuth, createMockAuthenticationHandler,
 } from '../../resources/utils';
+import { FirebaseAuth } from '../../../src/ciap/firebase-auth';
 
 describe('SignOutOperationHandler', () => {
   const apiKey = 'API_KEY';
@@ -30,10 +31,9 @@ describe('SignOutOperationHandler', () => {
   const redirectUri = `https://iap.googleapis.com/v1alpha1/cicp/tenantIds/${tid}:handleRedirect`;
   const config = new Config(createMockUrl('signout', apiKey, tid, redirectUri, state, hl));
   const auth = createMockAuth(tid);
-  const authenticationHandler = createMockAuthenticationHandler((actualTenantId: string) => {
-    expect(actualTenantId).to.equal(tid);
-    return auth;
-  });
+  const tenant2Auth: {[key: string]: FirebaseAuth} = {};
+  tenant2Auth[tid] = auth;
+  const authenticationHandler = createMockAuthenticationHandler(tenant2Auth);
   const operationHandler = new SignOutOperationHandler(config, authenticationHandler);
 
   it('should not throw on initialization', () => {

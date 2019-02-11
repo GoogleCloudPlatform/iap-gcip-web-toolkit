@@ -117,3 +117,26 @@ export function formSubmitWithRedirect(
 export function getCurrentUrl(windowInstance: Window) {
   return (windowInstance && windowInstance.location && windowInstance.location.href) || null;
 }
+
+/**
+ * Redirects the window instance to the requested URL.
+ *
+ * @param {Window} windowInstance The window reference.
+ * @param {string} url The URL to redirect to.
+ */
+export function setCurrentUrl(windowInstance: Window, url: string) {
+  // TODO: use safe assign.
+  windowInstance.location.assign(url);
+}
+
+/**
+ * Runs the provided callback function if defined.
+ *
+ * @param {function()=} cb Callback function to run if defined.
+ * @param {any=} thisArg The thisArg of the callback function if available.
+ */
+export function runIfDefined(cb?: () => any, thisArg?: any): any {
+  if (typeof cb === 'function') {
+    return cb.apply(thisArg);
+  }
+}

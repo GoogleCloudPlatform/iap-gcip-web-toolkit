@@ -20,6 +20,7 @@ import { Config } from './config';
 import { HttpClient } from '../utils/http-client';
 import { CICPRequestHandler } from './cicp-request';
 import { IAPRequestHandler } from './iap-request';
+import { runIfDefined } from '../utils/index';
 
 /** Interface defining IAP/CICP operation handler for sign-in, sign-out and re-auth flows. */
 export interface OperationHandler {
@@ -50,6 +51,7 @@ export abstract class BaseOperationHandler implements OperationHandler {
   protected readonly state: string;
   protected readonly languageCode: string;
   private readonly httpClient: HttpClient;
+  private progressBarVisible: boolean;
 
   /**
    * Initializes an operation handler for a specific Auth operation.
@@ -77,6 +79,8 @@ export abstract class BaseOperationHandler implements OperationHandler {
     this.state = config.state;
     // The language code if available.
     this.languageCode = config.hl;
+    // Progress bar initially not visible.
+    this.progressBarVisible = false;
   }
 
   /** @return {OperationType} The corresponding operation type. */
@@ -84,4 +88,25 @@ export abstract class BaseOperationHandler implements OperationHandler {
 
   /** @return {Promise<void>} A promise that resolves when the operation handler is initialized. */
   public abstract start(): Promise<void>;
+
+  /** Shows progress bar if hidden. */
+  protected showProgressBar() {
+    if (!this.progressBarVisible) {
+      this.progressBarVisible = true;
+      runIfDefined(this.handler.showProgressBar, this.handler);
+    }
+  }
+
+  /** Hides progress bar if visible. */
+  protected hideProgressBar() {
+    if (this.progressBarVisible) {
+      this.progressBarVisible = false;
+      runIfDefined(this.handler.hideProgressBar, this.handler);
+    }
+  }
+
+  /** @return {boolean} Whether the progress bar is visible. */
+  protected isProgressBarVisible(): boolean {
+    return this.progressBarVisible;
+  }
 }
