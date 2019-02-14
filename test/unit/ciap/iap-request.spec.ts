@@ -401,31 +401,48 @@ describe('IAPRequestHandler', () => {
     });
   });
 
-  describe('signOutWithRedirect()', () => {
+  describe('getOriginalUrlForSignOut()', () => {
     const requestHandler = new IAPRequestHandler(httpClient);
-    const expectedData = {
-      id_token_tenant_id: tenantId,
-      state,
+    const expectedConfigRequest: HttpRequestConfig = {
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-cache',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      url: iapRedirectServerUrl,
+      timeout: 30000,
+      data: {
+        // dummy value always passed for signout flow.
+        id_token: 'dummy',
+        state,
+        id_token_tenant_id: tenantId,
+      },
     };
+    const jsonResponse = {
+      redirectToken,
+      originalUri,
+      targetUri,
+    };
+    const expectedResp = createMockHttpResponse({'Content-Type': 'application/json'}, jsonResponse);
 
-    it('should resolve on success', () => {
-      const stub = sinon.stub(utils, 'formSubmitWithRedirect');
+    it('should resolve with expected response on success', () => {
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
       stubs.push(stub);
 
-      return requestHandler.signOutWithRedirect(iapRedirectServerUrl, tenantId, state)
-        .then((response: any) => {
-          expect(response).to.be.undefined;
-          expect(stub).to.have.been.calledOnce.and
-            .calledWith(document, iapRedirectServerUrl, 'POST', expectedData);
+      return requestHandler.getOriginalUrlForSignOut(iapRedirectServerUrl, tenantId, state)
+        .then((actualOriginalUri: string) => {
+          expect(actualOriginalUri).to.equal(originalUri);
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
     });
 
     it('should reject on invalid URL', () => {
       const invalidUrl = 'invalid';
-      const stub = sinon.stub(utils, 'formSubmitWithRedirect');
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
       stubs.push(stub);
 
-      return requestHandler.signOutWithRedirect(invalidUrl, tenantId, state)
+      return requestHandler.getOriginalUrlForSignOut(invalidUrl, tenantId, state)
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -441,10 +458,10 @@ describe('IAPRequestHandler', () => {
     const invalidNonEmptyStrings = [null, NaN, 0, 1, true, false, [], '', ['a'], {}, { a: 1 }, _.noop];
     invalidNonEmptyStrings.forEach((invalidNonEmptyString) => {
       it('should reject on invalid tenantId: ' + JSON.stringify(invalidNonEmptyString), () => {
-        const stub = sinon.stub(utils, 'formSubmitWithRedirect');
+        const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
         stubs.push(stub);
 
-        return requestHandler.signOutWithRedirect(
+        return requestHandler.getOriginalUrlForSignOut(
             iapRedirectServerUrl,
             invalidNonEmptyString as any,
             state).then(() => {
@@ -457,10 +474,10 @@ describe('IAPRequestHandler', () => {
       });
 
       it('should reject on invalid state: ' + JSON.stringify(invalidNonEmptyString), () => {
-        const stub = sinon.stub(utils, 'formSubmitWithRedirect');
+        const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
         stubs.push(stub);
 
-        return requestHandler.signOutWithRedirect(
+        return requestHandler.getOriginalUrlForSignOut(
             iapRedirectServerUrl,
             tenantId,
             invalidNonEmptyString as any).then(() => {
@@ -473,18 +490,69 @@ describe('IAPRequestHandler', () => {
       });
     });
 
-    it('should reject on underlying form submit error', () => {
-      const expectedError = new Error('server side error');
-      const stub = sinon.stub(utils, 'formSubmitWithRedirect').throws(expectedError);
+    it('should reject on invalid underlying API response', () => {
+      // Create response with empty content, missing required response parameters.
+      const invalidResponse = createMockHttpResponse({'Content-Type': 'application/json'}, {});
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(invalidResponse);
       stubs.push(stub);
-      return requestHandler.signOutWithRedirect(iapRedirectServerUrl, tenantId, state)
+
+      return requestHandler.getOriginalUrlForSignOut(iapRedirectServerUrl, tenantId, state)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.have.property('message', 'Invalid response');
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+
+    it('should reject on underlying API error', () => {
+      // Simulate RPC rejects with a server side error.
+      const expectedError = new Error('server side error');
+      const stub = sinon.stub(HttpClient.prototype, 'send').rejects(expectedError);
+      stubs.push(stub);
+      return requestHandler.getOriginalUrlForSignOut(iapRedirectServerUrl, tenantId, state)
         .then(() => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
           expect(error).to.equal(expectedError);
-          expect(stub).to.have.been.calledOnce.and
-            .calledWith(document, iapRedirectServerUrl, 'POST', expectedData);
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+
+    it('should translate underlying LowLevelError to expected HttpCIAPError error', () => {
+      const jsonError = {
+        error: {
+          code: 400,
+          message: 'Request contains an invalid argument.',
+          status: 'INVALID_ARGUMENT',
+          details: [
+            {
+              '@type': 'type.googleapis.com/google.rpc.DebugInfo',
+              'detail': '[ORIGINAL ERROR] generic::invalid_argument: state_jwt cannot be empty',
+            },
+          ],
+        },
+      };
+      // Simulate RPC rejects with LowLevelError.
+      const serverLowLevelError = createMockLowLevelError(
+          'Server responded with status 400',
+          400,
+          {data: jsonError});
+      // Expected translated error to be thrown.
+      const expectedError = new HttpCIAPError(
+          400, 'INVALID_ARGUMENT', jsonError.error.details[0].detail, serverLowLevelError);
+      const stub = sinon.stub(HttpClient.prototype, 'send').rejects(serverLowLevelError);
+      stubs.push(stub);
+
+      return requestHandler.getOriginalUrlForSignOut(iapRedirectServerUrl, tenantId, state)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error.toJSON()).to.deep.equal(expectedError.toJSON());
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
     });
   });

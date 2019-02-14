@@ -30,7 +30,7 @@ declare namespace ciap {
     // This is optional to provide the developer the ability to render their own
     // UI on signout.
     // This is not called on single tenant sign out.
-    completeSignout?(): Promise<void>;
+    completeSignout(): Promise<void>;
     showProgressBar?(): void;
     hideProgressBar?(): void;
   }

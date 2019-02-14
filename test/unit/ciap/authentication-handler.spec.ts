@@ -24,11 +24,11 @@ describe('isAuthenticationHandler()', () => {
   const mockAuthenticationHandler: AuthenticationHandler = {
     getAuth: (tenantId: string) => auth,
     startSignIn: () => Promise.resolve({} as any),
+    completeSignOut: () => Promise.resolve(),
   };
 
   it('should return true for valid AuthenticationHandler', () => {
     const handler = mockAuthenticationHandler;
-    delete handler.completeSignout;
     delete handler.showProgressBar;
     delete handler.hideProgressBar;
     expect(isAuthenticationHandler(handler)).to.be.true;
@@ -37,7 +37,6 @@ describe('isAuthenticationHandler()', () => {
   it('should return true for a valid AuthenticationHandler with all optional parameters', () => {
     const handler = mockAuthenticationHandler;
     // Add all additional optional parameters.
-    handler.completeSignout = () => Promise.resolve();
     handler.showProgressBar = () => {/** Null function. */};
     handler.hideProgressBar = () => {/** Null function. */};
     expect(isAuthenticationHandler(handler)).to.be.true;
@@ -71,6 +70,12 @@ describe('isAuthenticationHandler()', () => {
     expect(isAuthenticationHandler(handler)).to.be.false;
   });
 
+  it('should return false when completeSignOut is not provided', () => {
+    const handler = mockAuthenticationHandler;
+    delete handler.completeSignOut;
+    expect(isAuthenticationHandler(handler)).to.be.false;
+  });
+
   nonFunctions.forEach((nonFunction) => {
     it('should return false when provided with an invalid showProgressBar: ' + JSON.stringify(nonFunction), () => {
       const handler = mockAuthenticationHandler;
@@ -83,14 +88,6 @@ describe('isAuthenticationHandler()', () => {
     it('should return false when provided with an invalid hideProgressBar: ' + JSON.stringify(nonFunction), () => {
       const handler = mockAuthenticationHandler;
       handler.hideProgressBar = 'invalid' as any;
-      expect(isAuthenticationHandler(handler)).to.be.false;
-    });
-  });
-
-  nonFunctions.forEach((nonFunction) => {
-    it('should return false when provided with an invalid completeSignout: ' + JSON.stringify(nonFunction), () => {
-      const handler = mockAuthenticationHandler;
-      handler.completeSignout = 'invalid' as any;
       expect(isAuthenticationHandler(handler)).to.be.false;
     });
   });

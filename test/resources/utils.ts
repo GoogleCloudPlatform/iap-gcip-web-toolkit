@@ -190,7 +190,7 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
   }
 
   /** @return {Promise<void>} A promise that resolves on developer sign out completion handling. */
-  public completeSignout(): Promise<void> {
+  public completeSignOut(): Promise<void> {
     return Promise.resolve();
   }
 

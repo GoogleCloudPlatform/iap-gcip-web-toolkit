@@ -30,11 +30,8 @@ export interface AuthenticationHandler {
       auth: FirebaseAuth,
       locale?: string,
   ): Promise<UserCredential>;
-  // Triggered after user is signed out from all tenants.
-  // This is optional to provide the developer the ability to render their own
-  // UI on signout.
-  // This is not called on single tenant sign out.
-  completeSignout?(): Promise<void>;
+  // Triggered after user is signed out from all tenants or from single tenant with no redirect URL.
+  completeSignOut(): Promise<void>;
   showProgressBar?(): void;
   hideProgressBar?(): void;
 }
@@ -48,11 +45,8 @@ export interface AuthenticationHandler {
 export function isAuthenticationHandler(handler: any): handler is AuthenticationHandler {
   if (isNonNullObject(handler) &&
       typeof handler.getAuth === 'function' &&
-      typeof handler.startSignIn === 'function') {
-    if (typeof handler.completeSignout !== 'undefined' &&
-        typeof handler.completeSignout !== 'function') {
-      return false;
-    }
+      typeof handler.startSignIn === 'function' &&
+      typeof handler.completeSignOut === 'function') {
     if (typeof handler.showProgressBar !== 'undefined' &&
         typeof handler.showProgressBar !== 'function') {
       return false;

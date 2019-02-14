@@ -17,6 +17,7 @@
 import { AuthenticationHandler } from './authentication-handler';
 import { BaseOperationHandler, OperationType } from './base-operation-handler';
 import { Config } from './config';
+import { setCurrentUrl } from './../utils/index';
 
 /**
  * Defines the sign-out operation handler.
@@ -35,6 +36,14 @@ export class SignOutOperationHandler extends BaseOperationHandler {
    */
   constructor(config: Config, handler: AuthenticationHandler) {
     super(config, handler);
+    // Single tenant signout but tenant not found.
+    if (this.tenantId && !this.auth) {
+      throw new Error('Invalid request!');
+    }
+    // Single tenant with redirect but no state.
+    if (this.auth && this.redirectUrl && !this.state) {
+      throw new Error('Invalid request!');
+    }
   }
 
   /**
@@ -53,7 +62,52 @@ export class SignOutOperationHandler extends BaseOperationHandler {
    * @override
    */
   public start(): Promise<void> {
-    // TODO
+    this.showProgressBar();
+    // Check redirectUrl if available.
+    const initialCheck = this.redirectUrl ?
+        this.cicpRequest.isAuthorizedDomain(this.redirectUrl) :
+        Promise.resolve(true);
+    return initialCheck.then((authorized: boolean) => {
+      // Fail if redirect URL exists and is not authorized.
+      if (!authorized) {
+        throw new Error('unauthorized');
+      }
+      // Clear internal Auth state.
+      return this.signOut();
+    }).then(() => {
+      // Single tenant sign-out with redirect URL.
+      if (this.auth && this.redirectUrl) {
+        // Redirect back to IAP resource.
+        return this.iapRequest.getOriginalUrlForSignOut(this.redirectUrl, this.tenantId, this.state)
+          .then((originalUrl: string) => {
+            // Redirect to original URI.
+            setCurrentUrl(window, originalUrl);
+          });
+      } else {
+        // For multi-tenant signout, do not redirect.
+        this.hideProgressBar();
+        // No redirect URL to go back to. Let developer handle completion.
+        return this.handler.completeSignOut();
+      }
+    })
+    .catch((error) => {
+      this.hideProgressBar();
+      // TODO: pass error to developer.
+      throw error;
+    });
+  }
+
+  /**
+   * @return {Promise<void>} A promise that resolves after sign out from specified tenant or
+   *     all tenants are resolved.
+   */
+  private signOut(): Promise<void> {
+    // Single tenant instance identified.
+    if (this.auth) {
+      return this.auth.signOut();
+    }
+    // TODO: Sign out from all tenant flows. This will require remembering all tenants
+    // previously signed in with.
     return Promise.resolve();
   }
 }
