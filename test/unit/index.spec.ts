@@ -28,3 +28,7 @@ import './utils/validator.spec';
 import './utils/index.spec';
 import './utils/deep-copy.spec';
 import './utils/api-requester.spec';
+
+// Storage
+import './storage/storage.spec';
+import './storage/manager.spec';

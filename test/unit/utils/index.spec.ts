@@ -19,6 +19,7 @@ import {expect} from 'chai';
 import {
   addReadonlyGetter, removeUndefinedFields, formatString,
   formSubmitWithRedirect, getCurrentUrl, setCurrentUrl, runIfDefined,
+  generateRandomAlphaNumericString,
 } from '../../../src/utils/index';
 
 interface Obj {
@@ -262,5 +263,14 @@ describe('runIfDefined()', () => {
 
     expect(runIfDefined(cb)).to.be.undefined;
     expect(cb).to.be.calledOnce;
+  });
+});
+
+describe('generateRandomAlphaNumericString()', () => {
+  it('should generate a random alphanumeric string with the specified number of characters ', () => {
+    for (let i = 0; i < 10; i++) {
+      const pattern = new RegExp('^[A-Za-z0-9]{' + i.toString() + '}$');
+      expect(pattern.test(generateRandomAlphaNumericString(i))).to.be.true;
+    }
   });
 });

@@ -140,3 +140,22 @@ export function runIfDefined(cb?: () => any, thisArg?: any): any {
     return cb.apply(thisArg);
   }
 }
+
+/**
+ * Generates a random alpha numeric string.
+ *
+ * @param {number} numOfChars The number of random characters within the string.
+ * @return {string} A string with a specific number of random characters.
+ */
+export function generateRandomAlphaNumericString(numOfChars: number) {
+  const chars: string[] = [];
+  const allowedChars =
+      '1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  while (numOfChars > 0) {
+    chars.push(
+        allowedChars.charAt(
+            Math.floor(Math.random() * allowedChars.length)));
+    numOfChars--;
+  }
+  return chars.join('');
+}

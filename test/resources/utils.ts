@@ -42,6 +42,91 @@ export function createMockUrl(
       `&hl=${encodeURIComponent(hl || '')}`;
 }
 
+/**
+ * Mock Storage utility that mimics the Storage interface:
+ * https://developer.mozilla.org/en-US/docs/Web/API/Storage
+ * This is used to stub window.localStorage and window.sessionStorage in unit tests.
+ */
+export class MockStorage {
+  private map: {[key: string]: string};
+  /**
+   * Initializes a mock Storage instance.
+   * @param {boolean=} isAvailable Whether storage is available. Throws an error on access if not.
+   * @param {boolean=} noop Whether storage operations are no-ops.
+   * @constructor
+   */
+  constructor(private readonly isAvailable: boolean = true, private readonly noop: boolean = false) {
+    this.map = {};
+  }
+
+  /**
+   * Returns the value corresponding to the key provided.
+   * @param {string} key The key whose value is to be returned.
+   * @return {string} The value corresponding to the key.
+   */
+  public getItem(key: string): string {
+    this.checkIsAvailable();
+    return this.map[key] || null;
+  }
+
+  /**
+   * Saves the key/value pair in storage.
+   * @param {string} key The key of the entry to save.
+   * @param {string} value The value corresponding to the entry.
+   */
+  public setItem(key: string, value: string) {
+    this.checkIsAvailable();
+    // Don't save the entry if this is a no-op.
+    if (!this.noop) {
+      this.map[key] = value;
+    }
+  }
+
+  /**
+   * Removes the item associated with the provided key.
+   * @param {string} key The key whose entry is to be removed.
+   */
+  public removeItem(key: string) {
+    this.checkIsAvailable();
+    delete this.map[key];
+  }
+
+  /** Clears Storage from any saved data. */
+  public clear() {
+    this.checkIsAvailable();
+    this.map = {};
+  }
+
+  /** @return {number} The number of entries currently stored. */
+  public get length() {
+    return Object.keys(this.map).length;
+  }
+
+  /**
+   * Returns the value associated with the entry index.
+   * @param {number} index The index of the entry whose value is to be returned.
+   * @return {string} The value corresponding to the entry identified by the index.
+   */
+  public key(index: number): string {
+    this.checkIsAvailable();
+    return Object.keys(this.map)[index];
+  }
+
+  /**
+   * @return {Array<string>} The list of keys of the entries stored.
+   */
+  public get keys() {
+    return Object.keys(this.map);
+  }
+
+  /** Checks if storage is available. If not, throws an error */
+  private checkIsAvailable() {
+    if (!this.isAvailable) {
+      throw new Error('unavailable');
+    }
+  }
+}
+
 /** Defines the mock FirebaseAuth class. */
 export class MockAuth implements FirebaseAuth {
   private user: User;
