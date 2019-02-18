@@ -12,5 +12,21 @@ coverage/
 node_modules/
 .nyc_output/
 
+# Generated files.
+*.log
+*.pyc
+.DS_Store
+*~
+*.swp
+
+# Do not check in any configuration related data.
+**/.firebaserc
+sample/authui/src/config.json
+
+# Exclude webpack generated files.
+sample/authui/public/*.js
+
 # Release tarballs should not be checked in
 cicp-iap-js-*.tgz
+firebaseui.tgz
+firebase.tgz
