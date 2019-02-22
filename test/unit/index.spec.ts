@@ -21,6 +21,7 @@ import './ciap/iap-request.spec';
 import './ciap/authentication-handler.spec';
 import './ciap/base-operation-handler.spec';
 import './ciap/config.spec';
+import './ciap/auth-tenants-storage.spec';
 
 // Utils
 import './utils/http-client.spec';

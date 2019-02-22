@@ -20,7 +20,7 @@ import {
 } from './storage';
 
 /** Defines the data storage information. This is used to figure out how and where data is persisted. */
-export interface DateStorageInfo {
+export interface DataStorageInfo {
   name: string;
   type: StorageType;
 }
@@ -56,11 +56,11 @@ export class StorageManager {
 
   /**
    * Gets the stored value from the corresponding storage.
-   * @param {DateStorageInfo} dataStorageInfo The key information under which the value is stored.
+   * @param {DataStorageInfo} dataStorageInfo The key information under which the value is stored.
    * @param {string=} id Additional optional identifier typically associated with multiple resource storage.
    * @return {Promise<any>} A Promise that resolves with the stored value.
    */
-  public get(dataStorageInfo: DateStorageInfo, id?: string): Promise<any> {
+  public get(dataStorageInfo: DataStorageInfo, id?: string): Promise<any> {
     return this.getStorage(dataStorageInfo.type).get(this.getKeyName(dataStorageInfo, id));
   }
 
@@ -71,7 +71,7 @@ export class StorageManager {
    * @param {string=} id Additional optional identifier typically associated with multiple resource storage.
    * @return {Promise<void>} A Promise that resolves when the operation is completed.
    */
-  public set(dataStorageInfo: DateStorageInfo, value: any, id?: string): Promise<void> {
+  public set(dataStorageInfo: DataStorageInfo, value: any, id?: string): Promise<void> {
     return this.getStorage(dataStorageInfo.type).set(this.getKeyName(dataStorageInfo, id), value);
   }
 
@@ -81,7 +81,7 @@ export class StorageManager {
    * @param {string=} id Additional optional identifier typically associated with multiple resource storage.
    * @return {Promise<void>} A Promise that resolves when the operation is completed.
    */
-  public remove(dataStorageInfo: DateStorageInfo, id?: string): Promise<void> {
+  public remove(dataStorageInfo: DataStorageInfo, id?: string): Promise<void> {
     return this.getStorage(dataStorageInfo.type).remove(this.getKeyName(dataStorageInfo, id));
   }
 
@@ -107,7 +107,7 @@ export class StorageManager {
    * @param {string=} id Additional optional identifier typically associated with multiple resource storage.
    * @return {string} The corresponding key name.
    */
-  private getKeyName(dataStorageInfo: DateStorageInfo, id?: string): string {
+  private getKeyName(dataStorageInfo: DataStorageInfo, id?: string): string {
     const suffix = isNonEmptyString(id) ? `${SEPARATOR}${id}` : '';
     return `${NAMESPACE}${SEPARATOR}${dataStorageInfo.name}${suffix}`;
   }

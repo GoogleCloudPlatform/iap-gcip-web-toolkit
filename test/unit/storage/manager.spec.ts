@@ -16,21 +16,21 @@
 
 import {expect} from 'chai';
 import { Factory, StorageType} from '../../../src/storage/storage';
-import { StorageManager, DateStorageInfo} from '../../../src/storage/manager';
+import { StorageManager, DataStorageInfo} from '../../../src/storage/manager';
 import { MockStorage } from '../../resources/utils';
 
 describe('StorageManager', () => {
-  const localDataStorageInfo: DateStorageInfo = {
+  const localDataStorageInfo: DataStorageInfo = {
     name: 'local_key1',
     type: StorageType.Local,
   };
 
-  const sessionDataStorageInfo: DateStorageInfo = {
+  const sessionDataStorageInfo: DataStorageInfo = {
     name: 'session_key1',
     type: StorageType.Session,
   };
 
-  const inMemoryDataStorageInfo: DateStorageInfo = {
+  const inMemoryDataStorageInfo: DataStorageInfo = {
     name: 'none_key1',
     type: StorageType.None,
   };
