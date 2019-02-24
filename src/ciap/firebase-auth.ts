@@ -17,6 +17,8 @@
 export type Unsubscribe = () => void;
 
 export interface User {
+  uid: string;
+  tenantId?: string | null;
   getIdToken(forceRefresh?: boolean): Promise<string>;
 }
 

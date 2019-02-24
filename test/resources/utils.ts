@@ -18,6 +18,8 @@ import { FirebaseAuth, User, Unsubscribe, UserCredential } from '../../src/ciap/
 import { addReadonlyGetter, runIfDefined } from '../../src/utils/index';
 import { AuthenticationHandler } from '../../src/ciap/authentication-handler';
 import { LowLevelError, HttpRequestConfig } from '../../src/utils/http-client';
+import { Factory } from '../../src/storage/storage';
+import { StorageManager } from '../../src/storage/manager';
 
  /**
   * Creates the mock URL for testing configuration URLs.
@@ -209,7 +211,7 @@ export class MockUser {
    * @param {string} idToken The mock user's ID token.
    * @constructor
    */
-  constructor(private readonly uid: string, private idToken: string) {}
+  constructor(public readonly uid: string, private idToken: string) {}
 
   /**
    * Updates the user's current ID token.
@@ -345,4 +347,13 @@ export function createMockLowLevelError(
   addReadonlyGetter(error, 'request', request);
   addReadonlyGetter(error, 'response', response);
   return error as LowLevelError;
+}
+
+/** @return {StorageManager} A StorageManager instance with mock localStorage/sessionStorage. */
+export function createMockStorageManager() {
+  const mockWin = {
+    localStorage: new MockStorage(),
+    sessionStorage: new MockStorage(),
+  };
+  return new StorageManager(new Factory(mockWin as any));
 }

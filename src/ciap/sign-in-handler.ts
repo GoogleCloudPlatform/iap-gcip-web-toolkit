@@ -135,8 +135,6 @@ export class SignInOperationHandler extends BaseOperationHandler {
    */
   private finishSignIn(idToken: string): Promise<void> {
     let originalUrl: string;
-    // TODO: Store tenant ID for signed in user. This will be used to make sign out from all
-    // signed in tenants possible.
     return this.isAuthorizedRedirectUrl
       .then((authorized: boolean) => {
         if (!authorized) {
@@ -150,6 +148,11 @@ export class SignInOperationHandler extends BaseOperationHandler {
         originalUrl = response.originalUri;
         // Set cookie in targetUri.
         return this.iapRequest.setCookieAtTargetUrl(response.targetUri, response.redirectToken);
+      })
+      .then(() => {
+        // Store tenant ID for signed in user. This will be used to make sign out from all
+        // signed in tenants possible.
+        return this.addAuthTenant(this.tenantId);
       })
       .then(() => {
         // Redirect to original URI.
