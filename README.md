@@ -119,7 +119,7 @@ import 'firebase/auth';
 import * as firebaseui from 'firebaseui';
 
 // Import CICP/IAP module (using local build).
-import * ciap from './dist/index.esm.js';
+import * as ciap from './dist/index.esm.js';
 
 // The agent project configuration.
 const config = {

@@ -1,0 +1,39 @@
+{
+  "name": "iap-cicp-app",
+  "version": "1.0.0",
+  "description": "GAE app gated by IAP/CICP",
+  "main": "app.js",
+  "scripts": {
+    "deploy": "gcloud app deploy",
+    "start": "node server/app.js",
+    "lint": "repo-tools lint",
+    "pretest": "npm run lint",
+    "system-test": "repo-tools test app",
+    "test": "npm run system-test",
+    "e2e-test": "repo-tools test deploy"
+  },
+  "author": "Google",
+  "license": "Apache License Version 2.0",
+  "dependencies": {
+    "body-parser": "^1.15.2",
+    "express": "^4.16.3",
+    "handlerbars": "^4.1.0",
+    "jsonwebtoken": "^8.4.0",
+    "request": "^2.88.0"
+  },
+  "devDependencies": {
+    "@google-cloud/nodejs-repo-tools": "^2.3.0"
+  },
+  "engines": {
+    "node": ">=4.3.2"
+  },
+  "cloud-repo-tools": {
+    "test": {
+      "app": {
+        "msg": "GAE Node.js app gated by IAP/CICP"
+      }
+    },
+    "requiresKeyFile": true,
+    "requiresProjectId": true
+  }
+}
