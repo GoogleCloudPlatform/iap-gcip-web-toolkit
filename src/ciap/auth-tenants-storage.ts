@@ -35,7 +35,7 @@ export class AuthTenantsStorageManager {
    * @param {string} appId The storage key identifier.
    * @constructor
    */
-  constructor(private readonly storageManager: StorageManager, private readonly appId: string) {
+  constructor(private readonly storageManager: StorageManager, public readonly appId: string) {
     this.queue = this.storageManager.get(AUTH_TENANTS_DATA_STORAGE_INFO, this.appId)
       .then((tenantList: string[]) => {
         this.tenantList = tenantList || [];

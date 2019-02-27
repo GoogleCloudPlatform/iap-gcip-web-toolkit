@@ -21,6 +21,8 @@ import { HttpClient } from '../utils/http-client';
 import { CICPRequestHandler } from './cicp-request';
 import { IAPRequestHandler } from './iap-request';
 import { runIfDefined } from '../utils/index';
+import { AuthTenantsStorageManager } from './auth-tenants-storage';
+import { globalStorageManager } from '../storage/manager';
 
 /** Interface defining IAP/CICP operation handler for sign-in, sign-out and re-auth flows. */
 export interface OperationHandler {
@@ -50,6 +52,7 @@ export abstract class BaseOperationHandler implements OperationHandler {
   protected readonly tenantId: string;
   protected readonly state: string;
   protected readonly languageCode: string;
+  private readonly authTenantsStorageManager: AuthTenantsStorageManager;
   private readonly httpClient: HttpClient;
   private progressBarVisible: boolean;
 
@@ -81,6 +84,9 @@ export abstract class BaseOperationHandler implements OperationHandler {
     this.languageCode = config.hl;
     // Progress bar initially not visible.
     this.progressBarVisible = false;
+    // Initialize auth tenants storage manager. Note that API key should be available at this point,
+    // otherwise an error would be thrown.
+    this.authTenantsStorageManager = new AuthTenantsStorageManager(globalStorageManager, config.apiKey);
   }
 
   /** @return {OperationType} The corresponding operation type. */
@@ -108,5 +114,39 @@ export abstract class BaseOperationHandler implements OperationHandler {
   /** @return {boolean} Whether the progress bar is visible. */
   protected isProgressBarVisible(): boolean {
     return this.progressBarVisible;
+  }
+
+  /** @return {Promise<Array<string>} A promise that resolves with the list of stored tenant IDs. */
+  protected listAuthTenants(): Promise<string[]> {
+    return this.authTenantsStorageManager.listTenants();
+  }
+
+  /**
+   * Removes a tenant ID from the list of stored authenticated tenants.
+   *
+   * @param {string} tenantId The tenant to remove.
+   * @return {Promise<void>} A promise that resolves on successful removal.
+   */
+  protected removeAuthTenant(tenantId: string): Promise<void> {
+    return this.authTenantsStorageManager.removeTenant(tenantId);
+  }
+
+  /**
+   * Adds a tenant ID to the list of stored authenticated tenants.
+   *
+   * @param {string} tenantId The tenant to add.
+   * @return {Promise<void>} A promise that resolves on successful addition.
+   */
+  protected addAuthTenant(tenantId: string): Promise<void> {
+    return this.authTenantsStorageManager.addTenant(tenantId);
+  }
+
+  /**
+   * Clears list of stored authenticated tenants.
+   *
+   * @return {Promise<void>} A promise that resolves on successful clearing of all authenticated tenants.
+   */
+  protected clearAuthTenants(): Promise<void> {
+    return this.authTenantsStorageManager.clearTenants();
   }
 }

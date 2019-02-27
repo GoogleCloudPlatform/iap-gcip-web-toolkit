@@ -21,13 +21,15 @@ import { SignInOperationHandler } from '../../../src/ciap/sign-in-handler';
 import { OperationType } from '../../../src/ciap/base-operation-handler';
 import {
   createMockUrl, createMockAuth, createMockAuthenticationHandler, MockAuth,
-  createMockUser, MockUser, MockAuthenticationHandler,
+  createMockUser, MockUser, MockAuthenticationHandler, createMockStorageManager,
 } from '../../resources/utils';
 import { CICPRequestHandler } from '../../../src/ciap/cicp-request';
 import { IAPRequestHandler } from '../../../src/ciap/iap-request';
 import * as utils from '../../../src/utils/index';
 import { FirebaseAuth } from '../../../src/ciap/firebase-auth';
 import { HttpCIAPError } from '../../../src/utils/error';
+import * as storageManager from '../../../src/storage/manager';
+import * as authTenantsStorage from '../../../src/ciap/auth-tenants-storage';
 
 describe('SignInOperationHandler', () => {
   const stubs: sinon.SinonStub[] = [];
@@ -50,8 +52,25 @@ describe('SignInOperationHandler', () => {
   let startSignInSpy: sinon.SinonSpy;
   let showProgressBarSpy: sinon.SinonSpy;
   let hideProgressBarSpy: sinon.SinonSpy;
+  let mockStorageManager: storageManager.StorageManager;
+  let authTenantsStorageManager: authTenantsStorage.AuthTenantsStorageManager;
 
   beforeEach(() => {
+    mockStorageManager = createMockStorageManager();
+    // Stub globalStorageManager getter.
+    stubs.push(
+        sinon.stub(storageManager, 'globalStorageManager').get(() => mockStorageManager));
+    authTenantsStorageManager =
+        new authTenantsStorage.AuthTenantsStorageManager(mockStorageManager, config.apiKey);
+    // Stub AuthTenantsStorageManager constructor.
+    stubs.push(
+        sinon.stub(authTenantsStorage, 'AuthTenantsStorageManager')
+          .callsFake((manager: storageManager.StorageManager, appId: string) => {
+            expect(manager).to.equal(mockStorageManager);
+            expect(appId).to.equal(apiKey);
+            return authTenantsStorageManager;
+          }));
+
     // Listen to startSignIn calls.
     startSignInSpy = sinon.spy(MockAuthenticationHandler.prototype, 'startSignIn');
     showProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'showProgressBar');
@@ -196,6 +215,11 @@ describe('SignInOperationHandler', () => {
           expect(setCurrentUrlStub)
             .to.have.been.calledOnce.and.calledAfter(setCookieAtTargetUrlStub)
             .and.calledWith(window, redirectServerResp.originalUri);
+          // Confirm expected tenant ID stored after success.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.have.same.members([tid]);
         });
     });
 
@@ -223,7 +247,11 @@ describe('SignInOperationHandler', () => {
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
       stubs.push(setCurrentUrlStub);
 
-      return operationHandler.start()
+      // Simulate some other tenant previously signed in and saved in storage.
+      return authTenantsStorageManager.addTenant('OTHER_TENANT_ID')
+        .then(() => {
+          return operationHandler.start();
+        })
         .then(() => {
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledTwice.and.calledBefore(isAuthorizedDomainStub);
@@ -248,6 +276,11 @@ describe('SignInOperationHandler', () => {
           expect(setCurrentUrlStub)
             .to.have.been.calledOnce.and.calledAfter(setCookieAtTargetUrlStub)
             .and.calledWith(window, redirectServerResp.originalUri);
+          // Confirm expected tenant ID stored after success along with the other existing tenant ID.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.have.same.members(['OTHER_TENANT_ID', tid]);
         });
     });
 
@@ -269,7 +302,11 @@ describe('SignInOperationHandler', () => {
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
       stubs.push(setCurrentUrlStub);
 
-      return operationHandler.start()
+      // When ID token is already available, the tenant ID is likely already stored.
+      return authTenantsStorageManager.addTenant(tid)
+        .then(() => {
+          return operationHandler.start();
+        })
         .then(() => {
           expect(hideProgressBarSpy).to.not.have.been.called;
           // Progress bar should be shown on initialization.
@@ -288,6 +325,11 @@ describe('SignInOperationHandler', () => {
           expect(setCurrentUrlStub)
             .to.have.been.calledOnce.and.calledAfter(setCookieAtTargetUrlStub)
             .and.calledWith(window, redirectServerResp.originalUri);
+          // Confirm expected tenant ID remains after success.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.have.same.members([tid]);
         });
     });
 
@@ -330,6 +372,11 @@ describe('SignInOperationHandler', () => {
             .to.not.have.been.called;
           expect(setCookieAtTargetUrlStub).to.not.have.been.called;
           expect(setCurrentUrlStub).to.not.have.been.called;
+          // Confirm the tenant ID is not stored.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.deep.equal([]);
         });
     });
 
@@ -352,7 +399,11 @@ describe('SignInOperationHandler', () => {
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
       stubs.push(setCurrentUrlStub);
 
-      return operationHandler.start()
+      // Simulate another tenant previously signed in and saved in storage.
+      return authTenantsStorageManager.addTenant('OTHER_TENANT_ID')
+        .then(() => {
+          return operationHandler.start();
+        })
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -372,6 +423,11 @@ describe('SignInOperationHandler', () => {
             .and.calledWith(config.redirectUrl, 'ID_TOKEN1', config.tid, config.state);
           expect(setCookieAtTargetUrlStub).to.not.have.been.called;
           expect(setCurrentUrlStub).to.not.have.been.called;
+          // Confirm existing tenant remains in storage.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.deep.equal(['OTHER_TENANT_ID']);
         });
     });
 
@@ -418,6 +474,11 @@ describe('SignInOperationHandler', () => {
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
           expect(setCurrentUrlStub).to.not.have.been.called;
+          // Confirm the tenant ID is not stored.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.deep.equal([]);
         });
     });
   });

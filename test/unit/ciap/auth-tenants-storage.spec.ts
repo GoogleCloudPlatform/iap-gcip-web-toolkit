@@ -36,6 +36,7 @@ describe('AuthTenantsStorageManager', () => {
 
   it('should support basic operations for adding, listing and removing a single or all tenants', () => {
     const authTenantsStorageManager = new AuthTenantsStorageManager(manager, 'appId1');
+    expect(authTenantsStorageManager.appId).to.equal('appId1');
     return authTenantsStorageManager.listTenants()
       .then((tenantList: string[]) => {
         expect(tenantList).to.deep.equal([]);
@@ -156,6 +157,9 @@ describe('AuthTenantsStorageManager', () => {
   it('should support multiple instances with different IDs', () => {
     const authTenantsStorageManager1 = new AuthTenantsStorageManager(manager, 'appId1');
     const authTenantsStorageManager2 = new AuthTenantsStorageManager(manager, 'appId2');
+
+    expect(authTenantsStorageManager1.appId).to.equal('appId1');
+    expect(authTenantsStorageManager2.appId).to.equal('appId2');
 
     // Nothing should be stored yet.
     expect(mockWin.localStorage.length).to.equal(0);

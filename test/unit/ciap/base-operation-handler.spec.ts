@@ -15,15 +15,18 @@
  */
 
 import {expect} from 'chai';
+import * as sinon from 'sinon';
 import { Config } from '../../../src/ciap/config';
 import { BaseOperationHandler, OperationType } from '../../../src/ciap/base-operation-handler';
 import { FirebaseAuth } from '../../../src/ciap/firebase-auth';
-import { AuthenticationHandler } from '../../../src/ciap/authentication-handler';
 import { CICPRequestHandler } from '../../../src/ciap/cicp-request';
 import { IAPRequestHandler } from '../../../src/ciap/iap-request';
 import {
   createMockUrl, createMockAuth, createMockAuthenticationHandler, MockAuthenticationHandler,
+  createMockStorageManager,
 } from '../../resources/utils';
+import * as storageManager from '../../../src/storage/manager';
+import * as authTenantsStorage from '../../../src/ciap/auth-tenants-storage';
 
 /**
  * Concrete subclass of the abstract BaseOperationHandler class used to
@@ -85,9 +88,59 @@ class ConcreteOperationHandler extends BaseOperationHandler {
     expect(this.isProgressBarVisible()).to.be.false;
     expect((this.handler as MockAuthenticationHandler).isProgressBarVisible()).to.be.false;
   }
+
+  /**
+   * Runs all Auth tenants storage related tests.
+   * @param {authTenantsStorage.AuthTenantsStorageManager} authTenantsStorageManager The expected
+   *     authTenantsStorageManager to compare with.
+   * @return {Promise<any>} A promise that resolves on test completion.
+   */
+  public runAuthTenantsStorageTests(
+      authTenantsStorageManager: authTenantsStorage.AuthTenantsStorageManager): Promise<any> {
+    return Promise.all([this.listAuthTenants(), authTenantsStorageManager.listTenants()])
+      .then((values: any[]) => {
+        expect(values[0]).to.deep.equal([]);
+        expect(values[1]).to.deep.equal(values[0]);
+        return Promise.all([
+          this.addAuthTenant('TENANT_ID1'),
+          this.addAuthTenant('TENANT_ID2'),
+          this.addAuthTenant('TENANT_ID3'),
+          this.addAuthTenant('TENANT_ID4'),
+        ]);
+      })
+      .then(() => {
+        return Promise.all([this.listAuthTenants(), authTenantsStorageManager.listTenants()]);
+      })
+      .then((values: any[]) => {
+        expect(values[0]).to.deep.equal(['TENANT_ID1', 'TENANT_ID2', 'TENANT_ID3', 'TENANT_ID4']);
+        expect(values[1]).to.deep.equal(values[0]);
+        return Promise.all([
+          this.removeAuthTenant('TENANT_ID3'),
+          this.removeAuthTenant('TENANT_ID4'),
+        ]);
+      })
+      .then(() => {
+        return Promise.all([this.listAuthTenants(), authTenantsStorageManager.listTenants()]);
+      })
+      .then((values: any[]) => {
+        expect(values[0]).to.deep.equal(['TENANT_ID1', 'TENANT_ID2']);
+        expect(values[1]).to.deep.equal(values[0]);
+        return this.clearAuthTenants();
+      })
+      .then(() => {
+        return Promise.all([this.listAuthTenants(), authTenantsStorageManager.listTenants()]);
+      })
+      .then((values: any[]) => {
+        expect(values[0]).to.deep.equal([]);
+        expect(values[1]).to.deep.equal(values[0]);
+      });
+  }
 }
 
 describe('BaseOperationHandler', () => {
+  const stubs: sinon.SinonStub[] = [];
+  let mockStorageManager: storageManager.StorageManager;
+  let authTenantsStorageManager: authTenantsStorage.AuthTenantsStorageManager;
   const apiKey = 'API_KEY';
   const tid = 'TENANT_ID';
   const state = 'STATE';
@@ -98,6 +151,27 @@ describe('BaseOperationHandler', () => {
   const tenant2Auth: {[key: string]: FirebaseAuth} = {};
   tenant2Auth[tid] = auth;
 
+  beforeEach(() => {
+    mockStorageManager = createMockStorageManager();
+    // Stub globalStorageManager getter.
+    stubs.push(
+        sinon.stub(storageManager, 'globalStorageManager').get(() => mockStorageManager));
+    authTenantsStorageManager =
+        new authTenantsStorage.AuthTenantsStorageManager(mockStorageManager, apiKey);
+    // Stub AuthTenantsStorageManager constructor.
+    stubs.push(
+      sinon.stub(authTenantsStorage, 'AuthTenantsStorageManager')
+        .callsFake((manager: storageManager.StorageManager, appId: string) => {
+          expect(manager).to.equal(mockStorageManager);
+          expect(appId).to.equal(apiKey);
+          return authTenantsStorageManager;
+        }));
+  });
+
+  afterEach(() => {
+    stubs.forEach((s) => s.restore());
+  });
+
   it('should initialize all underlying parameters as expected', () => {
     // Dummy authentication handler.
     const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
@@ -106,5 +180,16 @@ describe('BaseOperationHandler', () => {
     const concreteInstance = new ConcreteOperationHandler(config, authenticationHandler);
 
     concreteInstance.runTests(auth, config);
+    return concreteInstance.runAuthTenantsStorageTests(authTenantsStorageManager);
+  });
+
+  it('should throw when no API key is provided', () => {
+    const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+    // Create config with no API key.
+    const config = new Config(createMockUrl('login', null, tid, redirectUri, state, hl));
+
+    expect(() => {
+      return new ConcreteOperationHandler(config, authenticationHandler);
+    }).to.throw();
   });
 });

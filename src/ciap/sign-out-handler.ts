@@ -104,10 +104,30 @@ export class SignOutOperationHandler extends BaseOperationHandler {
   private signOut(): Promise<void> {
     // Single tenant instance identified.
     if (this.auth) {
-      return this.auth.signOut();
+      return this.auth.signOut().then(() => {
+        // Remove tenant ID from storage.
+        return this.removeAuthTenant(this.tenantId);
+      });
     }
-    // TODO: Sign out from all tenant flows. This will require remembering all tenants
-    // previously signed in with.
-    return Promise.resolve();
+    // Sign out from all previously authenticated tenants.
+    // Get all signed in tenants.
+    return this.listAuthTenants()
+      .then((tenantList: string[]) => {
+        const signoutPromises: Array<Promise<void>> = [];
+        tenantList.forEach((tenantId: string) => {
+          // Get corresponding auth instance.
+          const auth = this.handler.getAuth(tenantId);
+          if (auth) {
+            // Sign out the current user an remove its tenant ID from list of authenticated tenants.
+            signoutPromises.push(auth.signOut().then(() => this.removeAuthTenant(auth.tenantId)));
+          }
+        });
+        // Sign out from all instances.
+        return Promise.all(signoutPromises);
+      })
+      .then(() => {
+        // Clear all authenticated tenants. This will clear tenants that were not found.
+        return this.clearAuthTenants();
+      });
   }
 }
