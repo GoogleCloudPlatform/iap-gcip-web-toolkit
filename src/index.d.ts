@@ -18,8 +18,8 @@ import { FirebaseAuth, UserCredential } from '@firebase/auth-types';
 
 declare namespace ciap {
   interface AuthenticationHandler {
-    // Returns the Auth instance for the corresponding tenant.
-    getAuth(tenantId: string): FirebaseAuth;
+    // Returns the Auth instance for the corresponding API key/tenant.
+    getAuth(apiKey: string, tenantId: string): FirebaseAuth;
     // Starts sign in with the corresponding Auth instance. Developer is expected to show
     // the corresponding sign in options based on auth.tenantId.
     startSignIn(

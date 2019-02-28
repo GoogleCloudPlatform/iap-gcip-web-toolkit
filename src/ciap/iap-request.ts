@@ -17,7 +17,6 @@
 import { isNonEmptyString, isHttpsURL } from '../utils/validator';
 import { HttpResponse, HttpRequestConfig, HttpClient, LowLevelError } from '../utils/http-client';
 import { ApiRequester } from '../utils/api-requester';
-import { formSubmitWithRedirect } from '../utils/index';
 import { HttpCIAPError } from '../utils/error';
 
 /**

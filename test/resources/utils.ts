@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-import { FirebaseAuth, User, Unsubscribe, UserCredential } from '../../src/ciap/firebase-auth';
+import {
+  FirebaseAuth, FirebaseApp, User, Unsubscribe, UserCredential,
+} from '../../src/ciap/firebase-auth';
 import { addReadonlyGetter, runIfDefined } from '../../src/utils/index';
 import { AuthenticationHandler } from '../../src/ciap/authentication-handler';
 import { LowLevelError, HttpRequestConfig } from '../../src/utils/http-client';
@@ -129,19 +131,33 @@ export class MockStorage {
   }
 }
 
+/** Defines the mock FirebaseApp class. */
+class MockApp implements FirebaseApp {
+  constructor(private readonly apiKey: string) {}
+
+  public get options() {
+    return {
+      apiKey: this.apiKey,
+    };
+  }
+}
+
 /** Defines the mock FirebaseAuth class. */
 export class MockAuth implements FirebaseAuth {
+  public readonly app: MockApp;
   private user: User;
   private listeners: Array<((user: User) => void)>;
 
   /**
    * Initializes the mock Auth instance.
    *
+   * @param {string} apiKey The Auth instance API key.
    * @param {string=} tenantId The optional tenant ID.
    * @constructor
    */
-  constructor(public tenantId?: string) {
+  constructor(private readonly apiKey: string, public tenantId?: string) {
     this.listeners = [];
+    this.app = new MockApp(apiKey);
   }
 
   /**
@@ -209,9 +225,13 @@ export class MockUser {
    *
    * @param {string} uid The mock user's uid.
    * @param {string} idToken The mock user's ID token.
+   * @param {?string=} tenantId The optional mock user's tenant ID.
    * @constructor
    */
-  constructor(public readonly uid: string, private idToken: string) {}
+  constructor(
+      public readonly uid: string,
+      private idToken: string,
+      public readonly tenantId: string | null = null) {}
 
   /**
    * Updates the user's current ID token.
@@ -248,11 +268,14 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
   }
 
   /**
+   * Returns the FirebaseAuth instance corresponding to the requested API key and tenant ID.
+   *
+   * @param {string} apiKey The API key whose FirebaseAuth instance is to be returned.
    * @param {string} tenantId the tenant identifier whose FirebaseAuth instance is to be
    *     returned.
    * @return {FirebaseAuth|null} The Auth instance for the corresponding tenant.
    */
-  public getAuth(tenantId: string): FirebaseAuth | null {
+  public getAuth(apiKey: string, tenantId: string): FirebaseAuth | null {
     return this.tenant2Auth[tenantId];
   }
 
@@ -302,18 +325,21 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
  *
  * @param {string} uid The mock user uid.
  * @param {string} idToken The ID token for the mock user.
+ * @param {?string=} tenantId The optional tenant ID for the mock user.
  * @return {User} A mock user instance with the corresponding properties.
  */
-export function createMockUser(uid: string, idToken: string): MockUser {
-  return new MockUser(uid, idToken);
+export function createMockUser(
+    uid: string, idToken: string, tenantId?: string | null): MockUser {
+  return new MockUser(uid, idToken, tenantId);
 }
 
 /**
+ * @param {string} apiKey The FirebaseAuth instance's API key.
  * @param {string=} tenantId The optional tenant ID to set on the FirebaseAuth instance.
  * @return {FirebaseAuth} A mock FirebaseAuth instance.
  */
-export function createMockAuth(tenantId?: string): MockAuth {
-  return new MockAuth(tenantId);
+export function createMockAuth(apiKey: string, tenantId?: string): MockAuth {
+  return new MockAuth(apiKey, tenantId);
 }
 
 /**

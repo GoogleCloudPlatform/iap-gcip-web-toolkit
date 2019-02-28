@@ -15,7 +15,7 @@
  */
 
 import { StorageManager, DataStorageInfo } from '../storage/manager';
-import { StorageType} from '../storage//storage';
+import { StorageType } from '../storage/storage';
 
 /** List of authenticated tenants is stored in LOCAL storage and keyed by the "auth-tenants" name. */
 const AUTH_TENANTS_DATA_STORAGE_INFO: DataStorageInfo = {

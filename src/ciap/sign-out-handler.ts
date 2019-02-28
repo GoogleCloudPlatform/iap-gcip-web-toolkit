@@ -55,26 +55,15 @@ export class SignOutOperationHandler extends BaseOperationHandler {
   }
 
   /**
-   * Starts the sign-out operation handler. This will either sign out from a specified tenant
+   * Starts the sign-out operation handler processing. This will either sign out from a specified tenant
    * or all current tenants and then either redirect back or display a sign-out message.
    *
-   * @return {Promise<void>} A promise that resolves when the operation handler is initialized.
+   * @return {Promise<void>} A promise that resolves when the internal operation handler processing is completed.
    * @override
    */
-  public start(): Promise<void> {
-    this.showProgressBar();
-    // Check redirectUrl if available.
-    const initialCheck = this.redirectUrl ?
-        this.cicpRequest.isAuthorizedDomain(this.redirectUrl) :
-        Promise.resolve(true);
-    return initialCheck.then((authorized: boolean) => {
-      // Fail if redirect URL exists and is not authorized.
-      if (!authorized) {
-        throw new Error('unauthorized');
-      }
-      // Clear internal Auth state.
-      return this.signOut();
-    }).then(() => {
+  protected process(): Promise<void> {
+    // Clear internal Auth state.
+    return this.signOut().then(() => {
       // Single tenant sign-out with redirect URL.
       if (this.auth && this.redirectUrl) {
         // Redirect back to IAP resource.
@@ -89,11 +78,6 @@ export class SignOutOperationHandler extends BaseOperationHandler {
         // No redirect URL to go back to. Let developer handle completion.
         return this.handler.completeSignOut();
       }
-    })
-    .catch((error) => {
-      this.hideProgressBar();
-      // TODO: pass error to developer.
-      throw error;
     });
   }
 
@@ -116,7 +100,7 @@ export class SignOutOperationHandler extends BaseOperationHandler {
         const signoutPromises: Array<Promise<void>> = [];
         tenantList.forEach((tenantId: string) => {
           // Get corresponding auth instance.
-          const auth = this.handler.getAuth(tenantId);
+          const auth = this.getAuth(tenantId);
           if (auth) {
             // Sign out the current user an remove its tenant ID from list of authenticated tenants.
             signoutPromises.push(auth.signOut().then(() => this.removeAuthTenant(auth.tenantId)));

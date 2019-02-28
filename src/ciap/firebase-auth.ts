@@ -22,7 +22,15 @@ export interface User {
   getIdToken(forceRefresh?: boolean): Promise<string>;
 }
 
+export interface FirebaseApp {
+  options: {
+    apiKey: string;
+    authDomain?: string;
+  };
+}
+
 export interface FirebaseAuth {
+  app: FirebaseApp;
   currentUser: User | null;
   tenantId?: string;
   onAuthStateChanged(

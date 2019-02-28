@@ -54,6 +54,8 @@ describe('SignInOperationHandler', () => {
   let hideProgressBarSpy: sinon.SinonSpy;
   let mockStorageManager: storageManager.StorageManager;
   let authTenantsStorageManager: authTenantsStorage.AuthTenantsStorageManager;
+  const currentUrl = utils.getCurrentUrl(window);
+  const projectId = 'PROJECT_ID';
 
   beforeEach(() => {
     mockStorageManager = createMockStorageManager();
@@ -61,13 +63,13 @@ describe('SignInOperationHandler', () => {
     stubs.push(
         sinon.stub(storageManager, 'globalStorageManager').get(() => mockStorageManager));
     authTenantsStorageManager =
-        new authTenantsStorage.AuthTenantsStorageManager(mockStorageManager, config.apiKey);
+        new authTenantsStorage.AuthTenantsStorageManager(mockStorageManager, projectId);
     // Stub AuthTenantsStorageManager constructor.
     stubs.push(
         sinon.stub(authTenantsStorage, 'AuthTenantsStorageManager')
           .callsFake((manager: storageManager.StorageManager, appId: string) => {
             expect(manager).to.equal(mockStorageManager);
-            expect(appId).to.equal(apiKey);
+            expect(appId).to.equal(projectId);
             return authTenantsStorageManager;
           }));
 
@@ -75,7 +77,7 @@ describe('SignInOperationHandler', () => {
     startSignInSpy = sinon.spy(MockAuthenticationHandler.prototype, 'startSignIn');
     showProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'showProgressBar');
     hideProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'hideProgressBar');
-    auth = createMockAuth(tid);
+    auth = createMockAuth(apiKey, tid);
     tenant2Auth = {};
     tenant2Auth[tid] = auth;
     authenticationHandler = createMockAuthenticationHandler(tenant2Auth);
@@ -123,10 +125,13 @@ describe('SignInOperationHandler', () => {
   });
 
   describe('start()', () => {
+    const unauthorizedDomainError = new Error('Unauthorized domain!');
     it('should fail on unauthorized redirect URL if no user is signed in', () => {
-      // Mock domain is not authorized.
-      const isAuthorizedDomainStub = sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(false);
-      stubs.push(isAuthorizedDomainStub);
+      // Mock domains are not authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').rejects(unauthorizedDomainError);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
 
       return operationHandler.start()
         .then(() => {
@@ -134,24 +139,28 @@ describe('SignInOperationHandler', () => {
         })
         .catch((error) => {
           // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(isAuthorizedDomainStub);
-          // Confirm redirect URL is checked for authorization.
-          expect(isAuthorizedDomainStub)
-            .to.have.been.calledOnce.and.calledWith(config.redirectUrl);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
           // Expected error should be thrown.
-          expect(error).to.have.property('message', 'unauthorized');
+          expect(error).to.equal(unauthorizedDomainError);
           expect(startSignInSpy).to.not.have.been.called;
           // On failure, progress bar should be hidden.
-          expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledAfter(isAuthorizedDomainStub);
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
         });
     });
 
     it('should fail on unauthorized redirect URL if user is signed in', () => {
-      // Mock domain is not authorized.
-      const isAuthorizedDomainStub = sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(false);
-      stubs.push(isAuthorizedDomainStub);
+      // Mock domains are not authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').rejects(unauthorizedDomainError);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Simulate user is signed in.
-      auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1'));
+      auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
 
       return operationHandler.start()
         .then(() => {
@@ -159,23 +168,27 @@ describe('SignInOperationHandler', () => {
         })
         .catch((error) => {
           // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(isAuthorizedDomainStub);
-          // Confirm redirect URL is checked for authorization.
-          expect(isAuthorizedDomainStub)
-            .to.have.been.calledOnce.and.calledWith(config.redirectUrl);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
           // Expected error should be thrown.
-          expect(error).to.have.property('message', 'unauthorized');
+          expect(error).to.equal(unauthorizedDomainError);
           expect(startSignInSpy).to.not.have.been.called;
           // Progress bar hidden on error thrown.
-          expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledAfter(isAuthorizedDomainStub);
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
         });
     });
 
     it('should call authenticationHandler startSignIn when user is signed in and re-auth is required', () => {
-      auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1'));
-      // Mock domain is authorized.
-      const isAuthorizedDomainStub = sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(true);
-      stubs.push(isAuthorizedDomainStub);
+      auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
       const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
           sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
@@ -195,10 +208,11 @@ describe('SignInOperationHandler', () => {
       return operationHandler.start()
         .then(() => {
           // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledTwice.and.calledBefore(isAuthorizedDomainStub);
-          // Confirm redirect URL is checked for authorization.
-          expect(isAuthorizedDomainStub)
-            .to.have.been.calledOnce.and.calledWith(config.redirectUrl);
+          expect(showProgressBarSpy).to.have.been.calledTwice
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
             // Progress bar should be hidden before startSignIn.
           expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledBefore(startSignInSpy);
           // startSignIn should be called even though a user is already signed in, since
@@ -207,7 +221,67 @@ describe('SignInOperationHandler', () => {
           // Progress bar should be shown after the user is signed in and ID token is being processed.
           expect(showProgressBarSpy).to.have.been.calledTwice.and.calledAfter(startSignInSpy);
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
-            .to.have.been.calledOnce.and.calledAfter(isAuthorizedDomainStub)
+            .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
+            .and.calledWith(config.redirectUrl, 'ID_TOKEN1', config.tid, config.state);
+          expect(setCookieAtTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
+          expect(setCurrentUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(setCookieAtTargetUrlStub)
+            .and.calledWith(window, redirectServerResp.originalUri);
+          // Confirm expected tenant ID stored after success.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.have.same.members([tid]);
+        });
+    });
+
+    it('should call authenticationHandler startSignIn when existing user has mismatching tenant ID', () => {
+      const matchingUser = createMockUser('UID1', 'ID_TOKEN1', tid);
+      // Set current user with mismatching tenant ID.
+      auth.setCurrentMockUser(createMockUser('UID2', 'ID_TOKEN2', 'MISMATCHING_TENANT_ID'));
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock ID token exchange endpoint.
+      const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
+            .resolves(redirectServerResp);
+      stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+      // Mock set cookie.
+      const setCookieAtTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+      stubs.push(setCookieAtTargetUrlStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+      authenticationHandler = createMockAuthenticationHandler(
+          tenant2Auth,
+          // onStartSignIn simulates user signing in with matching user.
+          () => auth.setCurrentMockUser(matchingUser));
+
+      operationHandler = new SignInOperationHandler(config, authenticationHandler);
+
+      return operationHandler.start()
+        .then(() => {
+          // Progress bar should be shown on initialization.
+          expect(showProgressBarSpy).to.have.been.calledTwice
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+          // Progress bar should be hidden before startSignIn.
+          expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledBefore(startSignInSpy);
+          // startSignIn should be called even though a user is already signed in, since
+          // that user has mismatching tenant ID.
+          expect(startSignInSpy).to.have.been.calledOnce.and.calledWith(auth);
+          // Progress bar should be shown after the user is signed in and ID token is being processed.
+          expect(showProgressBarSpy).to.have.been.calledTwice.and.calledAfter(startSignInSpy);
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
             .and.calledWith(config.redirectUrl, 'ID_TOKEN1', config.tid, config.state);
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
@@ -224,16 +298,18 @@ describe('SignInOperationHandler', () => {
     });
 
     it('should finish sign in when authenticationHandler startSignIn triggers', () => {
-      user = createMockUser('UID1', 'ID_TOKEN1');
+      user = createMockUser('UID1', 'ID_TOKEN1', tid);
       tenant2Auth[tid] = auth;
       authenticationHandler = createMockAuthenticationHandler(
           tenant2Auth,
           // onStartSignIn simulates user signing in.
           () => auth.setCurrentMockUser(user));
       operationHandler = new SignInOperationHandler(config, authenticationHandler);
-       // Mock domain is authorized.
-      const isAuthorizedDomainStub = sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(true);
-      stubs.push(isAuthorizedDomainStub);
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
       const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
           sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
@@ -254,14 +330,16 @@ describe('SignInOperationHandler', () => {
         })
         .then(() => {
           // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledTwice.and.calledBefore(isAuthorizedDomainStub);
-          // Confirm redirect URL is checked for authorization.
-          expect(isAuthorizedDomainStub)
-            .to.have.been.calledOnce.and.calledWith(config.redirectUrl);
+          expect(showProgressBarSpy).to.have.been.calledTwice
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
           // Progress bar should be hidden before user is asked to sign-in.
           expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledBefore(startSignInSpy);
           // Confirm startSignIn is called.
-          expect(startSignInSpy).to.have.been.calledOnce.and.calledAfter(isAuthorizedDomainStub);
+          expect(startSignInSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           // Progress bar should be shown after the user is signed in and ID token is being processed.
           expect(showProgressBarSpy).to.have.been.calledTwice.and.calledAfter(startSignInSpy);
           // Confirm ID token exchanged.
@@ -284,11 +362,78 @@ describe('SignInOperationHandler', () => {
         });
     });
 
-    it('should finish sign in when ID token is already available', () => {
-      auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1'));
+    it('should reject when authenticationHandler startSignIn resolves with a mismatching user tenant ID', () => {
+      user = createMockUser('UID1', 'ID_TOKEN1', 'MISMATCHING_TENANT_ID');
+      tenant2Auth[tid] = auth;
+      authenticationHandler = createMockAuthenticationHandler(
+          tenant2Auth,
+          // onStartSignIn simulates user signing in.
+          () => auth.setCurrentMockUser(user));
+      operationHandler = new SignInOperationHandler(config, authenticationHandler);
       // Mock domain is authorized.
-      const isAuthorizedDomainStub = sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(true);
-      stubs.push(isAuthorizedDomainStub);
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock ID token exchange endpoint.
+      const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
+            .resolves(redirectServerResp);
+      stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+      // Mock set cookie.
+      const setCookieAtTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+      stubs.push(setCookieAtTargetUrlStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+
+      // Simulate some other tenant previously signed in and saved in storage.
+      return authTenantsStorageManager.addTenant('OTHER_TENANT_ID')
+        .then(() => {
+          return operationHandler.start();
+        })
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          // Expected tenant mismatch error should be thrown.
+          expect(error).to.have.property('message', 'Mismatching tenant ID');
+          // Progress bar should be shown on initialization.
+          expect(showProgressBarSpy).to.have.been.calledTwice
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+          // Progress bar should be hidden before user is asked to sign-in.
+          expect(hideProgressBarSpy).to.have.been.calledTwice.and.calledBefore(startSignInSpy);
+          // Confirm startSignIn is called.
+          expect(startSignInSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Progress bar should be shown after the user is signed in and ID token is being processed.
+          expect(showProgressBarSpy).to.have.been.calledTwice.and.calledAfter(startSignInSpy);
+          // Confirm progress bar hidden after sign in returns mismatching user.
+          expect(hideProgressBarSpy).to.have.been.calledTwice.and.calledAfter(startSignInSpy);
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub).to.not.have.been.called;
+          // Confirm set cookie endpoint called.
+          expect(setCookieAtTargetUrlStub).to.not.have.been.called;
+          // Confirm redirect to original URI.
+          expect(setCurrentUrlStub).to.not.have.been.called;
+          // Confirm no new tenant ID is stored.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.have.same.members(['OTHER_TENANT_ID']);
+        });
+    });
+
+    it('should finish sign in when ID token is already available', () => {
+      auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
       const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
           sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
@@ -310,14 +455,15 @@ describe('SignInOperationHandler', () => {
         .then(() => {
           expect(hideProgressBarSpy).to.not.have.been.called;
           // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(isAuthorizedDomainStub);
-          // Confirm redirect URL is checked for authorization.
-          expect(isAuthorizedDomainStub)
-            .to.have.been.calledOnce.and.calledWith(config.redirectUrl);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
           // Since ID token is available, startSignIn should not be called.
           expect(startSignInSpy).to.not.have.been.called;
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
-            .to.have.been.calledOnce.and.calledAfter(isAuthorizedDomainStub)
+            .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
             .and.calledWith(config.redirectUrl, 'ID_TOKEN1', config.tid, config.state);
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
@@ -335,11 +481,11 @@ describe('SignInOperationHandler', () => {
 
     it('should reject when isAuthorizedDomain rejects', () => {
       const expectedError = new HttpCIAPError(504);
-      auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1'));
-      // Mock domain is authorized.
-      const isAuthorizedDomainStub =
-          sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').rejects(expectedError);
-      stubs.push(isAuthorizedDomainStub);
+      auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').rejects(expectedError);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
       const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
           sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
@@ -359,14 +505,16 @@ describe('SignInOperationHandler', () => {
         })
         .catch((error) => {
           // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(isAuthorizedDomainStub);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Progress bar should be hidden after error is thrown.
-          expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledAfter(isAuthorizedDomainStub);
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           // Expected error should be thrown.
           expect(error).to.equal(expectedError);
-          // Confirm redirect URL is checked for authorization.
-          expect(isAuthorizedDomainStub)
-            .to.have.been.calledOnce.and.calledWith(config.redirectUrl);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
           expect(startSignInSpy).to.not.have.been.called;
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.not.have.been.called;
@@ -382,10 +530,12 @@ describe('SignInOperationHandler', () => {
 
     it('should reject when exchangeIdTokenAndGetOriginalAndTargetUrl rejects', () => {
       const expectedError = new HttpCIAPError(400);
-      auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1'));
-      // Mock domain is authorized.
-      const isAuthorizedDomainStub = sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(true);
-      stubs.push(isAuthorizedDomainStub);
+      auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
       const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
           sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
@@ -409,17 +559,18 @@ describe('SignInOperationHandler', () => {
         })
         .catch((error) => {
           // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(isAuthorizedDomainStub);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Progress bar should be hidden after error is thrown.
           expect(hideProgressBarSpy)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
           expect(error).to.equal(expectedError);
-          // Confirm redirect URL is checked for authorization.
-          expect(isAuthorizedDomainStub)
-            .to.have.been.calledOnce.and.calledWith(config.redirectUrl);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
           expect(startSignInSpy).to.not.have.been.called;
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
-            .to.have.been.calledOnce.and.calledAfter(isAuthorizedDomainStub)
+            .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
             .and.calledWith(config.redirectUrl, 'ID_TOKEN1', config.tid, config.state);
           expect(setCookieAtTargetUrlStub).to.not.have.been.called;
           expect(setCurrentUrlStub).to.not.have.been.called;
@@ -434,10 +585,12 @@ describe('SignInOperationHandler', () => {
     it('should reject when setCookieAtTargetUrl rejects', () => {
       const expectedError = new HttpCIAPError(
           400, 'RESOURCE_MISSING_CICP_TENANT_ID', 'message');
-      auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1'));
-      // Mock domain is authorized.
-      const isAuthorizedDomainStub = sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(true);
-      stubs.push(isAuthorizedDomainStub);
+      auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
       const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
           sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
@@ -457,18 +610,19 @@ describe('SignInOperationHandler', () => {
         })
         .catch((error) => {
           // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(isAuthorizedDomainStub);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Progress bar should be hidden after error is thrown.
           expect(hideProgressBarSpy)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
           // Expected error should be thrown.
           expect(error).to.equal(expectedError);
-          // Confirm redirect URL is checked for authorization.
-          expect(isAuthorizedDomainStub)
-            .to.have.been.calledOnce.and.calledWith(config.redirectUrl);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
           expect(startSignInSpy).to.not.have.been.called;
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
-            .to.have.been.calledOnce.and.calledAfter(isAuthorizedDomainStub)
+            .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
             .and.calledWith(config.redirectUrl, 'ID_TOKEN1', config.tid, config.state);
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)

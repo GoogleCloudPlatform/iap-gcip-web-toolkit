@@ -20,7 +20,7 @@ import { Config } from './config';
 import { HttpClient } from '../utils/http-client';
 import { CICPRequestHandler } from './cicp-request';
 import { IAPRequestHandler } from './iap-request';
-import { runIfDefined } from '../utils/index';
+import { runIfDefined, getCurrentUrl } from '../utils/index';
 import { AuthTenantsStorageManager } from './auth-tenants-storage';
 import { globalStorageManager } from '../storage/manager';
 
@@ -52,7 +52,7 @@ export abstract class BaseOperationHandler implements OperationHandler {
   protected readonly tenantId: string;
   protected readonly state: string;
   protected readonly languageCode: string;
-  private readonly authTenantsStorageManager: AuthTenantsStorageManager;
+  private authTenantsStorageManager: AuthTenantsStorageManager;
   private readonly httpClient: HttpClient;
   private progressBarVisible: boolean;
 
@@ -73,7 +73,7 @@ export abstract class BaseOperationHandler implements OperationHandler {
     this.cicpRequest = new CICPRequestHandler(this.config.apiKey, this.httpClient);
     this.iapRequest = new IAPRequestHandler(this.httpClient);
     // Initialize the corresponding Auth instance for the requested tenant ID if available.
-    this.auth = this.handler.getAuth(this.config.tid);
+    this.auth = this.getAuth(this.config.tid);
     // The redirect URL if available.
     this.redirectUrl = config.redirectUrl;
     // The tenant ID if available.
@@ -84,16 +84,69 @@ export abstract class BaseOperationHandler implements OperationHandler {
     this.languageCode = config.hl;
     // Progress bar initially not visible.
     this.progressBarVisible = false;
-    // Initialize auth tenants storage manager. Note that API key should be available at this point,
-    // otherwise an error would be thrown.
-    this.authTenantsStorageManager = new AuthTenantsStorageManager(globalStorageManager, config.apiKey);
   }
 
   /** @return {OperationType} The corresponding operation type. */
   public abstract get type(): OperationType;
 
+  /** @return {Promise<void>} A promise that resolves when the internal operation handler processing is completed. */
+  protected abstract process(): Promise<void>;
+
   /** @return {Promise<void>} A promise that resolves when the operation handler is initialized. */
-  public abstract start(): Promise<void>;
+  public start(): Promise<void> {
+    // Show progress bar. This should be hidden in process, unless an error is thrown.
+    this.showProgressBar();
+    // Validate URLs and get project ID.
+    return this.validateAppAndGetProjectId()
+      .then((projectId: string) => {
+        // Initialize auth tenants storage manager. Use project ID as identifier as this is more unique
+        // than API key.
+        this.authTenantsStorageManager = new AuthTenantsStorageManager(globalStorageManager, projectId);
+        return this.process();
+      })
+      .catch((error) => {
+        this.hideProgressBar();
+        // TODO: pass error to developer.
+        throw error;
+      });
+  }
+
+  /**
+   * @return {Promise<string>} A promise that resolves when current URL and optional redirect URL
+   *      are validated for the configuration API key, and returns the corresponding project ID.
+   */
+  protected validateAppAndGetProjectId(): Promise<string> {
+    const urls: string[] = [];
+    // Since API key is provided externally, we need to confirm current URL is authorized for provided API key.
+    urls.push(getCurrentUrl(window));
+    // Signout from all flows does not have a redirect URL.
+    if (this.redirectUrl) {
+      urls.push(this.redirectUrl);
+    }
+    return this.cicpRequest.checkAuthorizedDomainsAndGetProjectId(urls);
+  }
+
+  /**
+   * Returns the Auth instance corresponding to tenant ID.
+   *
+   * @param {string} tenantId The requested tenant ID.
+   * @return {?FirebaseAuth} The corresponding Auth instance.
+   */
+  protected getAuth(tenantId: string): FirebaseAuth | null {
+    // Pass API key to handler. It is possible the developer may be using same URL for multiple projects.
+    const auth = this.handler.getAuth(this.config.apiKey, tenantId);
+    // It is critical that requested API key aligns with handler API key.
+    // This is important as we could end up checking authorized domain using config API key
+    // whose project allows usage of requested domain.
+    // However Auth API key of developer Auth instance does not whitelist the requested domain.
+    // This is an excessive check as 2 API keys could be different but still belong to same
+    // project. Ideally we should compared project IDs. Getting project ID from API key is
+    // possible but can be quite expensive. For now we can use this logic.
+    if (auth && auth.app.options.apiKey !== this.config.apiKey) {
+      throw new Error('API key mismatch!');
+    }
+    return auth;
+  }
 
   /** Shows progress bar if hidden. */
   protected showProgressBar() {
@@ -118,6 +171,7 @@ export abstract class BaseOperationHandler implements OperationHandler {
 
   /** @return {Promise<Array<string>} A promise that resolves with the list of stored tenant IDs. */
   protected listAuthTenants(): Promise<string[]> {
+    this.checkAuthTenantsStorageManagerInitialized();
     return this.authTenantsStorageManager.listTenants();
   }
 
@@ -128,6 +182,7 @@ export abstract class BaseOperationHandler implements OperationHandler {
    * @return {Promise<void>} A promise that resolves on successful removal.
    */
   protected removeAuthTenant(tenantId: string): Promise<void> {
+    this.checkAuthTenantsStorageManagerInitialized();
     return this.authTenantsStorageManager.removeTenant(tenantId);
   }
 
@@ -138,6 +193,7 @@ export abstract class BaseOperationHandler implements OperationHandler {
    * @return {Promise<void>} A promise that resolves on successful addition.
    */
   protected addAuthTenant(tenantId: string): Promise<void> {
+    this.checkAuthTenantsStorageManagerInitialized();
     return this.authTenantsStorageManager.addTenant(tenantId);
   }
 
@@ -147,6 +203,17 @@ export abstract class BaseOperationHandler implements OperationHandler {
    * @return {Promise<void>} A promise that resolves on successful clearing of all authenticated tenants.
    */
   protected clearAuthTenants(): Promise<void> {
+    this.checkAuthTenantsStorageManagerInitialized();
     return this.authTenantsStorageManager.clearTenants();
+  }
+
+  /**
+   * Confirms AuthTenantsStorageManager is initialized and ready to use.
+   * This is needed to access related operations for managing Auth tenants.
+   */
+  private checkAuthTenantsStorageManagerInitialized() {
+    if (!this.authTenantsStorageManager) {
+      throw new Error('Instance not started!');
+    }
   }
 }

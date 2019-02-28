@@ -56,6 +56,8 @@ describe('SignOutOperationHandler', () => {
   let signOutSpy: sinon.SinonSpy;
   let mockStorageManager: storageManager.StorageManager;
   let authTenantsStorageManager: authTenantsStorage.AuthTenantsStorageManager;
+  const currentUrl = utils.getCurrentUrl(window);
+  const projectId = 'PROJECT_ID';
 
   beforeEach(() => {
     mockStorageManager = createMockStorageManager();
@@ -63,13 +65,13 @@ describe('SignOutOperationHandler', () => {
     stubs.push(
         sinon.stub(storageManager, 'globalStorageManager').get(() => mockStorageManager));
     authTenantsStorageManager =
-        new authTenantsStorage.AuthTenantsStorageManager(mockStorageManager, apiKey);
+        new authTenantsStorage.AuthTenantsStorageManager(mockStorageManager, projectId);
     // Stub AuthTenantsStorageManager constructor.
     stubs.push(
         sinon.stub(authTenantsStorage, 'AuthTenantsStorageManager')
           .callsFake((manager: storageManager.StorageManager, appId: string) => {
             expect(manager).to.equal(mockStorageManager);
-            expect(appId).to.equal(apiKey);
+            expect(appId).to.equal(projectId);
             return authTenantsStorageManager;
           }));
     // Listen to auth.signOut calls.
@@ -78,13 +80,13 @@ describe('SignOutOperationHandler', () => {
     completeSignOutSpy = sinon.spy(MockAuthenticationHandler.prototype, 'completeSignOut');
     showProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'showProgressBar');
     hideProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'hideProgressBar');
-    auth1 = createMockAuth(tid1);
-    auth2 = createMockAuth(tid2);
-    auth3 = createMockAuth(tid3);
+    auth1 = createMockAuth(apiKey, tid1);
+    auth2 = createMockAuth(apiKey, tid2);
+    auth3 = createMockAuth(apiKey, tid3);
     // Simulate user already signed in on each instance.
-    auth1.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1'));
-    auth2.setCurrentMockUser(createMockUser('UID2', 'ID_TOKEN2'));
-    auth3.setCurrentMockUser(createMockUser('UID3', 'ID_TOKEN3'));
+    auth1.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid1));
+    auth2.setCurrentMockUser(createMockUser('UID2', 'ID_TOKEN2', tid2));
+    auth3.setCurrentMockUser(createMockUser('UID3', 'ID_TOKEN3', tid3));
     tenant2Auth = {};
     tenant2Auth[tid1] = auth1;
     tenant2Auth[tid2] = auth2;
@@ -131,10 +133,13 @@ describe('SignOutOperationHandler', () => {
   });
 
   describe('start()', () => {
+    const unauthorizedDomainError = new Error('Unauthorized domain!');
     it('should fail on unauthorized redirect URL for single tenant', () => {
-      // Mock domain is not authorized.
-      const isAuthorizedDomainStub = sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(false);
-      stubs.push(isAuthorizedDomainStub);
+      // Mock domains are not authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').rejects(unauthorizedDomainError);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
       const getOriginalUrlForSignOutStub =
           sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
@@ -149,12 +154,13 @@ describe('SignOutOperationHandler', () => {
         })
         .catch((error) => {
           // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(isAuthorizedDomainStub);
-          // Confirm redirect URL is checked for authorization.
-          expect(isAuthorizedDomainStub)
-            .to.have.been.calledOnce.and.calledWith(singleSignOutConfig.redirectUrl);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, singleSignOutConfig.redirectUrl]);
           // Expected error should be thrown.
-          expect(error).to.have.property('message', 'unauthorized');
+          expect(error).to.equal(unauthorizedDomainError);
           // Confirm completeSignOut not called.
           expect(completeSignOutSpy).to.not.have.been.called;
           // Confirm getOriginalUrlForSignOutStub not called.
@@ -162,7 +168,8 @@ describe('SignOutOperationHandler', () => {
           // No redirect should occur.
           expect(setCurrentUrlStub).to.not.have.been.called;
           // On failure, progress bar should be hidden.
-          expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledAfter(isAuthorizedDomainStub);
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           // User should still be signed in.
           expect(auth1.currentUser).to.not.be.null;
           // Confirm stored tenant ID is not cleared from storage.
@@ -174,9 +181,11 @@ describe('SignOutOperationHandler', () => {
     });
 
     it('should sign out from single tenant and redirect when tenant ID and redirectUrl are specified', () => {
-      // Mock domain is authorized.
-      const isAuthorizedDomainStub = sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(true);
-      stubs.push(isAuthorizedDomainStub);
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
       const getOriginalUrlForSignOutStub =
           sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
@@ -192,16 +201,17 @@ describe('SignOutOperationHandler', () => {
         })
         .then(() => {
           // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(isAuthorizedDomainStub);
-          // Confirm redirect URL is checked for authorization.
-          expect(isAuthorizedDomainStub)
-            .to.have.been.calledOnce.and.calledWith(singleSignOutConfig.redirectUrl);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, singleSignOutConfig.redirectUrl]);
           // Progress bar should not be hidden.
           expect(hideProgressBarSpy).to.not.have.been.called;
           // Confirm completeSignOut is not called.
           expect(completeSignOutSpy).to.not.have.been.called;
           // Confirm signOut is called after confirming redirect URL authorization.
-          expect(signOutSpy).to.have.been.called.and.calledAfter(isAuthorizedDomainStub);
+          expect(signOutSpy).to.have.been.called.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm getOriginalUrlForSignOutStub called.
           expect(getOriginalUrlForSignOutStub)
             .to.have.been.calledOnce.and.calledAfter(signOutSpy)
@@ -222,9 +232,11 @@ describe('SignOutOperationHandler', () => {
     });
 
     it('should sign out from single tenant and not redirect when tenant ID and no redirectUrl are specified', () => {
-      // Mock domain is authorized.
-      const isAuthorizedDomainStub = sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(true);
-      stubs.push(isAuthorizedDomainStub);
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
       const getOriginalUrlForSignOutStub =
           sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
@@ -243,8 +255,10 @@ describe('SignOutOperationHandler', () => {
           expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(signOutSpy);
           // signOut should be called after progress bar is shown.
           expect(signOutSpy).to.have.been.called.and.calledAfter(showProgressBarSpy);
-          // Confirm redirect URL check is skipped.
-          expect(isAuthorizedDomainStub).to.not.have.been.called;
+          // Confirm current URL is checked.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
+            .and.calledWith([currentUrl])
+            .and.calledBefore(signOutSpy);
           // Confirm getOriginalUrlForSignOutStub not called due to missing redirect URL.
           expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
           // No redirect should occur.
@@ -267,9 +281,10 @@ describe('SignOutOperationHandler', () => {
     it('should reject when isAuthorizedDomain rejects', () => {
       const expectedError = new HttpCIAPError(504);
       // Mock domain authorization check throws an error.
-      const isAuthorizedDomainStub =
-          sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').rejects(expectedError);
-      stubs.push(isAuthorizedDomainStub);
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').rejects(expectedError);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
       const getOriginalUrlForSignOutStub =
           sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
@@ -284,14 +299,16 @@ describe('SignOutOperationHandler', () => {
         })
         .catch((error) => {
           // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(isAuthorizedDomainStub);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Progress bar should be hidden after error is thrown.
-          expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledAfter(isAuthorizedDomainStub);
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           // Expected error should be thrown.
           expect(error).to.equal(expectedError);
-          // Confirm redirect URL is checked for authorization.
-          expect(isAuthorizedDomainStub)
-            .to.have.been.calledOnce.and.calledWith(singleSignOutConfig.redirectUrl);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, singleSignOutConfig.redirectUrl]);
           // completeSignOut should not be called.
           expect(completeSignOutSpy).to.not.have.been.called;
           // signOut should not be called.
@@ -313,9 +330,10 @@ describe('SignOutOperationHandler', () => {
     it('should reject for single tenant signout when auth.signOut() rejects', () => {
       const expectedError = new Error('signout error');
       // Mock domain authorization succeeds.
-      const isAuthorizedDomainStub =
-          sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(true);
-      stubs.push(isAuthorizedDomainStub);
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
       const getOriginalUrlForSignOutStub =
           sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
@@ -333,18 +351,21 @@ describe('SignOutOperationHandler', () => {
         })
         .catch((error) => {
           // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(isAuthorizedDomainStub);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Progress bar should be hidden after error is thrown.
-          expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledAfter(isAuthorizedDomainStub);
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           // Expected error should be thrown.
           expect(error).to.equal(expectedError);
-          // Confirm redirect URL is checked for authorization.
-          expect(isAuthorizedDomainStub)
-            .to.have.been.calledOnce.and.calledWith(singleSignOutConfig.redirectUrl);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, singleSignOutConfig.redirectUrl]);
           // completeSignOut should not be called.
           expect(completeSignOutSpy).to.not.have.been.called;
           // signOut should have been called once.
-          expect(signOutStub).to.have.been.calledOnce.and.calledAfter(isAuthorizedDomainStub);
+          expect(signOutStub).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           // getOriginalUrlForSignOutStub should not be called.
           expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
           // No redirect should occur.
@@ -359,9 +380,11 @@ describe('SignOutOperationHandler', () => {
 
     it('should reject when getOriginalUrlForSignOutStub rejects', () => {
       const expectedError = new HttpCIAPError(504);
-      // Mock domain is authorized.
-      const isAuthorizedDomainStub = sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(true);
-      stubs.push(isAuthorizedDomainStub);
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
       const getOriginalUrlForSignOutStub =
           sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').rejects(expectedError);
@@ -380,14 +403,16 @@ describe('SignOutOperationHandler', () => {
         })
         .catch((error) => {
           // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(isAuthorizedDomainStub);
-          // Confirm redirect URL is checked for authorization.
-          expect(isAuthorizedDomainStub)
-            .to.have.been.calledOnce.and.calledWith(singleSignOutConfig.redirectUrl);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, singleSignOutConfig.redirectUrl]);
           // Confirm completeSignOut is not called.
           expect(completeSignOutSpy).to.not.have.been.called;
           // Confirm signOut is called after confirming redirect URL authorization.
-          expect(signOutSpy).to.have.been.called.and.calledAfter(isAuthorizedDomainStub);
+          expect(signOutSpy).to.have.been.called
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm getOriginalUrlForSignOutStub called.
           expect(getOriginalUrlForSignOutStub)
             .to.have.been.calledOnce.and.calledAfter(signOutSpy)
@@ -408,9 +433,11 @@ describe('SignOutOperationHandler', () => {
     });
 
     it('should sign out from all tenants when no tenant ID is specified', () => {
-      // Mock domain is authorized.
-      const isAuthorizedDomainStub = sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(true);
-      stubs.push(isAuthorizedDomainStub);
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
       const getOriginalUrlForSignOutStub =
           sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
@@ -442,8 +469,10 @@ describe('SignOutOperationHandler', () => {
           expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledAfter(signOutSpy);
           // Confirm completeSignOut is called after progress bar is hidden.
           expect(completeSignOutSpy).to.have.been.calledOnce.and.calledAfter(hideProgressBarSpy);
-          // Confirm redirect URL is not checked since it's not available.
-          expect(isAuthorizedDomainStub).to.not.have.been.called;
+          // Confirm current URL is checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
+            .and.calledWith([currentUrl])
+            .and.calledBefore(signOutSpy);
           // Confirm getOriginalUrlForSignOutStub not called.
           expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
           // Confirm no redirect to originalUri occurs.
@@ -463,8 +492,10 @@ describe('SignOutOperationHandler', () => {
 
     it('should not redirect to redirectUrl on multi-tenant signout', () => {
       // Mock domain is authorized.
-      const isAuthorizedDomainStub = sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(true);
-      stubs.push(isAuthorizedDomainStub);
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
       const getOriginalUrlForSignOutStub =
           sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
@@ -495,12 +526,14 @@ describe('SignOutOperationHandler', () => {
         })
         .then(() => {
           // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(isAuthorizedDomainStub);
-          // Confirm redirect URL is checked for authorization.
-          expect(isAuthorizedDomainStub)
-            .to.have.been.calledOnce.and.calledWith(config.redirectUrl);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
           // Confirm signOut is called after confirming redirect URL authorization.
-          expect(signOutSpy).to.have.been.calledThrice.and.calledAfter(isAuthorizedDomainStub);
+          expect(signOutSpy).to.have.been.calledThrice
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           // Progress bar should be hidden before calling completeSignOut.
           expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledAfter(signOutSpy);
           // Confirm completeSignOut is called after progress bar is hidden.
@@ -523,9 +556,11 @@ describe('SignOutOperationHandler', () => {
     });
 
     it('should fail on unauthorized redirect URL for multiple tenants', () => {
-      // Mock domain is not authorized.
-      const isAuthorizedDomainStub = sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(false);
-      stubs.push(isAuthorizedDomainStub);
+      // Mock domains are not authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').rejects(unauthorizedDomainError);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
       const getOriginalUrlForSignOutStub =
           sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
@@ -556,12 +591,13 @@ describe('SignOutOperationHandler', () => {
         })
         .catch((error) => {
           // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(isAuthorizedDomainStub);
-          // Confirm redirect URL is checked for authorization.
-          expect(isAuthorizedDomainStub)
-            .to.have.been.calledOnce.and.calledWith(singleSignOutConfig.redirectUrl);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, singleSignOutConfig.redirectUrl]);
           // Expected error should be thrown.
-          expect(error).to.have.property('message', 'unauthorized');
+          expect(error).to.equal(unauthorizedDomainError);
           // No signout should occur.
           expect(signOutSpy).to.not.have.been.called;
           // Confirm completeSignOut not called.
@@ -571,7 +607,8 @@ describe('SignOutOperationHandler', () => {
           // No redirect should occur.
           expect(setCurrentUrlStub).to.not.have.been.called;
           // On failure, progress bar should be hidden.
-          expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledAfter(isAuthorizedDomainStub);
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           // Users should still be signed in.
           expect(auth1.currentUser).to.not.be.null;
           expect(auth2.currentUser).to.not.be.null;
@@ -587,9 +624,10 @@ describe('SignOutOperationHandler', () => {
     it('should reject for multi-tenant signout when auth.signOut() rejects', () => {
       const expectedError = new Error('signout error');
       // Mock domain authorization succeeds.
-      const isAuthorizedDomainStub =
-          sinon.stub(CICPRequestHandler.prototype, 'isAuthorizedDomain').resolves(true);
-      stubs.push(isAuthorizedDomainStub);
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
       const getOriginalUrlForSignOutStub =
           sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
@@ -621,10 +659,11 @@ describe('SignOutOperationHandler', () => {
         .catch((error) => {
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(signOutStub);
-          // Confirm redirect URL is not checked as no redirect URL is available.
-          expect(isAuthorizedDomainStub).to.not.have.been.called;
+          // Confirm current URL checked as no redirect URL is available.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
+            .and.calledWith([currentUrl]);
           // Confirm signOut is called after showing progress bar.
-          expect(signOutStub).to.have.been.calledThrice.and.calledAfter(showProgressBarSpy);
+          expect(signOutStub).to.have.been.calledThrice.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           // Expected error should be thrown.
           expect(error).to.equal(expectedError);
           // completeSignOut should not be called.

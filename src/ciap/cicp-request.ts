@@ -39,6 +39,7 @@ const CICP_TIMEOUT = 30000;
 
 /** Defines GetProjectConfig response interface. */
 interface GetProjectConfigResponse {
+  projectId: string;
   authorizedDomains: string[];
 }
 
@@ -57,7 +58,8 @@ export class CICPRequestHandler {
     timeout: CICP_TIMEOUT,
   }).setResponseValidator((response: HttpResponse) => {
     if (!response.isJson() ||
-        !isArray(response.data.authorizedDomains)) {
+        !isArray(response.data.authorizedDomains) ||
+        !isNonEmptyString(response.data.projectId)) {
       // TODO: create common internal error class to handle errors.
       throw new Error('Invalid response');
     }
@@ -82,25 +84,37 @@ export class CICPRequestHandler {
   }
 
   /**
-   * Checks whether the provided URL is authorized to receive ID tokens and credentials on behalf
+   * Checks whether the provided URLs are authorized to receive ID tokens and credentials on behalf
    * of the corresponding project.
    *
-   * @param {string} url The URL to check.
-   * @return {Promise<boolean>} A promise that resolves with the status whether the domain is
+   * @param {Array<string>} urls The URLs to check.
+   * @return {Promise<string>} A promise that resolves with the status whether the domain is
    *     authorized or not.
    */
-  public isAuthorizedDomain(url: string): Promise<boolean> {
-    if (!isURL(url)) {
-      return Promise.reject(new Error('Invalid URL'));
-    }
-    return CICPRequestHandler.GET_PROJECT_CONFIG.process(this.httpClient, {apiKey: this.apiKey})
-        .then((response: HttpResponse) => {
-          const responseJson = response.data as GetProjectConfigResponse;
-          return isAuthorizedDomain(responseJson.authorizedDomains, url);
-        })
-        .catch((error: Error) => {
-          throw this.translateLowLevelError(error);
-        });
+  public checkAuthorizedDomainsAndGetProjectId(urls: string[]): Promise<string> {
+    return Promise.resolve().then(() => {
+      urls.forEach((url: string) => {
+        if (!isURL(url)) {
+          throw new Error('Invalid URL');
+        }
+      });
+
+      return CICPRequestHandler.GET_PROJECT_CONFIG.process(this.httpClient, {apiKey: this.apiKey})
+          .then((response: HttpResponse) => {
+            const responseJson = response.data as GetProjectConfigResponse;
+            // Check each URL.
+            urls.forEach((url: string) => {
+              if (!isAuthorizedDomain(responseJson.authorizedDomains, url)) {
+                throw new Error('Unauthorized domain');
+              }
+            });
+            // If all URLs are authorized, return project ID.
+            return responseJson.projectId;
+          })
+          .catch((error: Error) => {
+            throw this.translateLowLevelError(error);
+          });
+    });
   }
 
   /**

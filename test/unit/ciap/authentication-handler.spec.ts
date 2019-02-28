@@ -19,7 +19,8 @@ import { isAuthenticationHandler, AuthenticationHandler } from '../../../src/cia
 import { createMockAuth } from '../../resources/utils';
 
 describe('isAuthenticationHandler()', () => {
-  const auth = createMockAuth();
+  const apiKey = 'API_KEY';
+  const auth = createMockAuth(apiKey);
   const nonFunctions = [null, NaN, 0, 1, '', 'a', true, false, {}, [], { a: 1 }];
   const mockAuthenticationHandler: AuthenticationHandler = {
     getAuth: (tenantId: string) => auth,

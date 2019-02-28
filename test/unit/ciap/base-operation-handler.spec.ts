@@ -27,6 +27,7 @@ import {
 } from '../../resources/utils';
 import * as storageManager from '../../../src/storage/manager';
 import * as authTenantsStorage from '../../../src/ciap/auth-tenants-storage';
+import { getCurrentUrl } from '../../../src/utils';
 
 /**
  * Concrete subclass of the abstract BaseOperationHandler class used to
@@ -38,7 +39,10 @@ class ConcreteOperationHandler extends BaseOperationHandler {
     * @param {AuthenticationHandler} handler The Authentication handler instance.
     * @constructor
     */
-  constructor(config: Config, handler: MockAuthenticationHandler) {
+  constructor(
+      config: Config,
+      handler: MockAuthenticationHandler,
+      private readonly processor: (() => Promise<void>) = (() => Promise.resolve())) {
     super(config, handler);
   }
 
@@ -54,8 +58,8 @@ class ConcreteOperationHandler extends BaseOperationHandler {
    * @return {Promise<void>} A promise that resolves when the operation handler is initialized.
    * @override
    */
-  public start(): Promise<void> {
-    return Promise.resolve();
+  public process(): Promise<void> {
+    return this.processor();
   }
 
   /**
@@ -87,6 +91,11 @@ class ConcreteOperationHandler extends BaseOperationHandler {
     this.hideProgressBar();
     expect(this.isProgressBarVisible()).to.be.false;
     expect((this.handler as MockAuthenticationHandler).isProgressBarVisible()).to.be.false;
+    // Confirm all Auth tenants storage access fail before start().
+    expect(() => this.listAuthTenants()).to.throw();
+    expect(() => this.removeAuthTenant('TENANT_ID')).to.throw();
+    expect(() => this.addAuthTenant('TENANT_ID')).to.throw();
+    expect(() => this.clearAuthTenants()).to.throw();
   }
 
   /**
@@ -141,17 +150,26 @@ describe('BaseOperationHandler', () => {
   const stubs: sinon.SinonStub[] = [];
   let mockStorageManager: storageManager.StorageManager;
   let authTenantsStorageManager: authTenantsStorage.AuthTenantsStorageManager;
+  const projectId = 'PROJECT_ID';
   const apiKey = 'API_KEY';
   const tid = 'TENANT_ID';
   const state = 'STATE';
   const hl = 'en-US';
+  const currentUrl = getCurrentUrl(window);
   const redirectUri = `https://iap.googleapis.com/v1alpha1/cicp/tenantIds/${tid}:handleRedirect`;
   // Dummy FirebaseAuth instance.
-  const auth = createMockAuth(tid);
+  const auth = createMockAuth(apiKey, tid);
   const tenant2Auth: {[key: string]: FirebaseAuth} = {};
   tenant2Auth[tid] = auth;
+  let checkAuthorizedDomainsAndGetProjectIdStub: sinon.SinonStub;
+  let showProgressBarSpy: sinon.SinonSpy;
+  let hideProgressBarSpy: sinon.SinonSpy;
 
   beforeEach(() => {
+    checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+        CICPRequestHandler.prototype,
+        'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+    stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
     mockStorageManager = createMockStorageManager();
     // Stub globalStorageManager getter.
     stubs.push(
@@ -163,13 +181,17 @@ describe('BaseOperationHandler', () => {
       sinon.stub(authTenantsStorage, 'AuthTenantsStorageManager')
         .callsFake((manager: storageManager.StorageManager, appId: string) => {
           expect(manager).to.equal(mockStorageManager);
-          expect(appId).to.equal(apiKey);
+          expect(appId).to.equal(projectId);
           return authTenantsStorageManager;
         }));
+    showProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'showProgressBar');
+    hideProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'hideProgressBar');
   });
 
   afterEach(() => {
     stubs.forEach((s) => s.restore());
+    showProgressBarSpy.restore();
+    hideProgressBarSpy.restore();
   });
 
   it('should initialize all underlying parameters as expected', () => {
@@ -180,7 +202,6 @@ describe('BaseOperationHandler', () => {
     const concreteInstance = new ConcreteOperationHandler(config, authenticationHandler);
 
     concreteInstance.runTests(auth, config);
-    return concreteInstance.runAuthTenantsStorageTests(authTenantsStorageManager);
   });
 
   it('should throw when no API key is provided', () => {
@@ -191,5 +212,105 @@ describe('BaseOperationHandler', () => {
     expect(() => {
       return new ConcreteOperationHandler(config, authenticationHandler);
     }).to.throw();
+  });
+
+  it('should throw when Auth instance API key does not match config API key', () => {
+    const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+    // Create config with API key that does not match getAuth() returned API key.
+    const config = new Config(createMockUrl('login', 'NOT_FOUND_API_KEY', tid, redirectUri, state, hl));
+
+    expect(() => {
+      return new ConcreteOperationHandler(config, authenticationHandler);
+    }).to.throw();
+  });
+
+  describe('start()', () => {
+    it('should initialize AuthTenantsStorageManager', () => {
+      const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+      const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
+
+      const concreteInstance = new ConcreteOperationHandler(config, authenticationHandler);
+
+      return concreteInstance.start()
+        .then(() => {
+          return concreteInstance.runAuthTenantsStorageTests(authTenantsStorageManager);
+        });
+    });
+
+    it('should resolve on successful domain validation', () => {
+      const processorStub = sinon.stub().resolves();
+      const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+      const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
+
+      const concreteInstance =
+          new ConcreteOperationHandler(config, authenticationHandler, processorStub);
+
+      return concreteInstance.start()
+        .then(() => {
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
+            .and.calledWith([currentUrl, config.redirectUrl])
+            .and.calledBefore(processorStub);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          expect(processorStub).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+          expect(hideProgressBarSpy).to.not.have.been.called;
+        });
+    });
+
+    it('should reject on unsuccessful domain validation', () => {
+      const processorStub = sinon.stub().resolves();
+      const unauthorizedDomainError = new Error('Unauthorized domain!');
+      checkAuthorizedDomainsAndGetProjectIdStub.restore();
+      checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').rejects(unauthorizedDomainError);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+      const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
+
+      const concreteInstance =
+          new ConcreteOperationHandler(config, authenticationHandler, processorStub);
+
+      return concreteInstance.start()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.equal(unauthorizedDomainError);
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
+            .and.calledWith([currentUrl, config.redirectUrl]);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+          expect(processorStub).to.not.have.been.called;
+        });
+    });
+
+    it('should reject on OperationHandler.process() rejection', () => {
+      const expectedError = new Error('Processing error');
+      const processorStub = sinon.stub().rejects(expectedError);
+      const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+      const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
+
+      const concreteInstance =
+          new ConcreteOperationHandler(config, authenticationHandler, processorStub);
+
+      return concreteInstance.start()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.equal(expectedError);
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
+            .and.calledWith([currentUrl, config.redirectUrl]);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(processorStub);
+          expect(processorStub).to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+        });
+    });
   });
 });

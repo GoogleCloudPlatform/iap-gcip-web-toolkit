@@ -95,7 +95,7 @@ describe('CICPRequestHandler', () => {
     });
   });
 
-  describe('isAuthorizedDomain()', () => {
+  describe('checkAuthorizedDomainsAndGetProjectId()', () => {
     const url = 'https://www.example.com/path/api?a=1&n=2#hash';
     const requestHandler = new CICPRequestHandler(apiKey, httpClient);
     const expectedConfigRequest = {
@@ -109,29 +109,59 @@ describe('CICPRequestHandler', () => {
       url: `https://www.googleapis.com/identitytoolkit/v3/relyingparty/getProjectConfig?key=${apiKey}`,
       timeout: 30000,
     };
+    const projectId = 'PROJECT_ID';
     const jsonResponse = {
-      authorizedDomains: ['example.com'],
+      projectId,
+      authorizedDomains: ['example.com', 'authorized.com'],
     };
     const expectedResp = createMockHttpResponse({'Content-Type': 'application/json'}, jsonResponse);
 
-    it('should resolve with true on authorized domain match', () => {
+    it('should resolve with project ID when the single URL array has a matching authorized domain', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
       stubs.push(stub);
 
-      return requestHandler.isAuthorizedDomain(url)
-        .then((status: boolean) => {
-          expect(status).to.be.true;
+      return requestHandler.checkAuthorizedDomainsAndGetProjectId([url])
+        .then((actualProjectId: string) => {
+          expect(actualProjectId).to.equal(projectId);
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
     });
 
-    it('should resolve with false on authorized domain mismatch', () => {
+    it('should resolve with project ID when entire URL array has matching authorized domains', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
       stubs.push(stub);
 
-      return requestHandler.isAuthorizedDomain('https://mismatch.com')
-        .then((status: boolean) => {
-          expect(status).to.be.false;
+      return requestHandler.checkAuthorizedDomainsAndGetProjectId(['https://example.com', 'https://authorized.com'])
+        .then((actualProjectId: string) => {
+          expect(actualProjectId).to.equal(projectId);
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+
+    it('should reject when the single URL array has an unauthorized domain', () => {
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+      stubs.push(stub);
+
+      return requestHandler.checkAuthorizedDomainsAndGetProjectId(['https://mismatch.com'])
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.have.property('message', 'Unauthorized domain');
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+
+    it('should reject when the URL array contains at least one unauthorized domain', () => {
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+      stubs.push(stub);
+
+      return requestHandler.checkAuthorizedDomainsAndGetProjectId(['https://example.com', 'https://mismatch.com'])
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.have.property('message', 'Unauthorized domain');
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
     });
@@ -140,7 +170,7 @@ describe('CICPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
       stubs.push(stub);
 
-      return requestHandler.isAuthorizedDomain('invalid')
+      return requestHandler.checkAuthorizedDomainsAndGetProjectId(['https://example.com', 'invalid'])
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -156,7 +186,7 @@ describe('CICPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(invalidResponse);
       stubs.push(stub);
 
-      return requestHandler.isAuthorizedDomain(url)
+      return requestHandler.checkAuthorizedDomainsAndGetProjectId([url])
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -172,7 +202,7 @@ describe('CICPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').rejects(expectedError);
       stubs.push(stub);
 
-      return requestHandler.isAuthorizedDomain(url)
+      return requestHandler.checkAuthorizedDomainsAndGetProjectId([url])
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -207,7 +237,7 @@ describe('CICPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').rejects(serverLowLevelError);
       stubs.push(stub);
 
-      return requestHandler.isAuthorizedDomain(url)
+      return requestHandler.checkAuthorizedDomainsAndGetProjectId([url])
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -241,7 +271,7 @@ describe('CICPRequestHandler', () => {
           400, 'TOO_MANY_ATTEMPTS_TRY_LATER', 'custom error message', serverLowLevelError);
       const stub = sinon.stub(HttpClient.prototype, 'send').rejects(serverLowLevelError);
       stubs.push(stub);
-      return requestHandler.isAuthorizedDomain(url)
+      return requestHandler.checkAuthorizedDomainsAndGetProjectId([url])
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -277,7 +307,7 @@ describe('CICPRequestHandler', () => {
           400, 'INVALID_ARGUMENT', jsonError.error.message, serverLowLevelError);
       const stub = sinon.stub(HttpClient.prototype, 'send').rejects(serverLowLevelError);
       stubs.push(stub);
-      return requestHandler.isAuthorizedDomain(url)
+      return requestHandler.checkAuthorizedDomainsAndGetProjectId([url])
         .then(() => {
           throw new Error('Unexpected success');
         })
