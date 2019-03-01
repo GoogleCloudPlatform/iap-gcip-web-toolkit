@@ -1,4 +1,4 @@
-const HandleBars = rquire('handlerbars');
+const HandleBars = require('handlebars');
 
 /** Main template used for resource specific user profile. */
 const main = HandleBars.compile(`
@@ -12,8 +12,22 @@ const main = HandleBars.compile(`
       <h3>Welcome to IAP/CICP integration sample app</h3>
       <div id="main">
         <div id="user-info">
+          {{#if photoURL}}
+          <div id="photo-container">
+            <imd id="photo" src="{{photoURL}}">
+          </div>
+          {{/if}}
           <div id="sub">{{sub}}</div>
-          <div id="email">{{email}}</div>
+          <div id="name">{{displayName}}</div>
+          <div id="email">
+            {{email}} (
+            {{#if emailVerified}}
+              Verified
+            {{else}}
+              Unverified
+            {{/if}}
+            )
+          </div>
           <div id="tenant">{{tenandId}}</div>
           <div class="claims">
             <pre id="cicp-claims">{{cicpClaims}}</pre>

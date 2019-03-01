@@ -25,6 +25,8 @@ const templates = require('./templates');
 // https://cloud.google.com/appengine/docs/standard/nodejs/quickstart
 // https://cloud.google.com/iap/docs/app-engine-quickstart
 
+app.enable('trust proxy');
+
 /** Metadata service url for getting project number. */
 const PROJECT_NUMBER_URL = 'http://metadata.google.internal/computeMetadata/v1/project/numeric-project-id';
 /** Injected IAP JWT header name. */
@@ -39,12 +41,16 @@ function getProjectNumber() {
   return new Promise((resolve, reject) => {
     request({
       url: PROJECT_NUMBER_URL,
-      json: false
+      headers: {
+        'Metadata-Flavor': 'Google',
+      },
+      json: true
     }, (error, response, body) => {
-      if (!error && response.statusCode === 200) {
-        resolve(body);
-      } else {
+      if (error || response.statusCode !== 200) {
         reject(error || new Error('Unable to retrieve project number'));
+      } else {
+        console.log(body);
+        resolve(body);
       }
     });
   });
@@ -59,13 +65,20 @@ function getProjectNumber() {
  * @return {!Promise} A promise that resolves on success.
  */
 function serveContentForUser(template, req, res, decodedClaims) {
-  // Still subject to change.
-  const cicpClaims = JSON.parse(decodedClaims.firebase);
+  let cicpClaims = null;
+  try {
+    cicpClaims = JSON.parse(decodedClaims.cicp);
+  } catch (e) {
+    // Ignore error.
+  }
   res.set('Content-Type', 'text/html');
   res.end(template({
     sub: decodedClaims.sub,
     email: decodedClaims.email,
-    tenandId: cicpClaims.tenant,
+    emailVerifed: !!(cicpClaims && cicpClaims.email_verified),
+    photoURL: cicpClaims && cicpClaims.picture,
+    displayName: (cicpClaims && cicpClaims.name) || 'N/A',
+    tenandId: cicpClaims && cicpClaims.firebase && cicpClaims.firebase.tenant,
     cicpClaims: JSON.stringify(cicpClaims, null, 2),
     iapClaims: JSON.stringify(decodedClaims, null, 2),
     signoutURL: './_gcp_iap/cicp_signout',
@@ -86,7 +99,7 @@ function checkIfSignedIn() {
         req.claims = decodedClaims;
         next();
       }).catch((error) => {
-        res.status(503).send('403: Permission defined!');
+        res.status(503).send('403: Permission denied');
       });
     });
   };
@@ -104,11 +117,11 @@ app.use(checkIfSignedIn());
 app.use('/styles', express.static('styles'));
 
 app.get('/', (req, res) => {
-  res.redirect('/resource1');
+  res.redirect('/resource');
 });
 
 /** Get the resource1 endpoint. This will map with one tenant. */
-app.get('/resource1', (req, res) => {
+app.get('/resource', (req, res) => {
   // Serve content for signed in user.
   return serveContentForUser(templates.main, req, res, req.claims);
 });

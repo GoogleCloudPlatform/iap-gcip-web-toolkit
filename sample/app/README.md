@@ -60,9 +60,21 @@ following instructions:
 - Deploy the sample app by running the following in the root folder.
 
   ```bash
-  gcloud app deploy
+  npm run deploy
   ```
-  This will launch your sample app at `http://[YOUR_PROJECT_ID].appspot.com`.
+
+  This will launch the default GAE service `https://[YOUR_PROJECT_ID].appspot.com`.
+
+  When IAP supports multiple GAE services as different resources, to illustrate how
+  multiple services can be gated with IAP/CICP, run:
+
+  ```bash
+  gcloud app deploy app.yaml && gcloud app deploy service1-app.yaml
+  ```
+
+  This will launch 2 GAE services (one default and another microservice)
+  `https://[YOUR_PROJECT_ID].appspot.com` and
+  `https://service1-dot-[YOUR_PROJECT_ID].appspot.com`.
 
   To learn more about Google App Engine Node.js flexible envionment, refer to
   the
@@ -74,11 +86,11 @@ following instructions:
 
 - Enable CICP multi-tenancy (UI not yet available).
 
-- Create a CICP tenant with various identity providers. You can
+- Create multiple CICP tenants with various identity providers. You can
   do this using the Firebase Admin SDK multi-tenancy management API currently
   under development.
 
-- Take note of the tenant ID.
+- Take note of the tenant IDs.
 
 ### Deploy the authentication page
 - Follow the instruction to deploy the authentication page in
@@ -107,7 +119,9 @@ The following instructions are not yet finalized and subject to change.
 - In alpha, customers need to provide the following information which IAP will
   store for the application:
   - Application identifier
-    - For GAE, use the project ID.
+    - For GAE, use the project ID. For alpha, GAE service level resources
+      cannot be whitelisted. Only app level GAE resources can be whitelisted.
+      Once in beta, GAE service level resources can be set. 
     - For GCE backend service, use the backend service ID
       - To get the backend service ID, run:
         `gcloud compute backend-services describe BACKEND_SERVICE_NAME`
@@ -116,6 +130,8 @@ The following instructions are not yet finalized and subject to change.
     format: `https://firebase-project-id.firebaseapp.com/?apiKey=[API_KEY].
     The API key can be obtained from the CICP console **setup details** snippet.
 
+- When IAP supports multiple GAE services as different resources, repeat the
+  same process for the second tenant. Use the second GAE service.
 - Once IAP team whitelists the application with the provided information above,
   the application will start to apply the authentication configured in CICP.
 
@@ -123,7 +139,8 @@ The following instructions are not yet finalized and subject to change.
 
 ### Test access
 
-- Go to `https://project-id.appspot.com/resource1`. You should be redirected
+- Go to `https://[YOUR_PROJECT_ID].appspot.com`.
+  You should be redirected
   to the CICP sign-in page to sign-in. Providers configured for `tenant1`
   should be displayed.
 
@@ -132,3 +149,8 @@ The following instructions are not yet finalized and subject to change.
 
 - Click **Sign Out** button. You should be redirected back to the CICP
   sign-in page.
+
+- In the multiple service scenario, repeat the same process for
+  `https://service1-dot-[YOUR_PROJECT_ID].appspot.com`. You
+  should be redirected to same CICP sign-in page but populated with
+  sign-in options for `tenant2`.

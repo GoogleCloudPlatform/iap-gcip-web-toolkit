@@ -45,7 +45,7 @@ class IapJwtVerifier {
   verify(jwtToken) {
     let header;
     let payload;
-    return new Promise.resolve().then(() => {
+    return Promise.resolve().then(() => {
       // For GAE: /projects/PROJECT_NUMBER/apps/PROJECT_ID
       const aud = `/projects/${this.projectNumber}/apps/${this.projectId}`;
       const fullDecodedToken = jwt.decode(jwtToken, {
