@@ -49,7 +49,6 @@ function getProjectNumber() {
       if (error || response.statusCode !== 200) {
         reject(error || new Error('Unable to retrieve project number'));
       } else {
-        console.log(body);
         resolve(body);
       }
     });
@@ -99,7 +98,7 @@ function checkIfSignedIn() {
         req.claims = decodedClaims;
         next();
       }).catch((error) => {
-        res.status(503).send('403: Permission denied');
+        res.status(503).send('403: Permission denied (' + error.message + ')');
       });
     });
   };

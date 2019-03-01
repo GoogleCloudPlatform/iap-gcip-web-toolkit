@@ -81,7 +81,7 @@ class IapJwtVerifier {
   fetchPublicKey(kid) {
     if (typeof this.publicKeys !== 'undefined' &&
         this.publicKeys.hasOwnProperty(kid)) {
-      return Promise.resolve(this.publicKeys);
+      return Promise.resolve(this.publicKeys[kid]);
     }
     return new Promise((resolve, reject) => {
       request({
