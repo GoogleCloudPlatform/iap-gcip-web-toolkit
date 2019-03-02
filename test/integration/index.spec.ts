@@ -14,15 +14,11 @@
  * limitations under the License.
  */
 
-import * as ciap from '../../lib/index';
-import * as chai from 'chai';
-import * as chaiAsPromised from 'chai-as-promised';
-
-chai.should();
-chai.use(chaiAsPromised);
+import * as ciap from '../../dist/index.esm';
+import { expect } from 'chai';
 
 describe('ciap', () => {
-  it('should not throw an error', () => {
-    // TODO
+  it('should have Authentication constructor', () => {
+    expect(typeof ciap.Authentication).to.equal('function');
   });
 });

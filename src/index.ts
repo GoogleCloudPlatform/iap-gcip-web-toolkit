@@ -17,6 +17,6 @@
 import {Authentication} from './ciap/auth';
 import './polyfill';
 
-export default {
+export {
   Authentication,
 };

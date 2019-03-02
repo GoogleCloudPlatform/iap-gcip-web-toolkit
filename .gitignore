@@ -2,6 +2,7 @@
 .vscode
 .DS_Store
 npm-debug.log
+default.profraw
 
 lib/
 dist/

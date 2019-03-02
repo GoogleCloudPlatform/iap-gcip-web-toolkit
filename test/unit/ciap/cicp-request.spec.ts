@@ -26,6 +26,7 @@ import {CICPRequestHandler} from '../../../src/ciap/cicp-request';
 import { isNonNullObject } from '../../../src/utils/validator';
 import { createMockLowLevelError } from '../../resources/utils';
 import { HttpCIAPError } from '../../../src/utils/error';
+import { getClientVersion } from '../../../src/utils/browser';
 
 chai.should();
 chai.use(sinonChai);
@@ -62,6 +63,7 @@ describe('CICPRequestHandler', () => {
   const httpClient = new HttpClient();
   const apiKey = 'API_KEY';
   const stubs: sinon.SinonStub[] = [];
+  const clientVersion = getClientVersion();
 
   afterEach(() => {
     stubs.forEach((s) => s.restore());
@@ -104,7 +106,7 @@ describe('CICPRequestHandler', () => {
       cache: 'no-cache',
       headers: {
         'Content-Type': 'application/json',
-        'X-Client-Version': 'Browser/CIAP/<XXX_SDK_VERSION_XXX>',
+        'X-Client-Version': clientVersion,
       },
       url: `https://www.googleapis.com/identitytoolkit/v3/relyingparty/getProjectConfig?key=${apiKey}`,
       timeout: 30000,

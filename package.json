@@ -9,7 +9,8 @@
     "node": ">=8.0.0"
   },
   "scripts": {
-    "build": "gulp build && rollup -c",
+    "build": "gulp build",
+    "rollup": "rollup -c",
     "lint": "run-p lint:src lint:unit lint:integration lint:typings",
     "test": "run-s lint test:browser:unit",
     "test:browser": "run-s test:browser:unit test:browser:integration",
@@ -38,13 +39,12 @@
   "browser": "dist/index.iife.js",
   "module": "dist/index.esm.js",
   "files": [
-    "lib/",
     "dist/",
     "LICENSE",
     "README.md",
     "package.json"
   ],
-  "types": "./lib/index.d.ts",
+  "types": "dist/index.d.ts",
   "dependencies": {
     "@types/node": "^8.0.53",
     "node-forge": "0.7.4"
@@ -76,7 +76,7 @@
     "gulp-replace": "^0.5.4",
     "gulp-tslint": "^6.0.2",
     "gulp-typescript": "^3.2.4",
-    "karma": "3.1.4",
+    "karma": "4.0.0",
     "karma-chai": "0.1.0",
     "karma-chrome-launcher": "2.2.0",
     "karma-cli": "2.0.0",
@@ -84,8 +84,8 @@
     "karma-html-reporter": "0.2.7",
     "karma-mocha": "1.3.0",
     "karma-sinon": "1.0.5",
-    "karma-summary-reporter": "1.5.2",
-    "karma-typescript": "3.0.13",
+    "karma-typescript": "4.0.0",
+    "karma-typescript-es6-transform": "4.0.0",
     "karma-typescript-preprocessor": "0.4.0",
     "karma-verbose-reporter": "0.0.6",
     "lodash": "^4.17.5",
@@ -95,7 +95,7 @@
     "nock": "^9.1.8",
     "npm-run-all": "^4.1.2",
     "promise-polyfill": "^8.1.0",
-    "rollup": "^0.57.1",
+    "rollup": "1.4.0",
     "rollup-plugin-babel-minify": "^6.2.0",
     "rollup-plugin-commonjs": "^9.2.0",
     "rollup-plugin-node-resolve": "^4.0.0",

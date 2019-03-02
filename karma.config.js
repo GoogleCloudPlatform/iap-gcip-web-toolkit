@@ -48,6 +48,9 @@ module.exports = function(config) {
         return path.replace(/\.ts$/, '.js');
       },
       tsconfig: './tsconfig.json',
+      bundlerOptions: {
+        transforms: [require('karma-typescript-es6-transform')()],
+      },
     },
     reporters: ['verbose', 'progress', 'coverage', 'karma-typescript'],
     client: {

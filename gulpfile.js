@@ -17,64 +17,108 @@
 /**************/
 /*  REQUIRES  */
 /**************/
-var gulp = require('gulp');
-var pkg = require('./package.json');
-var runSequence = require('run-sequence');
+const gulp = require('gulp');
+const pkg = require('./package.json');
+const runSequence = require('run-sequence');
 // File I/O
-var ts = require('gulp-typescript');
-var del = require('del');
-var header = require('gulp-header');
-var replace = require('gulp-replace');
+const del = require('del');
+const header = require('gulp-header');
+const replace = require('gulp-replace');
+// Rollup
+const rollup = require('rollup');
+const typescript = require('rollup-plugin-typescript2');
+const minify = require('rollup-plugin-babel-minify');
+const resolve = require('rollup-plugin-node-resolve');
+const commonjs = require('rollup-plugin-commonjs');
 /****************/
 /*  FILE PATHS  */
 /****************/
-var paths = {
+const paths = {
   src: [
     'src/**/*.ts'
   ],
-  build: 'lib/',
+  build: [
+    'dist/**/*.js'
+  ],
+  dist: 'dist/',
 };
-// Create a separate project for buildProject that overrides the rootDir
-// This ensures that the generated production files are in their own root
-// rather than including both src and test in the lib dir.
-var buildProject = ts.createProject('tsconfig.json', {rootDir: 'src'});
-var banner = `/*! cicp-iap-js v${pkg.version} */\n`;
+
+const banner = `/*! cicp-iap-js v${pkg.version} */\n`;
+
+const plugins = [
+  typescript({
+    typescript: require('typescript'),
+  }),
+  resolve(),
+  minify({
+    comments: false,
+  }),
+  commonjs({
+    include: 'node_modules/**',
+  }),
+];
+
+const deps = Object.keys(
+  Object.assign({}, pkg.peerDependencies, pkg.dependencies)
+);
+deps.push('whatwg-fetch');
+deps.push('url-polyfill');
+deps.push('promise-polyfill');
 /***********/
 /*  TASKS  */
 /***********/
 gulp.task('cleanup', function() {
   return del([
-    paths.build,
+    paths.dist,
   ]);
 });
-gulp.task('compile', function() {
-  return gulp.src(paths.src)
-    // Compile Typescript into .js and .d.ts files
-    .pipe(buildProject())
+
+gulp.task('rollupjs', function (done) {
+  return rollup.rollup({
+    input: 'src/index.ts',
+    plugins,
+    context: 'window',
+    external: id => deps.some(dep => id === dep || id.startsWith(`${dep}/`))
+  }).then(bundle => {
+    const promises = [
+      bundle.write({ file: pkg.browser, format: 'iife', name: 'ciap'}),
+      bundle.write({ file: pkg.main, format: 'cjs' }),
+      bundle.write({ file: pkg.module, format: 'es' })
+    ]
+    return Promise.all(promises);
+  });
+});
+
+gulp.task('compile', ['rollupjs'], function() {
+  return gulp.src(paths.build)
     // Replace SDK version
     .pipe(replace(/\<XXX_SDK_VERSION_XXX\>/g, pkg.version))
     // Add header
     .pipe(header(banner))
     // Write to build directory
-    .pipe(gulp.dest(paths.build))
+    .pipe(gulp.dest(paths.dist))
 });
+
 gulp.task('copyTypings', function() {
   return gulp.src('src/index.d.ts')
     // Add header
     .pipe(header(banner))
     // Write to build directory
-    .pipe(gulp.dest(paths.build))
+    .pipe(gulp.dest(paths.dist))
 });
+
 // Regenerates js every time a source file changes
 gulp.task('watch', function() {
   gulp.watch(paths.src, ['compile']);
 });
+
 // Build task
 gulp.task('build', function(done) {
   runSequence('cleanup', 'compile', 'copyTypings', function(error) {
     done(error && error.err);
   });
 });
+
 // Default task
 gulp.task('default', function(done) {
   runSequence('build', function(error) {

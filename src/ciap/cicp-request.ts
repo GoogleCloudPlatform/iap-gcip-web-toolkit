@@ -20,6 +20,7 @@ import {
 import { HttpResponse, LowLevelError, HttpClient } from '../utils/http-client';
 import { ApiRequester } from '../utils/api-requester';
 import { HttpCIAPError } from '../utils/error';
+import { getClientVersion } from '../utils/browser';
 
 
 /** CICP backend host. */
@@ -29,7 +30,7 @@ const CICP_PATH = '/identitytoolkit/v3/relyingparty/';
 /** CICP temporary placeholder for request header. */
 const CICP_HEADERS = {
   'Content-Type': 'application/json',
-  'X-Client-Version': 'Browser/CIAP/<XXX_SDK_VERSION_XXX>',
+  'X-Client-Version': getClientVersion(),
 };
 /**
  * CICP request timeout duration in milliseconds. This should become variable depending on
