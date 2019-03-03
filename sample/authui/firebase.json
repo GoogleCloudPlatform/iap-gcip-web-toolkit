@@ -4,7 +4,16 @@
   },
   "hosting": {
     "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
     "rewrites": [
+      {
+        "source": "/custom",
+        "destination": "/custom.html"
+      },
       {
         "source": "**",
         "destination": "/index.html"

@@ -1,0 +1,8 @@
+body {
+  margin: 10;
+}
+
+#container {
+  max-width: 600px;
+  margin: 0 auto;
+}
