@@ -88,9 +88,19 @@ You will need to substitute the tenant ID/IdP configurations in `uiConfigs`.
 
 ## Deploy
 
-To deploy the authentication UI, in the same directory `sample/authui`, run:
+To deploy the authentication UI locally, in the same directory `sample/authui`, run:
 ```bash
 npm run start
+```
+
+This will deploy the authentication UI to
+`https://localhost:5000`.
+
+To deploy the authentication UI to production, in the same directory
+`sample/authui`, run:
+
+```bash
+npm run deploy
 ```
 
 This will deploy the authentication UI to

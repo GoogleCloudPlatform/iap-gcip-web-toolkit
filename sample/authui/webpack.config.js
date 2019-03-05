@@ -20,7 +20,9 @@ const path = require('path');
 const config = {
   context: __dirname,
   entry: {
-    'script': './src/script.js',
+    // Under construction.
+    // 'script': './src/script.js',
+    'custom': './src/custom.js',
   },
   output: {
     filename: '[name].js',
@@ -40,6 +42,14 @@ const config = {
         test: /\.js$/,
         loader: 'babel-loader',
         exclude: /node_modules/
+      },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader']
+      },
+      {
+        test: /\.(png|woff|woff2|eot|ttf|svg)$/,
+        loader: 'url-loader?limit=100000'
       }
     ]
   },
