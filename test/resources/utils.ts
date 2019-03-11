@@ -253,6 +253,7 @@ export class MockUser {
 /** Defines the Mock AuthenticationHandler builder. */
 export class MockAuthenticationHandler implements AuthenticationHandler {
   private progressBarVisible: boolean;
+  private lastHandledError: Error;
 
   /**
    * Initializes the mock AuthenticationHandler instance with the provided tenant ID to Auth map.
@@ -314,9 +315,23 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
     this.progressBarVisible = false;
   }
 
+  /**
+   * Handler for any error thrown by Authentication object.
+   *
+   * @param {Error} error The error thrown and passed to handler.
+   */
+  public handleError(error: Error): void {
+    this.lastHandledError = error;
+  }
+
   /** @return {boolean} Whether the progress bar is visible or not. */
   public isProgressBarVisible(): boolean {
     return this.progressBarVisible;
+  }
+
+  /** @return {?Error} The last handled error if available. */
+  public getLastHandledError(): Error | null {
+    return this.lastHandledError || null;
   }
 }
 

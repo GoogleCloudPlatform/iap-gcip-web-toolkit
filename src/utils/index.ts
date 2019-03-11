@@ -15,6 +15,7 @@
  */
 
 import {isNonNullObject} from './validator';
+import { callbackify } from 'util';
 
 /**
  * Defines a new read-only property directly on an object and returns the object.
@@ -134,10 +135,11 @@ export function setCurrentUrl(windowInstance: Window, url: string) {
  *
  * @param {function()=} cb Callback function to run if defined.
  * @param {any=} thisArg The thisArg of the callback function if available.
+ * @param {any[]=} args The list of optional arguments to pass to the callback function.
  */
-export function runIfDefined(cb?: () => any, thisArg?: any): any {
+export function runIfDefined(cb?: (...args: any[]) => any, thisArg?: any, args: any[] = []): any {
   if (typeof cb === 'function') {
-    return cb.apply(thisArg);
+    return cb.apply(thisArg, args);
   }
 }
 
@@ -158,4 +160,21 @@ export function generateRandomAlphaNumericString(numOfChars: number) {
     numOfChars--;
   }
   return chars.join('');
+}
+
+/**
+ * Maps an object's value based on the provided callback function.
+ *
+ * @param {object<string, T>} obj The object to map.
+ * @param {function(string, T): V} cb The callback function used to compute the new mapped value.
+ * @return {object<string, V} The mapped new object.
+ */
+export function mapObject<T, V>(
+    obj: {[key: string]: T},
+    cb: (key: string, value: T) => V): {[key: string]: V} {
+  const mappedObject: {[key: string]: V} = {};
+  Object.keys(obj).forEach((key: string) => {
+    mappedObject[key] = cb(key, obj[key]);
+  });
+  return mappedObject;
 }

@@ -15,6 +15,7 @@
  */
 
 import { deepExtend } from './deep-copy';
+import { mapObject } from './index';
 
 /** Defines error info type. This includes a code and message string. */
 export interface ErrorInfo {
@@ -45,8 +46,8 @@ export class CIAPError extends Error {
    * @constructor
    * @extends {Error}
    */
-  constructor(private errorInfo: ErrorInfo, private readonly underlyingReason?: Error) {
-    super(errorInfo.message);
+  constructor(private errorInfo: ErrorInfo, message?: string, private readonly underlyingReason?: Error) {
+    super(message || errorInfo.message);
     /* tslint:disable:max-line-length */
     // Set the prototype explicitly. See the following link for more details:
     // https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
@@ -138,7 +139,7 @@ export class HttpCIAPError extends CIAPError {
    * @extends {CIAPError}
    */
   constructor(public readonly httpErrorCode: number, statusCode?: string, message?: string, reason?: Error) {
-    super(HttpCIAPError.getErrorInfo(httpErrorCode, statusCode, message), reason);
+    super(HttpCIAPError.getErrorInfo(httpErrorCode, statusCode, message), undefined, reason);
     /* tslint:disable:max-line-length */
     // Set the prototype explicitly. See the following link for more details:
     // https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
@@ -251,3 +252,15 @@ export const HTTP_ERROR_CODE: {[key: string]: HttpErrorInfo} = {
     message: 'Request deadline exceeded.',
   },
 };
+
+/**
+ * Maps HttpErrorInfo object to an ErrorInfo object. This eliminates the need to hardcode the strings which
+ * increases binary size. It also limits the error code to a well defined limited list of codes.
+ */
+export const CLIENT_ERROR_CODES: {[key: string]: ErrorInfo} = mapObject<HttpErrorInfo, ErrorInfo>(
+    HTTP_ERROR_CODE, (key: string, value: HttpErrorInfo) => {
+  return {
+    code: reformatStatusCode(HTTP_ERROR_CODE[key].status),
+    message: HTTP_ERROR_CODE[key].message,
+  };
+});

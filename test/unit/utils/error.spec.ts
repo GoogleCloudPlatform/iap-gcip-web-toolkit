@@ -20,7 +20,7 @@ import * as chai from 'chai';
 import * as sinonChai from 'sinon-chai';
 import * as chaiAsPromised from 'chai-as-promised';
 import {
-  CIAPError, HttpCIAPError, HTTP_ERROR_CODE,
+  CIAPError, HttpCIAPError, HTTP_ERROR_CODE, CLIENT_ERROR_CODES,
 } from '../../../src/utils/error';
 
 chai.should();
@@ -42,10 +42,24 @@ describe('CIAPError', () => {
     expect(error.reason).to.be.undefined;
   });
 
+  it('should initialize successfully with error info and custom message specified', () => {
+    const error = new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'custom message');
+    expect(error.code).to.be.equal('invalid-argument');
+    expect(error.message).to.be.equal('custom message');
+    expect(error.reason).to.be.undefined;
+  });
+
   it('should initialize successfully with error info and reason specified', () => {
-    const error = new CIAPError(errorInfo, reason);
+    const error = new CIAPError(errorInfo, undefined, reason);
     expect(error.code).to.be.equal(code);
     expect(error.message).to.be.equal(message);
+    expect(error.reason).to.be.equal(reason);
+  });
+
+  it('should initialize successfully with error info, custom message and reason specified', () => {
+    const error = new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'custom message', reason);
+    expect(error.code).to.be.equal('invalid-argument');
+    expect(error.message).to.be.equal('custom message');
     expect(error.reason).to.be.equal(reason);
   });
 
@@ -56,14 +70,23 @@ describe('CIAPError', () => {
     }).to.throw();
   });
 
-  it('toJSON() should resolve with the expected object excluding reason if not provided', () => {
-    const error = new CIAPError(errorInfo);
-    expect(error.toJSON()).to.deep.equal({code, message});
-  });
+  describe('toJSON()', () => {
+    it('should resolve with the expected object excluding reason if not provided', () => {
+      const error = new CIAPError(errorInfo);
+      expect(error.toJSON()).to.deep.equal({code, message});
+    });
 
-  it('toJSON() should resolve with the expected object including reason if provided', () => {
-    const error = new CIAPError(errorInfo, reason);
-    expect(error.toJSON()).to.deep.equal({code, message, reason: JSON.stringify(reason)});
+    it('should resolve with the expected object including reason if provided', () => {
+      const error = new CIAPError(errorInfo, undefined, reason);
+      expect(error.toJSON()).to.deep.equal({code, message, reason: JSON.stringify(reason)});
+    });
+
+    it('should resolve with the expected object including reason and custom message if provided', () => {
+      const error = new CIAPError(errorInfo, 'custom message', reason);
+      expect(error.toJSON()).to.deep.equal({
+        code, message: 'custom message', reason: JSON.stringify(reason),
+      });
+    });
   });
 });
 
@@ -127,6 +150,18 @@ describe('HttpCIAPError', () => {
       code: 'permission-denied',
       message: 'Custom message',
       reason: JSON.stringify(reason),
+    });
+  });
+});
+
+describe('CLIENT_ERROR_CODES' , () => {
+  it('should map to expected values in HTTP_ERROR_CODE', () => {
+    Object.keys(HTTP_ERROR_CODE).forEach((key: string) => {
+      const code = key;
+      const message = HTTP_ERROR_CODE[key].message;
+      expect(CLIENT_ERROR_CODES[key]).to.deep.equal({
+        code, message,
+      });
     });
   });
 });

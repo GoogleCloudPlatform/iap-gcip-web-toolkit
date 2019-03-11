@@ -19,7 +19,7 @@ import {expect} from 'chai';
 import {
   addReadonlyGetter, removeUndefinedFields, formatString,
   formSubmitWithRedirect, getCurrentUrl, setCurrentUrl, runIfDefined,
-  generateRandomAlphaNumericString,
+  generateRandomAlphaNumericString, mapObject,
 } from '../../../src/utils/index';
 
 interface Obj {
@@ -272,5 +272,50 @@ describe('generateRandomAlphaNumericString()', () => {
       const pattern = new RegExp('^[A-Za-z0-9]{' + i.toString() + '}$');
       expect(pattern.test(generateRandomAlphaNumericString(i))).to.be.true;
     }
+  });
+});
+
+describe('mapObject()', () => {
+  const input1 = {
+    a: 1,
+    b: 2,
+    c: 3,
+  };
+  const output1 = {
+    a: 2,
+    b: 4,
+    c: 6,
+  };
+  const cb1 = (key: string, value: any) => {
+    return value * 2;
+  };
+  const input2 = {
+    a: {key: 'a', value: 1, other: 'other1'},
+    b: {key: 'b', value: 2, other: 'other2'},
+    c: {key: 'c', value: 3, other: 'other3'},
+  };
+  const output2 = {
+    a: {newKey: 'keyA', newValue: 1, key: 'a'},
+    b: {newKey: 'keyB', newValue: 4, key: 'b'},
+    c: {newKey: 'keyC', newValue: 9, key: 'c'},
+  };
+  const cb2 = (key: string, value: any) => {
+    return {
+      newKey: `key${value.key.toUpperCase()}`,
+      newValue: Math.pow(value.value, 2),
+      key,
+    };
+  };
+
+  it('should return expected empty object when given empty object', () => {
+    expect(mapObject({}, cb1)).to.deep.equal({});
+  });
+
+  it('should return expected object for input object with simple values', () => {
+    expect(mapObject(input1, cb1)).to.deep.equal(output1);
+  });
+
+  it('should return expected object for input object with object values', () => {
+    expect(mapObject(input2, cb2)).to.deep.equal(output2);
   });
 });

@@ -28,6 +28,7 @@ import {
 import * as storageManager from '../../../src/storage/manager';
 import * as authTenantsStorage from '../../../src/ciap/auth-tenants-storage';
 import { getCurrentUrl } from '../../../src/utils';
+import { CLIENT_ERROR_CODES, CIAPError } from '../../../src/utils/error';
 
 /**
  * Concrete subclass of the abstract BaseOperationHandler class used to
@@ -92,10 +93,10 @@ class ConcreteOperationHandler extends BaseOperationHandler {
     expect(this.isProgressBarVisible()).to.be.false;
     expect((this.handler as MockAuthenticationHandler).isProgressBarVisible()).to.be.false;
     // Confirm all Auth tenants storage access fail before start().
-    expect(() => this.listAuthTenants()).to.throw();
-    expect(() => this.removeAuthTenant('TENANT_ID')).to.throw();
-    expect(() => this.addAuthTenant('TENANT_ID')).to.throw();
-    expect(() => this.clearAuthTenants()).to.throw();
+    expect(() => this.listAuthTenants()).to.throw().with.property('code', 'internal');
+    expect(() => this.removeAuthTenant('TENANT_ID')).to.throw().with.property('code', 'internal');
+    expect(() => this.addAuthTenant('TENANT_ID')).to.throw().with.property('code', 'internal');
+    expect(() => this.clearAuthTenants()).to.throw().with.property('code', 'internal');
   }
 
   /**
@@ -211,7 +212,7 @@ describe('BaseOperationHandler', () => {
 
     expect(() => {
       return new ConcreteOperationHandler(config, authenticationHandler);
-    }).to.throw();
+    }).to.throw().with.property('code', 'invalid-argument');
   });
 
   it('should throw when Auth instance API key does not match config API key', () => {
@@ -221,7 +222,7 @@ describe('BaseOperationHandler', () => {
 
     expect(() => {
       return new ConcreteOperationHandler(config, authenticationHandler);
-    }).to.throw();
+    }).to.throw().with.property('code', 'invalid-argument');
   });
 
   describe('start()', () => {
@@ -260,7 +261,7 @@ describe('BaseOperationHandler', () => {
 
     it('should reject on unsuccessful domain validation', () => {
       const processorStub = sinon.stub().resolves();
-      const unauthorizedDomainError = new Error('Unauthorized domain!');
+      const unauthorizedDomainError = new CIAPError(CLIENT_ERROR_CODES['permission-denied'], 'Unauthorized domain');
       checkAuthorizedDomainsAndGetProjectIdStub.restore();
       checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           CICPRequestHandler.prototype,
@@ -285,6 +286,7 @@ describe('BaseOperationHandler', () => {
           expect(hideProgressBarSpy).to.have.been.calledOnce
             .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           expect(processorStub).to.not.have.been.called;
+          expect(authenticationHandler.getLastHandledError()).to.equal(unauthorizedDomainError);
         });
     });
 
@@ -310,6 +312,7 @@ describe('BaseOperationHandler', () => {
           expect(hideProgressBarSpy).to.have.been.calledOnce
             .and.calledAfter(processorStub);
           expect(processorStub).to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+          expect(authenticationHandler.getLastHandledError()).to.equal(expectedError);
         });
     });
   });

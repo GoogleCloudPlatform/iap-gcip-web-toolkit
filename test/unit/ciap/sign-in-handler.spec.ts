@@ -27,7 +27,7 @@ import { CICPRequestHandler } from '../../../src/ciap/cicp-request';
 import { IAPRequestHandler } from '../../../src/ciap/iap-request';
 import * as utils from '../../../src/utils/index';
 import { FirebaseAuth } from '../../../src/ciap/firebase-auth';
-import { HttpCIAPError } from '../../../src/utils/error';
+import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../../../src/utils/error';
 import * as storageManager from '../../../src/storage/manager';
 import * as authTenantsStorage from '../../../src/ciap/auth-tenants-storage';
 
@@ -101,21 +101,21 @@ describe('SignInOperationHandler', () => {
     expect(() => {
       const invalidConfig = new Config(createMockUrl('login', apiKey, 'invalidTenantId', redirectUri, state, hl));
       return new SignInOperationHandler(invalidConfig, authenticationHandler);
-    }).to.throw();
+    }).to.throw().to.have.property('code', 'invalid-argument');
   });
 
   it('should throw on initialization with no redirectUrl', () => {
     expect(() => {
       const invalidConfig = new Config(createMockUrl('login', apiKey, tid, null, state, hl));
       return new SignInOperationHandler(invalidConfig, authenticationHandler);
-    }).to.throw();
+    }).to.throw().to.have.property('code', 'invalid-argument');
   });
 
   it('should throw on initialization with no state', () => {
     expect(() => {
       const invalidConfig = new Config(createMockUrl('login', apiKey, tid, redirectUri, null, hl));
       return new SignInOperationHandler(invalidConfig, authenticationHandler);
-    }).to.throw();
+    }).to.throw().to.have.property('code', 'invalid-argument');
   });
 
   describe('type', () => {
@@ -125,7 +125,7 @@ describe('SignInOperationHandler', () => {
   });
 
   describe('start()', () => {
-    const unauthorizedDomainError = new Error('Unauthorized domain!');
+    const unauthorizedDomainError = new CIAPError(CLIENT_ERROR_CODES['permission-denied'], 'Unauthorized domain');
     it('should fail on unauthorized redirect URL if no user is signed in', () => {
       // Mock domains are not authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
@@ -150,6 +150,8 @@ describe('SignInOperationHandler', () => {
           // On failure, progress bar should be hidden.
           expect(hideProgressBarSpy).to.have.been.calledOnce
             .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
         });
     });
 
@@ -179,6 +181,8 @@ describe('SignInOperationHandler', () => {
           // Progress bar hidden on error thrown.
           expect(hideProgressBarSpy).to.have.been.calledOnce
             .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
         });
     });
 
@@ -399,6 +403,7 @@ describe('SignInOperationHandler', () => {
         .catch((error) => {
           // Expected tenant mismatch error should be thrown.
           expect(error).to.have.property('message', 'Mismatching tenant ID');
+          expect(error).to.have.property('code', 'invalid-argument');
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledTwice
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -419,6 +424,8 @@ describe('SignInOperationHandler', () => {
           expect(setCookieAtTargetUrlStub).to.not.have.been.called;
           // Confirm redirect to original URI.
           expect(setCurrentUrlStub).to.not.have.been.called;
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
           // Confirm no new tenant ID is stored.
           return authTenantsStorageManager.listTenants();
         })
@@ -520,6 +527,8 @@ describe('SignInOperationHandler', () => {
             .to.not.have.been.called;
           expect(setCookieAtTargetUrlStub).to.not.have.been.called;
           expect(setCurrentUrlStub).to.not.have.been.called;
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
           // Confirm the tenant ID is not stored.
           return authTenantsStorageManager.listTenants();
         })
@@ -574,6 +583,8 @@ describe('SignInOperationHandler', () => {
             .and.calledWith(config.redirectUrl, 'ID_TOKEN1', config.tid, config.state);
           expect(setCookieAtTargetUrlStub).to.not.have.been.called;
           expect(setCurrentUrlStub).to.not.have.been.called;
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
           // Confirm existing tenant remains in storage.
           return authTenantsStorageManager.listTenants();
         })
@@ -628,6 +639,8 @@ describe('SignInOperationHandler', () => {
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
           expect(setCurrentUrlStub).to.not.have.been.called;
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
           // Confirm the tenant ID is not stored.
           return authTenantsStorageManager.listTenants();
         })
