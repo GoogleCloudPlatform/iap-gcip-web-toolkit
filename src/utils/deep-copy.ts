@@ -24,6 +24,37 @@ export function deepCopy<T>(value: T): T {
   return deepExtend(undefined, value);
 }
 
+/**
+ * Checks for deep equality between the provided parameters.
+ * https://stackoverflow.com/questions/25456013/javascript-deepequal-comparison/25456134
+ *
+ * @param {any} a The first object to be compared for deep equality.
+ * @param {any} b The second object to be compared for deep equality.
+ * @return {boolean} Whether a deep equals b.
+ */
+export function deepEqual(a: any, b: any): boolean {
+  if (a === b) {
+    return true;
+  } else if (typeof a === 'object' &&
+             typeof b === 'object' &&
+             a !== null &&
+             b !== null &&
+             Object.keys(a).length === Object.keys(b).length) {
+    // Match properties one by one.
+    for (const prop in a) {
+      if (a.hasOwnProperty(prop)) {
+        if (!b.hasOwnProperty(prop) ||
+            !deepEqual(a[prop], b[prop])) {
+          return false;
+        }
+      }
+    }
+    // All sub properties match.
+    return true;
+  }
+  return false;
+}
+
 
 /**
  * Copies properties from source to target (recursively allows extension of objects and arrays).
