@@ -20,7 +20,7 @@ import '../public/style.css';
 const config = require('./config.json');
 import 'bootstrap';
 // Import CICP/IAP module (using local build).
-import * as ciap from '../../../lib/index.js';
+import * as ciap from '../../../dist/index.esm';
 import * as templates from './templates';
 import jQuery from 'jquery';
 window.$ = window.jQuery = jQuery;

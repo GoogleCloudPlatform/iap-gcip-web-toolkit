@@ -373,6 +373,8 @@ describe('isURL()', () => {
     expect(isURL('http://localhost/path/name/index.php?a=1&b=2&c=3#abcd')).to.be.true;
     expect(isURL('http://127.0.0.1/path/name/index.php?a=1&b=2&c=3#abcd')).to.be.true;
     expect(isURL('http://a--b.c-c.co-uk/')).to.be.true;
+    expect(isURL('http://a--b.c-c.co-uk//')).to.be.true;
+    expect(isURL('http://a--b.c-c.co-uk//path//')).to.be.true;
     expect(isURL('https://storage.googleapis.com/example-bucket/cat%20pic.jpeg?GoogleAccessId=e@' +
       'example-project.iam.gserviceaccount.com&Expires=1458238630&Signature=VVUgfqviDCov%2B%2BKn' +
       'mVOkwBR2olSbId51kSibuQeiH8ucGFyOfAVbH5J%2B5V0gDYIioO2dDGH9Fsj6YdwxWv65HE71VEOEsVPuS8CVb%2' +
@@ -380,6 +382,7 @@ describe('isURL()', () => {
       'FEQyQZmyJK3ty%2Bmr7kAFW16I9pD11jfBSD1XXjKTJzgd%2FMGSde4Va4J1RtHoX7r5i7YR7Mvf%2Fb17zlAuGlz' +
       'VUf%2FzmhLPqtfKinVrcqdlmamMcmLoW8eLG%2B1yYW%2F7tlS2hvqSfCW8eMUUjiHiSWgZLEVIG4Lw%3D%3D'))
       .to.be.true;
+    expect(isURL('https://project.appspot.com//_gcp_iap/cicp_authenticate')).to.be.true;
   });
 
   it('should return false with an invalid web URL string', () => {
