@@ -18,6 +18,7 @@ import { AuthenticationHandler } from './authentication-handler';
 import { BaseOperationHandler, OperationType } from './base-operation-handler';
 import { Config } from './config';
 import { setCurrentUrl } from './../utils/index';
+import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 
 /**
  * Defines the sign-out operation handler.
@@ -38,11 +39,11 @@ export class SignOutOperationHandler extends BaseOperationHandler {
     super(config, handler);
     // Single tenant signout but tenant not found.
     if (this.tenantId && !this.auth) {
-      throw new Error('Invalid request!');
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid request');
     }
     // Single tenant with redirect but no state.
     if (this.auth && this.redirectUrl && !this.state) {
-      throw new Error('Invalid request!');
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid request');
     }
   }
 

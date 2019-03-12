@@ -20,6 +20,7 @@ import { SignOutOperationHandler } from './sign-out-handler';
 import { Config, ConfigMode } from './config';
 import { AuthenticationHandler, isAuthenticationHandler } from './authentication-handler';
 import { getCurrentUrl } from '../utils/index';
+import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 
 /**
  * Defines the main utility used to handle all incoming sign-in, re-auth and sign-out operation
@@ -39,7 +40,7 @@ export class Authentication {
    */
   constructor(handler: AuthenticationHandler) {
     if (!isAuthenticationHandler(handler)) {
-      throw new Error('Invalid AuthenticationHandler');
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid AuthenticationHandler');
     }
     // Determine the current operation mode.
     const config = new Config(getCurrentUrl(window));
@@ -54,7 +55,7 @@ export class Authentication {
         this.operationHandler = new SignOutOperationHandler(config, handler);
         break;
       default:
-        throw new Error('Invalid mode');
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid mode');
     }
   }
 

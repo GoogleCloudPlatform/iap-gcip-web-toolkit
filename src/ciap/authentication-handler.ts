@@ -34,6 +34,7 @@ export interface AuthenticationHandler {
   completeSignOut(): Promise<void>;
   showProgressBar?(): void;
   hideProgressBar?(): void;
+  handleError?(error: Error): void;
 }
 
 /**
@@ -53,6 +54,10 @@ export function isAuthenticationHandler(handler: any): handler is Authentication
     }
     if (typeof handler.hideProgressBar !== 'undefined' &&
         typeof handler.hideProgressBar !== 'function') {
+      return false;
+    }
+    if (typeof handler.handleError !== 'undefined' &&
+        typeof handler.handleError !== 'function') {
       return false;
     }
     return true;

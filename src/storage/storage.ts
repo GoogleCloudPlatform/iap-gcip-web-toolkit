@@ -15,6 +15,7 @@
  */
 
 import { generateRandomAlphaNumericString } from '../utils/index';
+import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 
 /** Generic web storage interface. */
 export interface WebStorage {
@@ -67,7 +68,7 @@ abstract class AbstractStorage implements WebStorage {
    */
   constructor(protected readonly storage: Storage) {
     if (!isStorageAvailable(storage)) {
-      throw new Error('Requested storage is not available!');
+      throw new CIAPError(CLIENT_ERROR_CODES['failed-precondition'], 'Requested storage is not available');
     }
   }
 

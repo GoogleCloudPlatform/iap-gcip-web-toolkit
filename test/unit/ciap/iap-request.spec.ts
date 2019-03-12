@@ -89,7 +89,7 @@ describe('IAPRequestHandler', () => {
       it('should throw given invalid http client: ' + JSON.stringify(invalidHttpClient), () => {
         expect(() => {
           return new (IAPRequestHandler as any)(apiKey, invalidHttpClient);
-        }).to.throw();
+        }).to.throw().to.have.property('code', 'invalid-argument');
       });
     });
 
@@ -149,6 +149,7 @@ describe('IAPRequestHandler', () => {
             .and.calledWith(invalidUrl)
             .and.returned(false);
           expect(error).to.have.property('message', 'Invalid URL');
+          expect(error).to.have.property('code', 'invalid-argument');
           expect(stub).to.not.have.been.called;
         });
     });
@@ -168,6 +169,7 @@ describe('IAPRequestHandler', () => {
             })
             .catch((error) => {
               expect(error).to.have.property('message', 'Invalid request');
+              expect(error).to.have.property('code', 'invalid-argument');
               expect(stub).to.not.have.been.called;
             });
       });
@@ -185,6 +187,7 @@ describe('IAPRequestHandler', () => {
             })
             .catch((error) => {
               expect(error).to.have.property('message', 'Invalid request');
+              expect(error).to.have.property('code', 'invalid-argument');
               expect(stub).to.not.have.been.called;
             });
       });
@@ -202,6 +205,7 @@ describe('IAPRequestHandler', () => {
             })
             .catch((error) => {
               expect(error).to.have.property('message', 'Invalid request');
+              expect(error).to.have.property('code', 'invalid-argument');
               expect(stub).to.not.have.been.called;
             });
       });
@@ -219,6 +223,7 @@ describe('IAPRequestHandler', () => {
         })
         .catch((error) => {
           expect(error).to.have.property('message', 'Invalid response');
+          expect(error).to.have.property('code', 'unknown');
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
     });
@@ -315,6 +320,7 @@ describe('IAPRequestHandler', () => {
             .and.calledWith(invalidUrl)
             .and.returned(false);
           expect(error).to.have.property('message', 'Invalid URL');
+          expect(error).to.have.property('code', 'invalid-argument');
           expect(stub).to.not.have.been.called;
         });
     });
@@ -332,6 +338,7 @@ describe('IAPRequestHandler', () => {
             })
             .catch((error) => {
               expect(error).to.have.property('message', 'Invalid request');
+              expect(error).to.have.property('code', 'invalid-argument');
               expect(stub).to.not.have.been.called;
             });
       });
@@ -451,6 +458,7 @@ describe('IAPRequestHandler', () => {
             .and.calledWith(invalidUrl)
             .and.returned(false);
           expect(error).to.have.property('message', 'Invalid URL');
+          expect(error).to.have.property('code', 'invalid-argument');
           expect(stub).to.not.have.been.called;
         });
     });
@@ -469,6 +477,7 @@ describe('IAPRequestHandler', () => {
             })
             .catch((error) => {
               expect(error).to.have.property('message', 'Invalid request');
+              expect(error).to.have.property('code', 'invalid-argument');
               expect(stub).to.not.have.been.called;
             });
       });
@@ -485,6 +494,7 @@ describe('IAPRequestHandler', () => {
             })
             .catch((error) => {
               expect(error).to.have.property('message', 'Invalid request');
+              expect(error).to.have.property('code', 'invalid-argument');
               expect(stub).to.not.have.been.called;
             });
       });
@@ -502,6 +512,7 @@ describe('IAPRequestHandler', () => {
         })
         .catch((error) => {
           expect(error).to.have.property('message', 'Invalid response');
+          expect(error).to.have.property('code', 'unknown');
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
     });

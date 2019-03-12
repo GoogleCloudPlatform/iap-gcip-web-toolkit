@@ -17,7 +17,7 @@
 import { isNonEmptyString, isHttpsURL } from '../utils/validator';
 import { HttpResponse, HttpRequestConfig, HttpClient, LowLevelError } from '../utils/http-client';
 import { ApiRequester } from '../utils/api-requester';
-import { HttpCIAPError } from '../utils/error';
+import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 
 /**
  * IAP request timeout duration in milliseconds. This should become variable depending on
@@ -57,16 +57,15 @@ export class IAPRequestHandler {
     url: '{iapRedirectServerUrl}',
     timeout: IAP_TIMEOUT,
   }).setRequestValidator((config: HttpRequestConfig) => {
-    // TODO: create common internal error class to handle errors.
     // Validate redirect server URL.
     if (!isHttpsURL(config.url)) {
-      throw new Error('Invalid URL');
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid URL');
     }
     // Validate all data parameters.
     if (!isNonEmptyString(config.data.id_token) ||
         !isNonEmptyString(config.data.state) ||
         !isNonEmptyString(config.data.id_token_tenant_id)) {
-      throw new Error('Invalid request');
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid request');
     }
   }).setResponseValidator((response: HttpResponse) => {
     // Confirm response contains required parameters.
@@ -74,8 +73,7 @@ export class IAPRequestHandler {
         !isNonEmptyString(response.data.redirectToken) ||
         !isNonEmptyString(response.data.originalUri) ||
         !isNonEmptyString(response.data.targetUri)) {
-      // TODO: create common internal error class to handle errors.
-      throw new Error('Invalid response');
+      throw new CIAPError(CLIENT_ERROR_CODES.unknown, 'Invalid response');
     }
   });
 
@@ -88,14 +86,13 @@ export class IAPRequestHandler {
     url: '{targetUrl}',
     timeout: IAP_TIMEOUT,
   }).setRequestValidator((config: HttpRequestConfig) => {
-    // TODO: create common internal error class to handle errors.
     // Validate target URL.
     if (!isHttpsURL(config.url)) {
-      throw new Error('Invalid URL');
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid URL');
     }
     // Validate redirect token.
     if (!isNonEmptyString(config.headers['x-iap-3p-token'])) {
-      throw new Error('Invalid request');
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid request');
     }
   });
 
@@ -107,7 +104,7 @@ export class IAPRequestHandler {
    */
   constructor(private readonly httpClient: HttpClient) {
     if (!httpClient || typeof httpClient.send !== 'function') {
-      throw new Error('Invalid HTTP client instance');
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid HTTP client instance');
     }
   }
 

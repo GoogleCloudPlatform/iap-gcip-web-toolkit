@@ -75,7 +75,7 @@ describe('CICPRequestHandler', () => {
       it('should throw given invalid API key: ' + JSON.stringify(invalidKey), () => {
         expect(() => {
           return new (CICPRequestHandler as any)(invalidKey);
-        }).to.throw();
+        }).to.throw().with.property('code', 'invalid-argument');
       });
     });
 
@@ -86,7 +86,7 @@ describe('CICPRequestHandler', () => {
       it('should throw given invalid http client: ' + JSON.stringify(invalidHttpClient), () => {
         expect(() => {
           return new (CICPRequestHandler as any)(apiKey, invalidHttpClient);
-        }).to.throw();
+        }).to.throw().with.property('code', 'invalid-argument');
       });
     });
 
@@ -150,6 +150,7 @@ describe('CICPRequestHandler', () => {
         })
         .catch((error) => {
           expect(error).to.have.property('message', 'Unauthorized domain');
+          expect(error).to.have.property('code', 'permission-denied');
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
     });
@@ -164,6 +165,7 @@ describe('CICPRequestHandler', () => {
         })
         .catch((error) => {
           expect(error).to.have.property('message', 'Unauthorized domain');
+          expect(error).to.have.property('code', 'permission-denied');
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
     });
@@ -178,6 +180,7 @@ describe('CICPRequestHandler', () => {
         })
         .catch((error) => {
           expect(error).to.have.property('message', 'Invalid URL');
+          expect(error).to.have.property('code', 'invalid-argument');
           expect(stub).to.not.have.been.called;
         });
     });
@@ -194,6 +197,7 @@ describe('CICPRequestHandler', () => {
         })
         .catch((error) => {
           expect(error).to.have.property('message', 'Invalid response');
+          expect(error).to.have.property('code', 'unknown');
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
     });

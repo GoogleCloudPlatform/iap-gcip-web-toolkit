@@ -33,6 +33,7 @@ declare namespace ciap {
     completeSignout(): Promise<void>;
     showProgressBar?(): void;
     hideProgressBar?(): void;
+    handleError?(error: Error): void;
   }
 
   class Authentication {

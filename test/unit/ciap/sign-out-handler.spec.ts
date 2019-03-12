@@ -27,7 +27,7 @@ import * as utils from '../../../src/utils/index';
 import { FirebaseAuth } from '../../../src/ciap/firebase-auth';
 import { CICPRequestHandler } from '../../../src/ciap/cicp-request';
 import { IAPRequestHandler } from '../../../src/ciap/iap-request';
-import { HttpCIAPError } from '../../../src/utils/error';
+import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../../../src/utils/error';
 import * as storageManager from '../../../src/storage/manager';
 import * as authTenantsStorage from '../../../src/ciap/auth-tenants-storage';
 
@@ -116,14 +116,14 @@ describe('SignOutOperationHandler', () => {
     expect(() => {
       const invalidConfig = new Config(createMockUrl('signout', apiKey, 'invalidTenantId', redirectUri, state, hl));
       return new SignOutOperationHandler(invalidConfig, authenticationHandler);
-    }).to.throw();
+    }).to.throw().to.have.property('code', 'invalid-argument');
   });
 
   it('should throw on single tenant with redirect initialization with no state', () => {
     expect(() => {
       const invalidConfig = new Config(createMockUrl('signout', apiKey, tid1, redirectUri, null, hl));
       return new SignOutOperationHandler(invalidConfig, authenticationHandler);
-    }).to.throw();
+    }).to.throw().to.have.property('code', 'invalid-argument');
   });
 
   describe('type', () => {
@@ -133,7 +133,7 @@ describe('SignOutOperationHandler', () => {
   });
 
   describe('start()', () => {
-    const unauthorizedDomainError = new Error('Unauthorized domain!');
+    const unauthorizedDomainError = new CIAPError(CLIENT_ERROR_CODES['permission-denied'], 'Unauthorized domain');
     it('should fail on unauthorized redirect URL for single tenant', () => {
       // Mock domains are not authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
@@ -172,6 +172,8 @@ describe('SignOutOperationHandler', () => {
             .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           // User should still be signed in.
           expect(auth1.currentUser).to.not.be.null;
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
           // Confirm stored tenant ID is not cleared from storage.
           return authTenantsStorageManager.listTenants();
         })
@@ -319,6 +321,8 @@ describe('SignOutOperationHandler', () => {
           expect(setCurrentUrlStub).to.not.have.been.called;
           // User should still be signed in.
           expect(auth1.currentUser).to.not.be.null;
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
           // Confirm stored tenant ID is not cleared from storage.
           return authTenantsStorageManager.listTenants();
         })
@@ -370,6 +374,8 @@ describe('SignOutOperationHandler', () => {
           expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
           // No redirect should occur.
           expect(setCurrentUrlStub).to.not.have.been.called;
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
           // Confirm stored tenant ID is not cleared from storage.
           return authTenantsStorageManager.listTenants();
         })
@@ -423,6 +429,8 @@ describe('SignOutOperationHandler', () => {
           expect(auth1.currentUser).to.be.null;
           // Progress bar should be hidden when the error is detected.
           expect(hideProgressBarSpy) .to.have.been.calledOnce.and.calledAfter(getOriginalUrlForSignOutStub);
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
           // Confirm stored tenant ID is cleared from storage.
           return authTenantsStorageManager.listTenants();
         })
@@ -613,6 +621,8 @@ describe('SignOutOperationHandler', () => {
           expect(auth1.currentUser).to.not.be.null;
           expect(auth2.currentUser).to.not.be.null;
           expect(auth3.currentUser).to.not.be.null;
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
           // Confirm all stored tenants remain.
           return authTenantsStorageManager.listTenants();
         })
@@ -672,6 +682,8 @@ describe('SignOutOperationHandler', () => {
           expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
           // No redirect should occur.
           expect(setCurrentUrlStub).to.not.have.been.called;
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
           // Confirm only tenants corresponding to succeeding signOut calls are cleared.
           return authTenantsStorageManager.listTenants();
         })

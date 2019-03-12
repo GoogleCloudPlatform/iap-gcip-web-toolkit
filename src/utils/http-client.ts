@@ -18,6 +18,7 @@ import {
   addReadonlyGetter, removeUndefinedFields,
 } from './index';
 import { isNonNullObject, isObject } from './validator';
+import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 
 /** HTTP method type definition. */
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD';
@@ -104,7 +105,8 @@ function sendRequest(config: HttpRequestConfig): Promise<LowLevelResponse> {
   if (config.data) {
     if (config.method === 'GET' || config.method === 'HEAD') {
       if (!isNonNullObject(config.data)) {
-        return Promise.reject(new Error(`${config.method} requests cannot have a body.`));
+        return Promise.reject(new CIAPError(
+            CLIENT_ERROR_CODES['invalid-argument'], `${config.method} requests cannot have a body.`));
       }
       // Parse URL and append data to query string.
       const parsedUrl = new URL(config.url);
@@ -139,7 +141,9 @@ function sendRequest(config: HttpRequestConfig): Promise<LowLevelResponse> {
     let timeoutId: number;
     if (config.timeout) {
       timeoutId = window.setTimeout(() => {
-        reject(new Error(`Error while making request: timeout of ${config.timeout}ms exceeded`));
+        reject(new CIAPError(
+            CLIENT_ERROR_CODES['deadline-exceeded'],
+            `Error while making request: timeout of ${config.timeout}ms exceeded`));
       }, config.timeout);
     }
     return fetch(url, request)

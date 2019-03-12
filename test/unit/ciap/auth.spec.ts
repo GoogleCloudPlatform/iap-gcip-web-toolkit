@@ -60,14 +60,14 @@ describe('Authentication', () => {
     it('throws an error when initialized with undefined', () => {
       expect(() => {
         return new Authentication(undefined as any);
-      }).to.throw();
+      }).to.throw().with.property('code', 'invalid-argument');
     });
 
     it('throws an error when initialized with an invalid AuthenticationHandler', () => {
       expect(() => {
         const invalidHandler = {} as any;
         return new Authentication(invalidHandler);
-      }).to.throw();
+      }).to.throw().with.property('code', 'invalid-argument');
     });
 
     it('should throw when initialized with an invalid URL mode', () => {
@@ -77,7 +77,7 @@ describe('Authentication', () => {
 
       expect(() => {
         return new Authentication(handler);
-      }).to.throw();
+      }).to.throw().with.property('code', 'invalid-argument');
     });
 
     it('should not throw when initialized with a login mode AuthenticationHandler', () => {

@@ -20,6 +20,7 @@ import { Config } from './config';
 import { RedirectServerResponse } from './iap-request';
 import { UserCredential, User } from './firebase-auth';
 import { setCurrentUrl } from '../utils/index';
+import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 
 /**
  * Defines the sign-in operation handler.
@@ -45,7 +46,7 @@ export class SignInOperationHandler extends BaseOperationHandler {
       private readonly forceReauth: boolean = false) {
     super(config, handler);
     if (!this.auth || !this.redirectUrl || !this.state) {
-      throw new Error('Invalid request!');
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid request');
     }
   }
 
@@ -114,7 +115,7 @@ export class SignInOperationHandler extends BaseOperationHandler {
             this.showProgressBar();
             // Sanity check signed in user tenant ID matches the expected config tenant ID.
             if (!this.userHasMatchingTenantId(result.user)) {
-              throw new Error('Mismatching tenant ID');
+              throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Mismatching tenant ID');
             }
             return result.user.getIdToken();
           })

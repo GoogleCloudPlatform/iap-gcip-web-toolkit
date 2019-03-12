@@ -19,7 +19,7 @@ import {
 } from '../utils/validator';
 import { HttpResponse, LowLevelError, HttpClient } from '../utils/http-client';
 import { ApiRequester } from '../utils/api-requester';
-import { HttpCIAPError } from '../utils/error';
+import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 import { getClientVersion } from '../utils/browser';
 
 
@@ -61,8 +61,7 @@ export class CICPRequestHandler {
     if (!response.isJson() ||
         !isArray(response.data.authorizedDomains) ||
         !isNonEmptyString(response.data.projectId)) {
-      // TODO: create common internal error class to handle errors.
-      throw new Error('Invalid response');
+      throw new CIAPError(CLIENT_ERROR_CODES.unknown, 'Invalid response');
     }
   });
 
@@ -75,12 +74,11 @@ export class CICPRequestHandler {
    */
   constructor(private readonly apiKey: string, private readonly httpClient: HttpClient) {
     if (!isNonEmptyString(apiKey)) {
-      // TODO: create common internal error class to handle errors.
-      throw new Error('Invalid API key');
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid API key');
     }
 
     if (!httpClient || typeof httpClient.send !== 'function') {
-      throw new Error('Invalid HTTP client instance');
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid HTTP client instance');
     }
   }
 
@@ -96,7 +94,7 @@ export class CICPRequestHandler {
     return Promise.resolve().then(() => {
       urls.forEach((url: string) => {
         if (!isURL(url)) {
-          throw new Error('Invalid URL');
+          throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid URL');
         }
       });
 
@@ -106,7 +104,7 @@ export class CICPRequestHandler {
             // Check each URL.
             urls.forEach((url: string) => {
               if (!isAuthorizedDomain(responseJson.authorizedDomains, url)) {
-                throw new Error('Unauthorized domain');
+                throw new CIAPError(CLIENT_ERROR_CODES['permission-denied'], 'Unauthorized domain');
               }
             });
             // If all URLs are authorized, return project ID.

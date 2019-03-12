@@ -23,6 +23,7 @@ import { IAPRequestHandler } from './iap-request';
 import { runIfDefined, getCurrentUrl } from '../utils/index';
 import { AuthTenantsStorageManager } from './auth-tenants-storage';
 import { globalStorageManager } from '../storage/manager';
+import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 
 /** Interface defining IAP/CICP operation handler for sign-in, sign-out and re-auth flows. */
 export interface OperationHandler {
@@ -106,7 +107,12 @@ export abstract class BaseOperationHandler implements OperationHandler {
       })
       .catch((error) => {
         this.hideProgressBar();
-        // TODO: pass error to developer.
+        // While the developer can catch the error, the handler may also need to handle it. For example FirebaseUI
+        // handler can catch the error and take the appropriate action or show an error message to the user.
+        // FirebaseUI also comes with the benefit of error localization.
+        // Since the error is still thrown after, the developer can still override FirebaseUI handling if
+        // they want to do so.
+        runIfDefined(this.handler.handleError, this.handler, [error]);
         throw error;
       });
   }
@@ -143,7 +149,7 @@ export abstract class BaseOperationHandler implements OperationHandler {
     // project. Ideally we should compared project IDs. Getting project ID from API key is
     // possible but can be quite expensive. For now we can use this logic.
     if (auth && auth.app.options.apiKey !== this.config.apiKey) {
-      throw new Error('API key mismatch!');
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'API key mismatch');
     }
     return auth;
   }
@@ -213,7 +219,7 @@ export abstract class BaseOperationHandler implements OperationHandler {
    */
   private checkAuthTenantsStorageManagerInitialized() {
     if (!this.authTenantsStorageManager) {
-      throw new Error('Instance not started!');
+      throw new CIAPError(CLIENT_ERROR_CODES.internal, 'Instance not started');
     }
   }
 }
