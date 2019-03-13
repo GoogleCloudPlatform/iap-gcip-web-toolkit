@@ -17,7 +17,9 @@
 import {expect} from 'chai';
 import * as sinon from 'sinon';
 import { Config } from '../../../src/ciap/config';
-import { BaseOperationHandler, OperationType } from '../../../src/ciap/base-operation-handler';
+import {
+  BaseOperationHandler, OperationType, CacheDuration,
+} from '../../../src/ciap/base-operation-handler';
 import { FirebaseAuth } from '../../../src/ciap/firebase-auth';
 import { CICPRequestHandler } from '../../../src/ciap/cicp-request';
 import { IAPRequestHandler } from '../../../src/ciap/iap-request';
@@ -29,6 +31,7 @@ import * as storageManager from '../../../src/storage/manager';
 import * as authTenantsStorage from '../../../src/ciap/auth-tenants-storage';
 import { getCurrentUrl } from '../../../src/utils';
 import { CLIENT_ERROR_CODES, CIAPError } from '../../../src/utils/error';
+import { PromiseCache } from '../../../src/utils/promise-cache';
 
 /**
  * Concrete subclass of the abstract BaseOperationHandler class used to
@@ -165,6 +168,7 @@ describe('BaseOperationHandler', () => {
   let checkAuthorizedDomainsAndGetProjectIdStub: sinon.SinonStub;
   let showProgressBarSpy: sinon.SinonSpy;
   let hideProgressBarSpy: sinon.SinonSpy;
+  let cacheAndReturnResultSpy: sinon.SinonSpy;
 
   beforeEach(() => {
     checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
@@ -187,12 +191,14 @@ describe('BaseOperationHandler', () => {
         }));
     showProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'showProgressBar');
     hideProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'hideProgressBar');
+    cacheAndReturnResultSpy = sinon.spy(PromiseCache.prototype, 'cacheAndReturnResult');
   });
 
   afterEach(() => {
     stubs.forEach((s) => s.restore());
     showProgressBarSpy.restore();
     hideProgressBarSpy.restore();
+    cacheAndReturnResultSpy.restore();
   });
 
   it('should initialize all underlying parameters as expected', () => {
@@ -256,6 +262,19 @@ describe('BaseOperationHandler', () => {
           expect(processorStub).to.have.been.calledOnce
             .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           expect(hideProgressBarSpy).to.not.have.been.called;
+          // Expect result to be cached for 30 mins.
+          expect(cacheAndReturnResultSpy).to.be.calledOnce;
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(CICPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[2]).to.deep.equal([[currentUrl, config.redirectUrl]]);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
+          // Second call should return cached result.
+          return concreteInstance.start();
+        })
+        .then(() => {
+          // No additional call. Cached result should be used.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce;
         });
     });
 
@@ -265,7 +284,9 @@ describe('BaseOperationHandler', () => {
       checkAuthorizedDomainsAndGetProjectIdStub.restore();
       checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           CICPRequestHandler.prototype,
-          'checkAuthorizedDomainsAndGetProjectId').rejects(unauthorizedDomainError);
+          'checkAuthorizedDomainsAndGetProjectId');
+      checkAuthorizedDomainsAndGetProjectIdStub.onFirstCall().rejects(unauthorizedDomainError);
+      checkAuthorizedDomainsAndGetProjectIdStub.onSecondCall().resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
       const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
@@ -287,6 +308,13 @@ describe('BaseOperationHandler', () => {
             .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           expect(processorStub).to.not.have.been.called;
           expect(authenticationHandler.getLastHandledError()).to.equal(unauthorizedDomainError);
+          // Error should not be cached.
+          return concreteInstance.start();
+        })
+        .then(() => {
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledTwice;
+          expect(checkAuthorizedDomainsAndGetProjectIdStub.getCalls()[1].args)
+            .to.deep.equal([[currentUrl, config.redirectUrl]]);
         });
     });
 
