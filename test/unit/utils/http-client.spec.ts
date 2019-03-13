@@ -62,6 +62,7 @@ describe('HttpClient', () => {
         method: 'GET',
         mode: 'no-cors',
         cache: 'default',
+        credentials: 'same-origin',
         url: mockUrl,
       }).then((resp) => {
         expect(resp.status).to.equal(200);
@@ -75,6 +76,7 @@ describe('HttpClient', () => {
               method: 'GET',
               mode: 'no-cors',
               cache: 'default',
+              credentials: 'same-origin',
             });
       });
     });
@@ -95,6 +97,7 @@ describe('HttpClient', () => {
         method: 'GET',
         mode: 'cors',
         cache: 'no-cache',
+        credentials: 'include',
         url: mockUrl,
       }).then((resp) => {
         expect(resp.status).to.equal(200);
@@ -108,6 +111,7 @@ describe('HttpClient', () => {
               method: 'GET',
               mode: 'cors',
               cache: 'no-cache',
+              credentials: 'include',
             });
       });
     });
@@ -128,6 +132,7 @@ describe('HttpClient', () => {
       return client.send({
         method: 'POST',
         mode: 'cors',
+        credentials: 'include',
         cache: 'no-cache',
         url: mockUrl,
         data: reqData,
@@ -147,6 +152,7 @@ describe('HttpClient', () => {
               method: 'POST',
               mode: 'cors',
               cache: 'no-cache',
+              credentials: 'include',
               body: JSON.stringify(reqData),
               headers: {
                 'Content-Type': 'application/json',
@@ -173,6 +179,7 @@ describe('HttpClient', () => {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',
+        credentials: 'include',
         url: mockUrl,
         data: reqData,
         headers: {
@@ -191,6 +198,7 @@ describe('HttpClient', () => {
               method: 'POST',
               mode: 'cors',
               cache: 'no-cache',
+              credentials: 'include',
               body: 'key1=value1&key2=value2',
               headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -217,6 +225,7 @@ describe('HttpClient', () => {
         method: 'GET',
         mode: 'cors',
         cache: 'no-cache',
+        credentials: 'include',
         url: mockUrl,
         data: reqData,
         headers: {
@@ -235,6 +244,7 @@ describe('HttpClient', () => {
               method: 'GET',
               mode: 'cors',
               cache: 'no-cache',
+              credentials: 'include',
               headers: {
                 'Content-Type': 'application/json',
                 'My-Custom-Header': 'CustomValue',
@@ -270,6 +280,7 @@ describe('HttpClient', () => {
         method: 'HEAD',
         mode: 'cors',
         cache: 'no-cache',
+        credentials: 'include',
         url: mockUrl,
         data: reqData,
         headers: {
@@ -288,6 +299,7 @@ describe('HttpClient', () => {
               method: 'HEAD',
               mode: 'cors',
               cache: 'no-cache',
+              credentials: 'include',
               headers: {
                 'Content-Type': 'application/json',
                 'My-Custom-Header': 'CustomValue',
@@ -330,6 +342,7 @@ describe('HttpClient', () => {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',
+        credentials: 'include',
         url: mockUrl,
         data: reqData,
         timeout,
@@ -361,6 +374,7 @@ describe('HttpClient', () => {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',
+        credentials: 'include',
         url: mockUrl,
         data: reqData,
         timeout,
@@ -376,6 +390,7 @@ describe('HttpClient', () => {
               method: 'POST',
               mode: 'cors',
               cache: 'no-cache',
+              credentials: 'include',
               body: JSON.stringify(reqData),
             });
       });
@@ -408,6 +423,7 @@ describe('HttpClient', () => {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',
+        credentials: 'omit',
         url: mockUrl,
         data: reqData,
         headers: {
@@ -419,6 +435,7 @@ describe('HttpClient', () => {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',
+        credentials: 'omit',
         headers: {
           'Content-Type': 'application/json',
           'My-Custom-Header': 'CustomValue',

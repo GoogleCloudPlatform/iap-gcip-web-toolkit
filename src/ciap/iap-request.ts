@@ -83,6 +83,7 @@ export class IAPRequestHandler {
     mode: 'cors',
     cache: 'no-cache',
     headers: IAP_HEADERS,
+    credentials: 'include',
     url: '{targetUrl}',
     timeout: IAP_TIMEOUT,
   }).setRequestValidator((config: HttpRequestConfig) => {

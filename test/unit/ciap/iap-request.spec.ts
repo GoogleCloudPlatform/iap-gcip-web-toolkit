@@ -284,6 +284,7 @@ describe('IAPRequestHandler', () => {
     const expectedConfigRequest: HttpRequestConfig = {
       method: 'GET',
       mode: 'cors',
+      credentials: 'include',
       cache: 'no-cache',
       headers: {
         'Content-Type': 'application/json',

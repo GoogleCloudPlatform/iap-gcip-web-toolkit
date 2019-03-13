@@ -29,6 +29,9 @@ export type FetchMode = 'cors' | 'no-cors' | 'same-origin';
 /** HTTP fetch caching settings. */
 export type Cache = 'default' | 'no-cache' | 'reload' | 'force-cache';
 
+/** HTTP fetch credentials settings. */
+export type Credentials = 'omit' | 'same-origin' | 'include';
+
 /**
  * Configuration for constructing a new HTTP request.
  */
@@ -36,6 +39,7 @@ export interface HttpRequestConfig {
   method: HttpMethod;
   mode?: FetchMode;
   cache?: Cache;
+  credentials?: Credentials;
   /** Target URL of the request. Should be a well-formed URL including protocol, hostname, port and path. */
   url: string;
   headers?: {[key: string]: string};
@@ -134,6 +138,7 @@ function sendRequest(config: HttpRequestConfig): Promise<LowLevelResponse> {
     mode: config.mode,
     cache: config.cache,
     headers: config.headers,
+    credentials: config.credentials,
     body,
   });
 
