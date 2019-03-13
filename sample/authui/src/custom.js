@@ -50,9 +50,26 @@ class CustomUiHandler {
      return auth;
   }
 
+  handleError(error) {
+    this.container.innerHTML = templates.showAlert({
+      code: error.code,
+      message: error.message,
+    });
+  }
+
   startSignIn(auth, locale) {
     return new Promise((resolve, reject) => {
       this.container.innerHTML = templates.signIn({tenantId: auth.tenantId});
+      // Sign in with SAML provider.
+      $('#sign-in-saml').on('click', (e) => {
+        $('#error').hide();
+        e.preventDefault();
+        auth.signInWithRedirect(new firebase.auth.SAMLAuthProvider('saml.okta-cicp-app'))
+          .catch((error) => {
+            $('#error').html(templates.showAlert({message: error.message})).show();
+          });
+        return false;
+      });
       $('#enter-email-form').on('submit', (e) => {
         $('#error').hide();
         e.preventDefault();

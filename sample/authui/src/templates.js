@@ -27,6 +27,10 @@ export const signIn = HandleBars.compile(`
           <input class="form-control" type="text" placeholder="Email" name="email" id="email">
         </div>
         <button type="submit" class="btn btn-primary mb-2">Next</button>
+        <div style="padding: 10px;">
+          <h3 class="line-through">OR</h3>
+          <button id="sign-in-saml" type="button" class="btn btn-primary btn-block">Sign in with SAML</button>
+        </div>
         <div id="error"></div>
       </form>
     </div>
@@ -79,7 +83,7 @@ export const signUpWithEmail = HandleBars.compile(`
 
 export const showAlert = HandleBars.compile(`
   <div class="alert alert-danger alert-dismissible fade show" role="alert">
-    <strong>Error</strong> {{message}}
+    <strong>Error</strong> {{code}} - {{message}}
     <button type="button" class="close" data-dismiss="alert" aria-label="Close">
       <span aria-hidden="true">&times;</span>
     </button>
