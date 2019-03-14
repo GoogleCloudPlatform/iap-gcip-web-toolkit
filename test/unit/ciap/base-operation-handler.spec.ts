@@ -30,7 +30,7 @@ import {
 import * as storageManager from '../../../src/storage/manager';
 import * as authTenantsStorage from '../../../src/ciap/auth-tenants-storage';
 import { getCurrentUrl } from '../../../src/utils';
-import { CLIENT_ERROR_CODES, CIAPError } from '../../../src/utils/error';
+import { CLIENT_ERROR_CODES, CIAPError, RECOVERABLE_ERROR_CODES } from '../../../src/utils/error';
 import { PromiseCache } from '../../../src/utils/promise-cache';
 
 /**
@@ -169,6 +169,7 @@ describe('BaseOperationHandler', () => {
   let showProgressBarSpy: sinon.SinonSpy;
   let hideProgressBarSpy: sinon.SinonSpy;
   let cacheAndReturnResultSpy: sinon.SinonSpy;
+  let startSpy: sinon.SinonSpy;
 
   beforeEach(() => {
     checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
@@ -192,6 +193,7 @@ describe('BaseOperationHandler', () => {
     showProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'showProgressBar');
     hideProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'hideProgressBar');
     cacheAndReturnResultSpy = sinon.spy(PromiseCache.prototype, 'cacheAndReturnResult');
+    startSpy = sinon.spy(ConcreteOperationHandler.prototype, 'start');
   });
 
   afterEach(() => {
@@ -199,6 +201,7 @@ describe('BaseOperationHandler', () => {
     showProgressBarSpy.restore();
     hideProgressBarSpy.restore();
     cacheAndReturnResultSpy.restore();
+    startSpy.restore();
   });
 
   it('should initialize all underlying parameters as expected', () => {
@@ -341,7 +344,48 @@ describe('BaseOperationHandler', () => {
             .and.calledAfter(processorStub);
           expect(processorStub).to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           expect(authenticationHandler.getLastHandledError()).to.equal(expectedError);
+          expect(error).to.not.haveOwnProperty('retry');
         });
+    });
+
+    it('should inject retry on the Error when OperationHandler.process() throws a recoverable error', () => {
+      RECOVERABLE_ERROR_CODES.forEach((code) => {
+        const expectedError = new CIAPError({
+          code,
+          message: 'message',
+        });
+        const processorStub = sinon.stub();
+        processorStub.onFirstCall().rejects(expectedError);
+        processorStub.onSecondCall().resolves();
+        const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+        const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
+
+        const concreteInstance =
+            new ConcreteOperationHandler(config, authenticationHandler, processorStub);
+
+        return concreteInstance.start()
+          .then(() => {
+            throw new Error('Unexpected success');
+          })
+          .catch((error) => {
+            expect(error).to.equal(expectedError);
+            expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
+              .and.calledWith([currentUrl, config.redirectUrl]);
+            expect(showProgressBarSpy).to.have.been.calledOnce
+              .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+            expect(hideProgressBarSpy).to.have.been.calledOnce
+              .and.calledAfter(processorStub);
+            expect(processorStub).to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+            expect(authenticationHandler.getLastHandledError()).to.equal(expectedError);
+            expect(error).to.haveOwnProperty('retry');
+            expect(startSpy).to.be.calledOnce;
+            return error.retry();
+          })
+          .then(() => {
+            expect(startSpy).to.be.calledTwice;
+            expect(startSpy.getCall(0).thisValue).to.equal(concreteInstance);
+          });
+      });
     });
   });
 });

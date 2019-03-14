@@ -54,6 +54,13 @@ class CustomUiHandler {
     this.container.innerHTML = templates.showAlert({
       code: error.code,
       message: error.message,
+      retry: !!error.retry,
+    });
+    // Retry will only be show if retry is available.
+    $('.alert-link').on('click', (e) => {
+      error.retry();
+      e.preventDefault();
+      return false;
     });
   }
 
@@ -136,9 +143,21 @@ class CustomUiHandler {
 }
 
 $(() => {
+  $('#navbar').html(templates.showNavbar({
+    link: `/${window.location.search}`,
+  }));
   // This will handle the underlying handshake for sign-in, sign-out,
   // token refresh, safe redirect to callback URL, etc.
-  const handler = new CustomUiHandler('#sign-in-ui-container', config);
-  const ciapInstance = new ciap.Authentication(handler);
-  ciapInstance.start();
+  try {
+    const handler = new CustomUiHandler('#sign-in-ui-container', config);
+    // Consider delaying error until start is called so all errors can be caught and
+    // handled in the same place.
+    const ciapInstance = new ciap.Authentication(handler);
+    ciapInstance.start();
+  } catch (error) {
+    document.querySelector('#sign-in-ui-container').innerHTML = templates.showAlert({
+      code: error.code,
+      message: error.message,
+    });
+  }
 });

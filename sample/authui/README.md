@@ -55,8 +55,8 @@ Install the Firebase command line tool with `npm install -g firebase-tools` (See
 [docs](https://firebase.google.com/docs/cli/#setup)).
 
 Enable multi-tenancy for the CICP project and configure a couple of
-tenants with different sign-in providers. You can do this using the
-Firebase Admin SDK multi-tenancy management API currently under development.
+tenants with different sign-in providers. You can do this by following the
+[multi-tenant quickstart documentation](https://docs.google.com/document/d/11xhYFb7wKeZ4OHfccJDwbRqhazYlQUSue5YXK8PiFME/).
 
 Deploy the sample app to one of your own Firebase Hosting instance,
 configure it using the following command:

@@ -27,7 +27,7 @@ export const signIn = HandleBars.compile(`
           <input class="form-control" type="text" placeholder="Email" name="email" id="email">
         </div>
         <button type="submit" class="btn btn-primary mb-2">Next</button>
-        <div style="padding: 10px;">
+        <div class="padded-div">
           <h3 class="line-through">OR</h3>
           <button id="sign-in-saml" type="button" class="btn btn-primary btn-block">Sign in with SAML</button>
         </div>
@@ -84,6 +84,9 @@ export const signUpWithEmail = HandleBars.compile(`
 export const showAlert = HandleBars.compile(`
   <div class="alert alert-danger alert-dismissible fade show" role="alert">
     <strong>Error</strong> {{code}} - {{message}}
+    {{#if retry}}
+      <a href="#" class="alert-link">Try again</a>.
+    {{/if}}
     <button type="button" class="close" data-dismiss="alert" aria-label="Close">
       <span aria-hidden="true">&times;</span>
     </button>
@@ -106,4 +109,14 @@ export const showProgressBar = HandleBars.compile(`
 
 export const hideProgressBar = HandleBars.compile(`
   <div></div>
+`);
+
+export const showNavbar = HandleBars.compile(`
+  <nav class="navbar navbar-default navbar-fixed-top">
+    <ul class="navbar-nav ml-auto">
+      <li class="nav-item">
+        <a class="nav-link" href="{{link}}">Switch to FirebaseUI</a>
+      </li>
+    </ul>
+  </nav>
 `);

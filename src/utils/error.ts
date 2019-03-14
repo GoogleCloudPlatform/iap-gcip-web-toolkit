@@ -17,6 +17,13 @@
 import { deepExtend } from './deep-copy';
 import { mapObject } from './index';
 
+/** List of recoverable error codes. */
+export const RECOVERABLE_ERROR_CODES = [
+  'aborted', 'resource-exhausted', 'cancelled', 'unknown', 'deadline-exceeded', 'unavailable',
+  // Firebase errors.
+  'auth/timeout', 'auth/too-many-requests', 'auth/quota-exceeded', 'auth/network-request-failed',
+];
+
 /** Defines error info type. This includes a code and message string. */
 export interface ErrorInfo {
   code: string;
@@ -155,6 +162,16 @@ export class HttpCIAPError extends CIAPError {
     // Inject the HTTP error code.
     return deepExtend(super.toJSON(), {httpErrorCode: this.httpErrorCode});
   }
+}
+
+/**
+ * Returns whether the error is a recoverable error or not.
+ *
+ * @param {{code: string|undefined, message: string}} error The error to check.
+ * @return {boolean} Whether the error is recoverable.
+ */
+export function isRecoverableError(error: {code?: string, message: string}): boolean {
+  return RECOVERABLE_ERROR_CODES.indexOf(error.code) !== -1;
 }
 
 /**

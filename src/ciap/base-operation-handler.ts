@@ -20,10 +20,10 @@ import { Config } from './config';
 import { HttpClient } from '../utils/http-client';
 import { CICPRequestHandler } from './cicp-request';
 import { IAPRequestHandler } from './iap-request';
-import { runIfDefined, getCurrentUrl } from '../utils/index';
+import { runIfDefined, getCurrentUrl, addReadonlyGetter } from '../utils/index';
 import { AuthTenantsStorageManager } from './auth-tenants-storage';
 import { globalStorageManager } from '../storage/manager';
-import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
+import { CLIENT_ERROR_CODES, CIAPError, isRecoverableError } from '../utils/error';
 import { PromiseCache } from '../utils/promise-cache';
 
 /** Interface defining IAP/CICP operation handler for sign-in, sign-out and re-auth flows. */
@@ -124,6 +124,16 @@ export abstract class BaseOperationHandler implements OperationHandler {
       })
       .catch((error) => {
         this.hideProgressBar();
+        // Allow retrial if the error is recoverable.
+        if (isRecoverableError(error)) {
+          // Inject retry on the error. This allows the handler to recover without any reference to the
+          // CIAPAuthentication instance.
+          // By passing the retry function in the error, it also provides access to it for developers
+          // catching the error in the catch block of the start() call.
+          addReadonlyGetter(error, 'retry', () => {
+            return this.start();
+          });
+        }
         // While the developer can catch the error, the handler may also need to handle it. For example FirebaseUI
         // handler can catch the error and take the appropriate action or show an error message to the user.
         // FirebaseUI also comes with the benefit of error localization.

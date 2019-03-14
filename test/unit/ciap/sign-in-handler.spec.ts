@@ -58,6 +58,7 @@ describe('SignInOperationHandler', () => {
   const currentUrl = utils.getCurrentUrl(window);
   const projectId = 'PROJECT_ID';
   let cacheAndReturnResultSpy: sinon.SinonSpy;
+  let startSpy: sinon.SinonSpy;
 
   beforeEach(() => {
     mockStorageManager = createMockStorageManager();
@@ -80,6 +81,7 @@ describe('SignInOperationHandler', () => {
     showProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'showProgressBar');
     hideProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'hideProgressBar');
     cacheAndReturnResultSpy = sinon.spy(PromiseCache.prototype, 'cacheAndReturnResult');
+    startSpy = sinon.spy(SignInOperationHandler.prototype, 'start');
     auth = createMockAuth(apiKey, tid);
     tenant2Auth = {};
     tenant2Auth[tid] = auth;
@@ -93,6 +95,7 @@ describe('SignInOperationHandler', () => {
     showProgressBarSpy.restore();
     hideProgressBarSpy.restore();
     cacheAndReturnResultSpy.restore();
+    startSpy.restore();
   });
 
   it('should not throw on initialization with valid configuration', () => {
@@ -573,7 +576,8 @@ describe('SignInOperationHandler', () => {
     });
 
     it('should reject when exchangeIdTokenAndGetOriginalAndTargetUrl rejects', () => {
-      const expectedError = new HttpCIAPError(400);
+      // Simulate recoverable error.
+      const expectedError = new HttpCIAPError(504);
       auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
@@ -594,6 +598,7 @@ describe('SignInOperationHandler', () => {
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
       stubs.push(setCurrentUrlStub);
+      let caughtError: CIAPError;
 
       // Simulate another tenant previously signed in and saved in storage.
       return authTenantsStorageManager.addTenant('OTHER_TENANT_ID')
@@ -604,6 +609,7 @@ describe('SignInOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          caughtError = error;
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -627,10 +633,14 @@ describe('SignInOperationHandler', () => {
         })
         .then((tenantList: string[]) => {
           expect(tenantList).to.deep.equal(['OTHER_TENANT_ID']);
+          expect(startSpy).to.be.calledOnce;
+          expect(caughtError).to.haveOwnProperty('retry');
           // Try again to confirm caching behavior.
-          return operationHandler.start();
+          return (caughtError as any).retry();
         })
         .then(() => {
+          expect(startSpy).to.be.calledTwice;
+          expect(startSpy.getCall(0).thisValue).to.equal(operationHandler);
           // Cached result returned for checkAuthorizedDomainsAndGetProjectId.
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce;
           // Second call made for failing exchangeIdTokenAndGetOriginalAndTargetUrl.

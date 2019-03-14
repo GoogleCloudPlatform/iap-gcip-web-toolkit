@@ -21,7 +21,9 @@ import * as sinonChai from 'sinon-chai';
 import * as chaiAsPromised from 'chai-as-promised';
 import {
   CIAPError, HttpCIAPError, HTTP_ERROR_CODE, CLIENT_ERROR_CODES,
+  RECOVERABLE_ERROR_CODES, isRecoverableError,
 } from '../../../src/utils/error';
+import { addReadonlyGetter } from '../../../src/utils/index';
 
 chai.should();
 chai.use(sinonChai);
@@ -163,5 +165,30 @@ describe('CLIENT_ERROR_CODES' , () => {
         code, message,
       });
     });
+  });
+});
+
+describe('isRecoverableError()', () => {
+  Object.keys(HTTP_ERROR_CODE).forEach((code) => {
+    const isRecoverable = RECOVERABLE_ERROR_CODES.indexOf(code) !== -1;
+    it(`should return ${isRecoverable} for CIAP error code ${code}` , () => {
+      const error = new HttpCIAPError(
+          HTTP_ERROR_CODE[code].code, HTTP_ERROR_CODE[code].status, HTTP_ERROR_CODE[code].message);
+      if (isRecoverable) {
+        expect(isRecoverableError(error)).to.be.true;
+      } else {
+        expect(isRecoverableError(error)).to.be.false;
+      }
+    });
+  });
+
+  RECOVERABLE_ERROR_CODES.forEach((code) => {
+    if (typeof HTTP_ERROR_CODE[code] === 'undefined') {
+      it(`should return true for non-CIAP error code ${code}` , () => {
+        const error: {code?: string, message: string} = new Error('message');
+        addReadonlyGetter(error, 'code', code);
+        expect(isRecoverableError(error)).to.be.true;
+      });
+    }
   });
 });

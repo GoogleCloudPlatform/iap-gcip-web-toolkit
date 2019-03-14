@@ -17,6 +17,15 @@
 import { FirebaseAuth, UserCredential } from '@firebase/auth-types';
 
 declare namespace ciap {
+  interface CIAPError {
+    httpErrorCode?: number;
+    code: string;
+    message: string;
+    reason?: Error;
+    retry?(): Promise<void>;
+    toJSON(): object;
+  }
+
   interface AuthenticationHandler {
     // Returns the Auth instance for the corresponding API key/tenant.
     getAuth(apiKey: string, tenantId: string): FirebaseAuth;
@@ -33,7 +42,7 @@ declare namespace ciap {
     completeSignout(): Promise<void>;
     showProgressBar?(): void;
     hideProgressBar?(): void;
-    handleError?(error: Error): void;
+    handleError?(error: Error | CIAPError): void;
   }
 
   class Authentication {

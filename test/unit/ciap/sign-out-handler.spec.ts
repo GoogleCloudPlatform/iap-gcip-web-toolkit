@@ -60,6 +60,7 @@ describe('SignOutOperationHandler', () => {
   let authTenantsStorageManager: authTenantsStorage.AuthTenantsStorageManager;
   const currentUrl = utils.getCurrentUrl(window);
   const projectId = 'PROJECT_ID';
+  let startSpy: sinon.SinonSpy;
 
   beforeEach(() => {
     mockStorageManager = createMockStorageManager();
@@ -83,6 +84,7 @@ describe('SignOutOperationHandler', () => {
     showProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'showProgressBar');
     hideProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'hideProgressBar');
     cacheAndReturnResultSpy = sinon.spy(PromiseCache.prototype, 'cacheAndReturnResult');
+    startSpy = sinon.spy(SignOutOperationHandler.prototype, 'start');
     auth1 = createMockAuth(apiKey, tid1);
     auth2 = createMockAuth(apiKey, tid2);
     auth3 = createMockAuth(apiKey, tid3);
@@ -108,6 +110,7 @@ describe('SignOutOperationHandler', () => {
     hideProgressBarSpy.restore();
     signOutSpy.restore();
     cacheAndReturnResultSpy.restore();
+    startSpy.restore();
   });
 
   it('should not throw on initialization', () => {
@@ -412,6 +415,8 @@ describe('SignOutOperationHandler', () => {
     });
 
     it('should reject when getOriginalUrlForSignOutStub rejects', () => {
+      let caughtError: CIAPError;
+      // Simulate recoverable error.
       const expectedError = new HttpCIAPError(504);
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
@@ -438,6 +443,7 @@ describe('SignOutOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          caughtError = error;
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -467,10 +473,14 @@ describe('SignOutOperationHandler', () => {
         .then((tenantList: string[]) => {
           // Other tenant ID should remain in storage.
           expect(tenantList).to.deep.equal(['OTHER_TENANT_ID']);
-          // Try again.
-          return singleSignOutOperationHandler.start();
+          expect(startSpy).to.be.calledOnce;
+          expect(caughtError).to.haveOwnProperty('retry');
+          // Try again to confirm caching behavior.
+          return (caughtError as any).retry();
         })
         .then(() => {
+          expect(startSpy).to.be.calledTwice;
+          expect(startSpy.getCall(0).thisValue).to.equal(singleSignOutOperationHandler);
           // Only getOriginalUrlForSignOut call should retry.
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce;
           expect(getOriginalUrlForSignOutStub).to.have.been.calledTwice;
