@@ -18,7 +18,7 @@ import {expect} from 'chai';
 import * as sinon from 'sinon';
 import { Config } from '../../../src/ciap/config';
 import { SignOutOperationHandler } from '../../../src/ciap/sign-out-handler';
-import { OperationType } from '../../../src/ciap/base-operation-handler';
+import { OperationType, CacheDuration } from '../../../src/ciap/base-operation-handler';
 import {
   createMockUrl, createMockAuth, createMockAuthenticationHandler, MockAuth,
   createMockUser, MockAuthenticationHandler, createMockStorageManager,
@@ -30,6 +30,7 @@ import { IAPRequestHandler } from '../../../src/ciap/iap-request';
 import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../../../src/utils/error';
 import * as storageManager from '../../../src/storage/manager';
 import * as authTenantsStorage from '../../../src/ciap/auth-tenants-storage';
+import { PromiseCache } from '../../../src/utils/promise-cache';
 
 describe('SignOutOperationHandler', () => {
   const stubs: sinon.SinonStub[] = [];
@@ -53,6 +54,7 @@ describe('SignOutOperationHandler', () => {
   let completeSignOutSpy: sinon.SinonSpy;
   let showProgressBarSpy: sinon.SinonSpy;
   let hideProgressBarSpy: sinon.SinonSpy;
+  let cacheAndReturnResultSpy: sinon.SinonSpy;
   let signOutSpy: sinon.SinonSpy;
   let mockStorageManager: storageManager.StorageManager;
   let authTenantsStorageManager: authTenantsStorage.AuthTenantsStorageManager;
@@ -80,6 +82,7 @@ describe('SignOutOperationHandler', () => {
     completeSignOutSpy = sinon.spy(MockAuthenticationHandler.prototype, 'completeSignOut');
     showProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'showProgressBar');
     hideProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'hideProgressBar');
+    cacheAndReturnResultSpy = sinon.spy(PromiseCache.prototype, 'cacheAndReturnResult');
     auth1 = createMockAuth(apiKey, tid1);
     auth2 = createMockAuth(apiKey, tid2);
     auth3 = createMockAuth(apiKey, tid3);
@@ -104,6 +107,7 @@ describe('SignOutOperationHandler', () => {
     showProgressBarSpy.restore();
     hideProgressBarSpy.restore();
     signOutSpy.restore();
+    cacheAndReturnResultSpy.restore();
   });
 
   it('should not throw on initialization', () => {
@@ -202,6 +206,22 @@ describe('SignOutOperationHandler', () => {
           return singleSignOutOperationHandler.start();
         })
         .then(() => {
+          // Expect checkAuthorizedDomainsAndGetProjectId result to be cached for 30 mins.
+          expect(cacheAndReturnResultSpy).to.be.calledTwice;
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(CICPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
+            .to.deep.equal([[currentUrl, singleSignOutConfig.redirectUrl]]);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
+          // Expect getOriginalUrlForSignOut result to be cached for 5 mins.
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[1].args[1].getOriginalUrlForSignOut);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[1]).to.be.instanceof(IAPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[2])
+            .to.deep.equal([singleSignOutConfig.redirectUrl, singleSignOutConfig.tid, singleSignOutConfig.state]);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[3]).to.equal(CacheDuration.GetOriginalUrl);
+
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -230,6 +250,13 @@ describe('SignOutOperationHandler', () => {
         .then((tenantList: string[]) => {
           // Other tenant should remain in storage.
           expect(tenantList).to.deep.equal(['OTHER_TENANT_ID']);
+          // Call again. Cached results should be used. This is not a realistic scenario and only used
+          // to illustrate expected caching behavior.
+          return singleSignOutOperationHandler.start();
+        })
+        .then(() => {
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.be.calledOnce;
+          expect(getOriginalUrlForSignOutStub).to.be.calledOnce;
         });
     });
 
@@ -393,7 +420,10 @@ describe('SignOutOperationHandler', () => {
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
       const getOriginalUrlForSignOutStub =
-          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').rejects(expectedError);
+          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut');
+      // Fail on first try and succeed on second.
+      getOriginalUrlForSignOutStub.onFirstCall().rejects(expectedError);
+      getOriginalUrlForSignOutStub.onSecondCall().resolves(originalUri);
       stubs.push(getOriginalUrlForSignOutStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -437,6 +467,19 @@ describe('SignOutOperationHandler', () => {
         .then((tenantList: string[]) => {
           // Other tenant ID should remain in storage.
           expect(tenantList).to.deep.equal(['OTHER_TENANT_ID']);
+          // Try again.
+          return singleSignOutOperationHandler.start();
+        })
+        .then(() => {
+          // Only getOriginalUrlForSignOut call should retry.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce;
+          expect(getOriginalUrlForSignOutStub).to.have.been.calledTwice;
+          expect(getOriginalUrlForSignOutStub.getCalls()[1].args)
+            .to.deep.equal([singleSignOutConfig.redirectUrl, singleSignOutConfig.tid, singleSignOutConfig.state]);
+          // Confirm redirect to originalUri.
+          expect(setCurrentUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(getOriginalUrlForSignOutStub)
+            .and.calledWith(window, originalUri);
         });
     });
 

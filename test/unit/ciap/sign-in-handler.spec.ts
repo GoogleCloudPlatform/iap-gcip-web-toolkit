@@ -18,7 +18,7 @@ import {expect} from 'chai';
 import * as sinon from 'sinon';
 import { Config } from '../../../src/ciap/config';
 import { SignInOperationHandler } from '../../../src/ciap/sign-in-handler';
-import { OperationType } from '../../../src/ciap/base-operation-handler';
+import { OperationType, CacheDuration } from '../../../src/ciap/base-operation-handler';
 import {
   createMockUrl, createMockAuth, createMockAuthenticationHandler, MockAuth,
   createMockUser, MockUser, MockAuthenticationHandler, createMockStorageManager,
@@ -30,6 +30,7 @@ import { FirebaseAuth } from '../../../src/ciap/firebase-auth';
 import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../../../src/utils/error';
 import * as storageManager from '../../../src/storage/manager';
 import * as authTenantsStorage from '../../../src/ciap/auth-tenants-storage';
+import { PromiseCache } from '../../../src/utils/promise-cache';
 
 describe('SignInOperationHandler', () => {
   const stubs: sinon.SinonStub[] = [];
@@ -56,6 +57,7 @@ describe('SignInOperationHandler', () => {
   let authTenantsStorageManager: authTenantsStorage.AuthTenantsStorageManager;
   const currentUrl = utils.getCurrentUrl(window);
   const projectId = 'PROJECT_ID';
+  let cacheAndReturnResultSpy: sinon.SinonSpy;
 
   beforeEach(() => {
     mockStorageManager = createMockStorageManager();
@@ -77,6 +79,7 @@ describe('SignInOperationHandler', () => {
     startSignInSpy = sinon.spy(MockAuthenticationHandler.prototype, 'startSignIn');
     showProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'showProgressBar');
     hideProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'hideProgressBar');
+    cacheAndReturnResultSpy = sinon.spy(PromiseCache.prototype, 'cacheAndReturnResult');
     auth = createMockAuth(apiKey, tid);
     tenant2Auth = {};
     tenant2Auth[tid] = auth;
@@ -89,6 +92,7 @@ describe('SignInOperationHandler', () => {
     startSignInSpy.restore();
     showProgressBarSpy.restore();
     hideProgressBarSpy.restore();
+    cacheAndReturnResultSpy.restore();
   });
 
   it('should not throw on initialization with valid configuration', () => {
@@ -333,6 +337,29 @@ describe('SignInOperationHandler', () => {
           return operationHandler.start();
         })
         .then(() => {
+          // Expect checkAuthorizedDomainsAndGetProjectId result to be cached for 30 mins.
+          expect(cacheAndReturnResultSpy).to.be.calledThrice;
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(CICPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
+            .to.deep.equal([[currentUrl, config.redirectUrl]]);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
+          // Expect getOriginalUrlForSignOut result to be cached for 5 mins.
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[1].args[1].exchangeIdTokenAndGetOriginalAndTargetUrl);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[1]).to.be.instanceof(IAPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[2])
+            .to.deep.equal([config.redirectUrl, 'ID_TOKEN1', config.tid, config.state]);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[3]).to.equal(CacheDuration.ExchangeIdToken);
+          // Expect setCookieAtTargetUrl to be cached for 5 mins.
+          expect(cacheAndReturnResultSpy.getCalls()[2].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[2].args[1].setCookieAtTargetUrl);
+          expect(cacheAndReturnResultSpy.getCalls()[2].args[1]).to.be.instanceof(IAPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[2].args[2])
+            .to.deep.equal([redirectServerResp.targetUri, redirectServerResp.redirectToken]);
+          expect(cacheAndReturnResultSpy.getCalls()[2].args[3]).to.equal(CacheDuration.SetCookie);
+
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledTwice
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -363,6 +390,14 @@ describe('SignInOperationHandler', () => {
         })
         .then((tenantList: string[]) => {
           expect(tenantList).to.have.same.members(['OTHER_TENANT_ID', tid]);
+          // Call again. Cached results should be used. This is not a realistic scenario and only used
+          // to illustrate expected caching behavior.
+          return operationHandler.start();
+        })
+        .then(() => {
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.be.calledOnce;
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub).to.be.calledOnce;
+          expect(setCookieAtTargetUrlStub).to.be.calledOnce;
         });
     });
 
@@ -547,8 +582,10 @@ describe('SignInOperationHandler', () => {
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
       const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
-            .rejects(expectedError);
+          sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl');
+      // Fail on first try and succeed on second.
+      exchangeIdTokenAndGetOriginalAndTargetUrlStub.onFirstCall().rejects(expectedError);
+      exchangeIdTokenAndGetOriginalAndTargetUrlStub.onSecondCall().resolves(redirectServerResp);
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
@@ -590,6 +627,29 @@ describe('SignInOperationHandler', () => {
         })
         .then((tenantList: string[]) => {
           expect(tenantList).to.deep.equal(['OTHER_TENANT_ID']);
+          // Try again to confirm caching behavior.
+          return operationHandler.start();
+        })
+        .then(() => {
+          // Cached result returned for checkAuthorizedDomainsAndGetProjectId.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce;
+          // Second call made for failing exchangeIdTokenAndGetOriginalAndTargetUrl.
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub).to.have.been.calledTwice;
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub.getCalls()[1].args)
+            .to.deep.equal([config.redirectUrl, 'ID_TOKEN1', config.tid, config.state]);
+          // Confirm set cookie endpoint called.
+          expect(setCookieAtTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
+          // Confirm redirect to original URI.
+          expect(setCurrentUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(setCookieAtTargetUrlStub)
+            .and.calledWith(window, redirectServerResp.originalUri);
+          // Confirm expected tenant ID stored after success along with the other existing tenant ID.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.deep.equal(['OTHER_TENANT_ID', config.tid]);
         });
     });
 
@@ -608,8 +668,10 @@ describe('SignInOperationHandler', () => {
             .resolves(redirectServerResp);
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
-      const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').rejects(expectedError);
+      const setCookieAtTargetUrlStub = sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl');
+      // Fail on first try and succeed on second.
+      setCookieAtTargetUrlStub.onFirstCall().rejects(expectedError);
+      setCookieAtTargetUrlStub.onSecondCall().resolves();
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -646,6 +708,27 @@ describe('SignInOperationHandler', () => {
         })
         .then((tenantList: string[]) => {
           expect(tenantList).to.deep.equal([]);
+          // Try again to confirm retry for setCookieAtTargetUrl.
+          return operationHandler.start();
+        })
+        .then(() => {
+          // Cached result returned for checkAuthorizedDomainsAndGetProjectId.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce;
+          // Cached result returned for exchangeIdTokenAndGetOriginalAndTargetUrl.
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub).to.have.been.calledOnce;
+          // Confirm set cookie endpoint called again.
+          expect(setCookieAtTargetUrlStub).to.have.been.calledTwice;
+          expect(setCookieAtTargetUrlStub.getCalls()[1].args)
+            .to.deep.equal([redirectServerResp.targetUri, redirectServerResp.redirectToken]);
+          // Confirm redirect to original URI.
+          expect(setCurrentUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(setCookieAtTargetUrlStub)
+            .and.calledWith(window, redirectServerResp.originalUri);
+          // Confirm expected tenant ID stored after success.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.deep.equal([config.tid]);
         });
     });
   });

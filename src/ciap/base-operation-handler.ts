@@ -24,6 +24,7 @@ import { runIfDefined, getCurrentUrl } from '../utils/index';
 import { AuthTenantsStorageManager } from './auth-tenants-storage';
 import { globalStorageManager } from '../storage/manager';
 import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
+import { PromiseCache } from '../utils/promise-cache';
 
 /** Interface defining IAP/CICP operation handler for sign-in, sign-out and re-auth flows. */
 export interface OperationHandler {
@@ -41,6 +42,17 @@ export enum OperationType {
 }
 
 /**
+ * Enum for the caching timeouts for sign-in RPCs.
+ * @enum {number}
+ */
+export enum CacheDuration {
+  CheckAuthorizedDomains = 30 * 60 * 1000,
+  ExchangeIdToken = 5 * 60 * 1000,
+  GetOriginalUrl = 5 * 60 * 1000,
+  SetCookie = 5 * 60 * 1000,
+}
+
+/**
  * Base abstract class used for authentication operation handling.
  * All common authentication operation logic and variables are initialized/handled in this class.
  * The abstract class is used to factor out common logic in subclasses.
@@ -53,6 +65,7 @@ export abstract class BaseOperationHandler implements OperationHandler {
   protected readonly tenantId: string;
   protected readonly state: string;
   protected readonly languageCode: string;
+  protected readonly cache: PromiseCache;
   private authTenantsStorageManager: AuthTenantsStorageManager;
   private readonly httpClient: HttpClient;
   private progressBarVisible: boolean;
@@ -85,6 +98,8 @@ export abstract class BaseOperationHandler implements OperationHandler {
     this.languageCode = config.hl;
     // Progress bar initially not visible.
     this.progressBarVisible = false;
+    // Initialize promise cache.
+    this.cache = new PromiseCache();
   }
 
   /** @return {OperationType} The corresponding operation type. */
@@ -100,9 +115,11 @@ export abstract class BaseOperationHandler implements OperationHandler {
     // Validate URLs and get project ID.
     return this.validateAppAndGetProjectId()
       .then((projectId: string) => {
-        // Initialize auth tenants storage manager. Use project ID as identifier as this is more unique
-        // than API key.
-        this.authTenantsStorageManager = new AuthTenantsStorageManager(globalStorageManager, projectId);
+        // Initialize auth tenants storage manager if not yet initialized. Use project ID as identifier as this is more
+        // unique than API key.
+        if (!this.authTenantsStorageManager) {
+          this.authTenantsStorageManager = new AuthTenantsStorageManager(globalStorageManager, projectId);
+        }
         return this.process();
       })
       .catch((error) => {
@@ -129,7 +146,11 @@ export abstract class BaseOperationHandler implements OperationHandler {
     if (this.redirectUrl) {
       urls.push(this.redirectUrl);
     }
-    return this.cicpRequest.checkAuthorizedDomainsAndGetProjectId(urls);
+    return this.cache.cacheAndReturnResult<string>(
+        this.cicpRequest.checkAuthorizedDomainsAndGetProjectId,
+        this.cicpRequest,
+        [urls],
+        CacheDuration.CheckAuthorizedDomains);
   }
 
   /**

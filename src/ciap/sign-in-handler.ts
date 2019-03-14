@@ -15,7 +15,7 @@
  */
 
 import { AuthenticationHandler } from './authentication-handler';
-import { BaseOperationHandler, OperationType } from './base-operation-handler';
+import { BaseOperationHandler, OperationType, CacheDuration } from './base-operation-handler';
 import { Config } from './config';
 import { RedirectServerResponse } from './iap-request';
 import { UserCredential, User } from './firebase-auth';
@@ -150,13 +150,20 @@ export class SignInOperationHandler extends BaseOperationHandler {
     return Promise.resolve()
       .then(() => {
         // Exchange ID token for redirect token and get back original URL.
-        return this.iapRequest.exchangeIdTokenAndGetOriginalAndTargetUrl(
-            this.redirectUrl, idToken, this.tenantId, this.state);
+        return this.cache.cacheAndReturnResult<RedirectServerResponse>(
+            this.iapRequest.exchangeIdTokenAndGetOriginalAndTargetUrl,
+            this.iapRequest,
+            [this.redirectUrl, idToken, this.tenantId, this.state],
+            CacheDuration.ExchangeIdToken);
       })
       .then((response: RedirectServerResponse) => {
         originalUrl = response.originalUri;
         // Set cookie in targetUri.
-        return this.iapRequest.setCookieAtTargetUrl(response.targetUri, response.redirectToken);
+        return this.cache.cacheAndReturnResult<void>(
+            this.iapRequest.setCookieAtTargetUrl,
+            this.iapRequest,
+            [response.targetUri, response.redirectToken],
+            CacheDuration.SetCookie);
       })
       .then(() => {
         // Store tenant ID for signed in user. This will be used to make sign out from all

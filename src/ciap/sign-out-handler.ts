@@ -15,7 +15,7 @@
  */
 
 import { AuthenticationHandler } from './authentication-handler';
-import { BaseOperationHandler, OperationType } from './base-operation-handler';
+import { BaseOperationHandler, OperationType, CacheDuration } from './base-operation-handler';
 import { Config } from './config';
 import { setCurrentUrl } from './../utils/index';
 import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
@@ -68,11 +68,16 @@ export class SignOutOperationHandler extends BaseOperationHandler {
       // Single tenant sign-out with redirect URL.
       if (this.auth && this.redirectUrl) {
         // Redirect back to IAP resource.
-        return this.iapRequest.getOriginalUrlForSignOut(this.redirectUrl, this.tenantId, this.state)
-          .then((originalUrl: string) => {
-            // Redirect to original URI.
-            setCurrentUrl(window, originalUrl);
-          });
+        return this.cache.cacheAndReturnResult<string>(
+            this.iapRequest.getOriginalUrlForSignOut,
+            this.iapRequest,
+            [this.redirectUrl, this.tenantId, this.state],
+            CacheDuration.GetOriginalUrl,
+        )
+        .then((originalUrl: string) => {
+          // Redirect to original URI.
+          setCurrentUrl(window, originalUrl);
+        });
       } else {
         // For multi-tenant signout, do not redirect.
         this.hideProgressBar();
