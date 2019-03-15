@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { FirebaseAuth, UserCredential } from './firebase-auth';
+import { FirebaseAuth, UserCredential, User } from './firebase-auth';
 import { isNonNullObject } from '../utils/validator';
 
 /**
@@ -34,6 +34,8 @@ export interface AuthenticationHandler {
   completeSignOut(): Promise<void>;
   showProgressBar?(): void;
   hideProgressBar?(): void;
+  // Developer may want to make additional changes to the user before handing ID token to IAP.
+  processUser?(user: User): Promise<User>;
   handleError?(error: Error): void;
 }
 
@@ -58,6 +60,10 @@ export function isAuthenticationHandler(handler: any): handler is Authentication
     }
     if (typeof handler.handleError !== 'undefined' &&
         typeof handler.handleError !== 'function') {
+      return false;
+    }
+    if (typeof handler.processUser !== 'undefined' &&
+        typeof handler.processUser !== 'function') {
       return false;
     }
     return true;

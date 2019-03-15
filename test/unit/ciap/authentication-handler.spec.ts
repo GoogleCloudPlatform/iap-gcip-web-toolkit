@@ -32,6 +32,7 @@ describe('isAuthenticationHandler()', () => {
     const handler = mockAuthenticationHandler;
     delete handler.showProgressBar;
     delete handler.hideProgressBar;
+    delete handler.processUser;
     expect(isAuthenticationHandler(handler)).to.be.true;
   });
 
@@ -40,6 +41,7 @@ describe('isAuthenticationHandler()', () => {
     // Add all additional optional parameters.
     handler.showProgressBar = () => {/** Null function. */};
     handler.hideProgressBar = () => {/** Null function. */};
+    handler.processUser = (user) => Promise.resolve(user);
     expect(isAuthenticationHandler(handler)).to.be.true;
   });
 
@@ -89,6 +91,14 @@ describe('isAuthenticationHandler()', () => {
     it('should return false when provided with an invalid hideProgressBar: ' + JSON.stringify(nonFunction), () => {
       const handler = mockAuthenticationHandler;
       handler.hideProgressBar = 'invalid' as any;
+      expect(isAuthenticationHandler(handler)).to.be.false;
+    });
+  });
+
+  nonFunctions.forEach((nonFunction) => {
+    it('should return false when provided with an invalid processUser: ' + JSON.stringify(nonFunction), () => {
+      const handler = mockAuthenticationHandler;
+      handler.processUser = 'invalid' as any;
       expect(isAuthenticationHandler(handler)).to.be.false;
     });
   });

@@ -220,6 +220,7 @@ export class MockAuth implements FirebaseAuth {
 
 /** Defines the mock User class. */
 export class MockUser {
+  public processed: boolean;
   /**
    * Initializes the mock user.
    *
@@ -231,7 +232,9 @@ export class MockUser {
   constructor(
       public readonly uid: string,
       private idToken: string,
-      public readonly tenantId: string | null = null) {}
+      public readonly tenantId: string | null = null) {
+    this.processed = false;
+  }
 
   /**
    * Updates the user's current ID token.
@@ -246,7 +249,10 @@ export class MockUser {
    * @return {Promise<string>} A promise that resolves with the ID token
    */
   public getIdToken(): Promise<string> {
-    return Promise.resolve(this.idToken);
+    // Append user processed status on ID token. This helps confirm the ID token was
+    // generated after the user was processed.
+    return Promise.resolve(
+        this.idToken + (this.processed ? '-processed' : ''));
   }
 }
 
@@ -322,6 +328,17 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
    */
   public handleError(error: Error): void {
     this.lastHandledError = error;
+  }
+
+  /**
+   * Applies additional processing to the signed in user if necessary.
+   *
+   * @param {User} user The signed in user that may need additional processing.
+   * @return {Promise<User>} A promise that resolves with the processed user.
+   */
+  public processUser(user: User): Promise<User> {
+    (user as MockUser).processed = true;
+    return Promise.resolve(user);
   }
 
   /** @return {boolean} Whether the progress bar is visible or not. */

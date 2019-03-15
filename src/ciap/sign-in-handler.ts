@@ -68,36 +68,63 @@ export class SignInOperationHandler extends BaseOperationHandler {
    */
   protected process(): Promise<void> {
     // This will validate URLs and initialize auth tenant storage manager.
-    return this.getIdToken()
-      .then((idToken: string | null) => {
-        // ID token available and re-auth not required.
-        if (idToken && !this.forceReauth) {
-          // Pass ID token back.
-          return this.finishSignIn(idToken);
+    return this.getUser()
+      .then((user: User | null) => {
+        // User available and re-auth not required.
+        if (user && !this.forceReauth) {
+          // Pass user back.
+          return this.finishSignIn(user);
         } else {
-          // No ID token available, start sign-in flow.
+          // No user available, start sign-in flow.
           return this.startSignIn();
         }
       });
   }
 
   /**
-   * @return {Promise<string|null>} A promise that resolves with an ID token string if
+   * @return {Promise<User|null>} A promise that resolves with the signed in user if
    *     available or null otherwise.
    */
-  private getIdToken(): Promise<string | null> {
+  private getUser(): Promise<User | null> {
     return new Promise((resolve, reject) => {
       const unsubscribe = this.auth.onAuthStateChanged((user) => {
         unsubscribe();
         // If the existing user doesn't match the expected tenant ID, trigger sign-in flow.
         // This is possible since it is possible currentUser and Auth instance tenant ID do not match.
         if (user && this.userHasMatchingTenantId(user)) {
-          return user.getIdToken().then(resolve, reject);
+          resolve(user);
         } else {
           resolve(null);
         }
       });
     });
+  }
+
+  /**
+   * Handles additional processing on the user if needed by the developer.
+   *
+   * @param {User} user The user to process.
+   * @return {Promise<User>} The processed user.
+   */
+  private processUser(user: User): Promise<User> {
+    let resolveProcessedUser: Promise<User> = Promise.resolve(user);
+    if (typeof this.handler.processUser === 'function') {
+      // In some cases like signInWithRedirect, on return back to page, the user will be automatically
+      // signed in and the onAuthStateChanged listener will trigger with a user.
+      // However, the developer may want to do some additional processing on the user, such as
+      // linking a provider, updating profile, or ask user for additional information to store
+      // separately.
+      resolveProcessedUser = this.handler.processUser(user);
+    }
+    return resolveProcessedUser
+      .then((processedUser: User) => {
+        // Sanity check user tenant ID once again.
+        if (this.userHasMatchingTenantId(processedUser)) {
+          return processedUser;
+        } else {
+          throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Mismatching tenant ID');
+        }
+      });
   }
 
   /**
@@ -117,15 +144,14 @@ export class SignInOperationHandler extends BaseOperationHandler {
             if (!this.userHasMatchingTenantId(result.user)) {
               throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Mismatching tenant ID');
             }
-            return result.user.getIdToken();
-          })
-          .then((idToken: string) => {
-            return this.finishSignIn(idToken);
+            return this.finishSignIn(result.user);
           });
       });
   }
 
   /**
+   * Returns whether the provided user has a tenant ID matching current configuration.
+   *
    * @param {User} user The user whose tenant ID should match the current instance's.
    * @return {boolean} Whether the user matches the configuration tenant ID.
    */
@@ -139,16 +165,21 @@ export class SignInOperationHandler extends BaseOperationHandler {
   }
 
   /**
-   * Completes sign-in using the provided ID token.
+   * Completes sign-in using the provided user.
    *
-   * @param {string} idToken The current user's ID token.
+   * @param {User} user The current signed in user.
    * @return {Promise<void>} A promise that resolves on sign-in completion and redirect back to
    *    original URI.
    */
-  private finishSignIn(idToken: string): Promise<void> {
+  private finishSignIn(user: User): Promise<void> {
     let originalUrl: string;
-    return Promise.resolve()
-      .then(() => {
+    // Process user first.
+    return this.processUser(user)
+      .then((processedUser) => {
+        // Get ID token of processed user.
+        return processedUser.getIdToken();
+      })
+      .then((idToken: string) => {
         // Exchange ID token for redirect token and get back original URL.
         return this.cache.cacheAndReturnResult<RedirectServerResponse>(
             this.iapRequest.exchangeIdTokenAndGetOriginalAndTargetUrl,

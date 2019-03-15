@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { FirebaseAuth, UserCredential } from '@firebase/auth-types';
+import { FirebaseAuth, UserCredential, User } from '@firebase/auth-types';
 
 declare namespace ciap {
   interface CIAPError {
@@ -40,6 +40,8 @@ declare namespace ciap {
     // UI on signout.
     // This is not called on single tenant sign out.
     completeSignout(): Promise<void>;
+    // Developer may want to make additional changes to the user before handing ID token to IAP.
+    processUser?(user: User): Promise<User>;
     showProgressBar?(): void;
     hideProgressBar?(): void;
     handleError?(error: Error | CIAPError): void;
