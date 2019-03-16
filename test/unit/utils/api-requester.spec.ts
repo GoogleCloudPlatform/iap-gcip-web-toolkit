@@ -185,6 +185,35 @@ describe('ApiRequester', () => {
       });
     });
 
+    it('should overwrite base config timeout when it is specified in process()', () => {
+      const customTimeout = 40000;
+      const toBeOverwrittenDataConfig: HttpRequestConfig = {
+        method: 'POST',
+        mode: 'cors',
+        cache: 'no-cache',
+        url: 'https://www.example.com/v1/api?key=HARDCODED_KEY',
+        // Overwritten with value specified in process() call.
+        timeout: 30000,
+        data: 'input data',
+      };
+      const expectedModifiedConfig: HttpRequestConfig = {
+        method: 'POST',
+        mode: 'cors',
+        cache: 'no-cache',
+        url: 'https://www.example.com/v1/api?key=HARDCODED_KEY',
+        timeout: customTimeout,
+        data: 'input data',
+      };
+      const apiHandler = new ApiRequester(toBeOverwrittenDataConfig);
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+      stubs.push(stub);
+
+      return apiHandler.process(httpClient, null, null, null, customTimeout).then((resp) => {
+        expect(resp).to.equal(expectedResp);
+        expect(stub).to.have.been.calledOnce.and.calledWith(expectedModifiedConfig);
+      });
+    });
+
     it('should reject when http client request returns an error', () => {
       const apiHandler = new ApiRequester(baseConfig);
       const stub = sinon.stub(HttpClient.prototype, 'send').rejects(expectedError);

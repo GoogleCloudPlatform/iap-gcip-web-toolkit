@@ -26,7 +26,8 @@ import {CICPRequestHandler} from '../../../src/ciap/cicp-request';
 import { isNonNullObject } from '../../../src/utils/validator';
 import { createMockLowLevelError } from '../../resources/utils';
 import { HttpCIAPError } from '../../../src/utils/error';
-import { getClientVersion } from '../../../src/utils/browser';
+import * as browser from '../../../src/utils/browser';
+import { deepCopy } from '../../../src/utils/deep-copy';
 
 chai.should();
 chai.use(sinonChai);
@@ -63,7 +64,7 @@ describe('CICPRequestHandler', () => {
   const httpClient = new HttpClient();
   const apiKey = 'API_KEY';
   const stubs: sinon.SinonStub[] = [];
-  const clientVersion = getClientVersion();
+  const clientVersion = browser.getClientVersion();
 
   afterEach(() => {
     stubs.forEach((s) => s.restore());
@@ -137,6 +138,24 @@ describe('CICPRequestHandler', () => {
         .then((actualProjectId: string) => {
           expect(actualProjectId).to.equal(projectId);
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+
+    it('should use long timeout for mobile browsers', () => {
+      // Mobile browsers should use long timeout.
+      stubs.push(sinon.stub(browser, 'isMobileBrowser').returns(true));
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+      stubs.push(stub);
+
+      const mobileConfigRequest = deepCopy(expectedConfigRequest);
+      mobileConfigRequest.timeout = 60000;
+
+      const mobileRequestHandler = new CICPRequestHandler(apiKey, httpClient);
+      return mobileRequestHandler
+        .checkAuthorizedDomainsAndGetProjectId(['https://example.com', 'https://authorized.com'])
+        .then((actualProjectId: string) => {
+          expect(actualProjectId).to.equal(projectId);
+          expect(stub).to.have.been.calledOnce.and.calledWith(mobileConfigRequest);
         });
     });
 

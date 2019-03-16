@@ -24,9 +24,10 @@ import {
 } from '../../../src/utils/http-client';
 import {IAPRequestHandler, RedirectServerResponse} from '../../../src/ciap/iap-request';
 import * as validator from '../../../src/utils/validator';
-import * as utils from '../../../src/utils/index';
 import { createMockLowLevelError } from '../../resources/utils';
 import { HttpCIAPError } from '../../../src/utils/error';
+import * as browser from '../../../src/utils/browser';
+import { deepCopy } from '../../../src/utils/deep-copy';
 
 chai.should();
 chai.use(sinonChai);
@@ -132,6 +133,24 @@ describe('IAPRequestHandler', () => {
         .then((response: RedirectServerResponse) => {
           expect(response).to.deep.equal(jsonResponse);
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+
+    it('should use long timeout for mobile browsers', () => {
+      // Mobile browsers should use long timeout.
+      stubs.push(sinon.stub(browser, 'isMobileBrowser').returns(true));
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+      stubs.push(stub);
+
+      const mobileConfigRequest = deepCopy(expectedConfigRequest);
+      mobileConfigRequest.timeout = 60000;
+
+      const mobileRequestHandler = new IAPRequestHandler(httpClient);
+      return mobileRequestHandler
+        .exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, tenantId, state)
+        .then((response: RedirectServerResponse) => {
+          expect(response).to.deep.equal(jsonResponse);
+          expect(stub).to.have.been.calledOnce.and.calledWith(mobileConfigRequest);
         });
     });
 
@@ -307,6 +326,24 @@ describe('IAPRequestHandler', () => {
         });
     });
 
+    it('should use long timeout for mobile browsers', () => {
+      // Mobile browsers should use long timeout.
+      stubs.push(sinon.stub(browser, 'isMobileBrowser').returns(true));
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+      stubs.push(stub);
+
+      const mobileConfigRequest = deepCopy(expectedConfigRequest);
+      mobileConfigRequest.timeout = 60000;
+
+      const mobileRequestHandler = new IAPRequestHandler(httpClient);
+      return mobileRequestHandler
+        .setCookieAtTargetUrl(targetUri, redirectToken)
+        .then((response: any) => {
+          expect(response).to.be.undefined;
+          expect(stub).to.have.been.calledOnce.and.calledWith(mobileConfigRequest);
+        });
+    });
+
     it('should reject on invalid URL', () => {
       const invalidUrl = 'invalid';
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
@@ -442,6 +479,24 @@ describe('IAPRequestHandler', () => {
         .then((actualOriginalUri: string) => {
           expect(actualOriginalUri).to.equal(originalUri);
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+
+    it('should use long timeout for mobile browsers', () => {
+      // Mobile browsers should use long timeout.
+      stubs.push(sinon.stub(browser, 'isMobileBrowser').returns(true));
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+      stubs.push(stub);
+
+      const mobileConfigRequest = deepCopy(expectedConfigRequest);
+      mobileConfigRequest.timeout = 60000;
+
+      const mobileRequestHandler = new IAPRequestHandler(httpClient);
+      return mobileRequestHandler
+        .getOriginalUrlForSignOut(iapRedirectServerUrl, tenantId, state)
+        .then((actualOriginalUri: string) => {
+          expect(actualOriginalUri).to.equal(originalUri);
+          expect(stub).to.have.been.calledOnce.and.calledWith(mobileConfigRequest);
         });
     });
 

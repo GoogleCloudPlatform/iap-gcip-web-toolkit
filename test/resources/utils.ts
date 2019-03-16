@@ -258,6 +258,7 @@ export class MockUser {
 
 /** Defines the Mock AuthenticationHandler builder. */
 export class MockAuthenticationHandler implements AuthenticationHandler {
+  public languageCode: string;
   private progressBarVisible: boolean;
   private lastHandledError: Error;
 

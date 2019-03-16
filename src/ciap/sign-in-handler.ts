@@ -136,7 +136,7 @@ export class SignInOperationHandler extends BaseOperationHandler {
     return Promise.resolve()
       .then(() => {
         this.hideProgressBar();
-        return this.handler.startSignIn(this.auth, this.languageCode)
+        return this.handler.startSignIn(this.auth)
           .then((result: UserCredential) => {
             // On successful sign-in, get ID token and complete sign-in.
             this.showProgressBar();

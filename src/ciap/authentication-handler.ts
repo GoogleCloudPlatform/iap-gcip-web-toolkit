@@ -22,14 +22,13 @@ import { isNonNullObject } from '../utils/validator';
  * and sign-out for various Auth tenants and other UI related functionality.
  */
 export interface AuthenticationHandler {
+  // Language code.
+  languageCode?: string | null;
   // Returns the Auth instance for the corresponding API key/tenant.
   getAuth(apiKey: string, tenantId: string): FirebaseAuth;
   // Starts sign in with the corresponding Auth instance. Developer is expected to show
   // the corresponding sign in options based on auth.tenantId.
-  startSignIn(
-      auth: FirebaseAuth,
-      locale?: string,
-  ): Promise<UserCredential>;
+  startSignIn(auth: FirebaseAuth): Promise<UserCredential>;
   // Triggered after user is signed out from all tenants or from single tenant with no redirect URL.
   completeSignOut(): Promise<void>;
   showProgressBar?(): void;

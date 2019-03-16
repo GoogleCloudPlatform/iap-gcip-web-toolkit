@@ -40,10 +40,12 @@ describe('Authentication', () => {
   let signOutOperationHandlerSpy: sinon.SinonSpy;
   let startSignInOperationHandlerStub: sinon.SinonStub;
   let startSignOutOperationHandlerStub: sinon.SinonStub;
+  let onDomReadySpy: sinon.SinonSpy;
 
   beforeEach(() => {
     signInOperationHandlerSpy = sinon.spy(signIn, 'SignInOperationHandler');
     signOutOperationHandlerSpy = sinon.spy(signOut, 'SignOutOperationHandler');
+    onDomReadySpy = sinon.spy(utils, 'onDomReady');
     startSignInOperationHandlerStub = sinon.stub(signIn.SignInOperationHandler.prototype, 'start').resolves();
     startSignOutOperationHandlerStub = sinon.stub(signOut.SignOutOperationHandler.prototype, 'start').resolves();
     stubs.push(startSignInOperationHandlerStub);
@@ -54,6 +56,7 @@ describe('Authentication', () => {
     stubs.forEach((s) => s.restore());
     signInOperationHandlerSpy.restore();
     signOutOperationHandlerSpy.restore();
+    onDomReadySpy.restore();
   });
 
   describe('Constructor', () => {
@@ -70,16 +73,6 @@ describe('Authentication', () => {
       }).to.throw().with.property('code', 'invalid-argument');
     });
 
-    it('should throw when initialized with an invalid URL mode', () => {
-      const currentUrl = createMockUrl('unknown', apiKey, tid, redirectUri, state, hl);
-      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
-      stubs.push(stub);
-
-      expect(() => {
-        return new Authentication(handler);
-      }).to.throw().with.property('code', 'invalid-argument');
-    });
-
     it('should not throw when initialized with a login mode AuthenticationHandler', () => {
       const currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, hl);
       const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
@@ -90,6 +83,7 @@ describe('Authentication', () => {
       }).not.to.throw();
       expect(signInOperationHandlerSpy).to.have.been.calledOnce;
       expect(signOutOperationHandlerSpy).to.not.have.been.called;
+      expect(handler.languageCode).to.equal(hl);
     });
 
     it('should not throw when initialized with a reauth mode AuthenticationHandler', () => {
@@ -102,6 +96,7 @@ describe('Authentication', () => {
       }).not.to.throw();
       expect(signInOperationHandlerSpy).to.have.been.calledOnce;
       expect(signOutOperationHandlerSpy).to.not.have.been.called;
+      expect(handler.languageCode).to.equal(hl);
     });
 
     it('should not throw when initialized with a signout mode AuthenticationHandler', () => {
@@ -114,41 +109,118 @@ describe('Authentication', () => {
       }).not.to.throw();
       expect(signInOperationHandlerSpy).to.not.have.been.called;
       expect(signOutOperationHandlerSpy).to.have.been.calledOnce;
+      expect(handler.languageCode).to.equal(hl);
     });
   });
 
   describe('start()', () => {
+    it('should reject when initialized with an invalid URL mode', () => {
+      const currentUrl = createMockUrl('unknown', apiKey, tid, redirectUri, state, 'fr');
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      stubs.push(stub);
+
+      const authHandler =  new Authentication(handler);
+      return authHandler.start()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(onDomReadySpy).to.have.been.calledOnce;
+          expect(error).to.have.property('message', 'Invalid mode');
+          expect(error).to.have.property('code', 'invalid-argument');
+          // Language code set despite error.
+          expect(handler.languageCode).to.equal('fr');
+          expect(handler.getLastHandledError()).to.equal(error);
+          expect(startSignInOperationHandlerStub).to.not.have.been.called;
+          expect(startSignOutOperationHandlerStub).to.not.have.been.called;
+        });
+    });
+
+    it('should reject when initialized with invalid sign in parameters', () => {
+      const currentUrl = createMockUrl('login', apiKey, 'invalidTenantId', redirectUri, state, 'fr');
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      stubs.push(stub);
+
+      const authHandler =  new Authentication(handler);
+      return authHandler.start()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(onDomReadySpy).to.have.been.calledOnce;
+          expect(error).to.have.property('code', 'invalid-argument');
+          // Language code set despite error.
+          expect(handler.languageCode).to.equal('fr');
+          expect(handler.getLastHandledError()).to.equal(error);
+          expect(startSignInOperationHandlerStub).to.not.have.been.called;
+          expect(startSignOutOperationHandlerStub).to.not.have.been.called;
+        });
+    });
+
+    it('should reject when initialized with invalid sign out parameters', () => {
+      const currentUrl = createMockUrl('signout', apiKey, tid, redirectUri, null, 'fr');
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      stubs.push(stub);
+
+      const authHandler =  new Authentication(handler);
+      return authHandler.start()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(onDomReadySpy).to.have.been.calledOnce;
+          expect(error).to.have.property('code', 'invalid-argument');
+          // Language code set despite error.
+          expect(handler.languageCode).to.equal('fr');
+          expect(handler.getLastHandledError()).to.equal(error);
+          expect(startSignInOperationHandlerStub).to.not.have.been.called;
+          expect(startSignOutOperationHandlerStub).to.not.have.been.called;
+        });
+    });
+
     it('should eventually be fullfilled for login mode', () => {
-      const currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, hl);
+      const currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, 'ru');
       const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
       stubs.push(stub);
 
       const authenticationInstance = new Authentication(handler);
-      expect(authenticationInstance.start()).to.be.fulfilled;
-      // Confirm signInOperationHandler.start called under the hood.
-      expect(startSignInOperationHandlerStub).to.have.been.calledOnce;
+      expect(authenticationInstance.start()
+        .then(() => {
+          expect(onDomReadySpy).to.have.been.calledOnce.and.calledBefore(startSignInOperationHandlerStub);
+          // Confirm signInOperationHandler.start called under the hood.
+          expect(startSignInOperationHandlerStub).to.have.been.calledOnce;
+          expect(handler.languageCode).to.equal('ru');
+        })).to.be.fulfilled;
     });
 
     it('should eventually be fullfilled for re-auth mode', () => {
-      const currentUrl = createMockUrl('reauth', apiKey, tid, redirectUri, state, hl);
+      const currentUrl = createMockUrl('reauth', apiKey, tid, redirectUri, state, 'it');
       const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
       stubs.push(stub);
 
       const authenticationInstance = new Authentication(handler);
-      expect(authenticationInstance.start()).to.be.fulfilled;
-      // Confirm signInOperationHandler.start called under the hood.
-      expect(startSignInOperationHandlerStub).to.have.been.calledOnce;
+      expect(authenticationInstance.start()
+        .then(() => {
+          expect(onDomReadySpy).to.have.been.calledOnce.and.calledBefore(startSignInOperationHandlerStub);
+          // Confirm signInOperationHandler.start called under the hood.
+          expect(startSignInOperationHandlerStub).to.have.been.calledOnce;
+          expect(handler.languageCode).to.equal('it');
+        })).to.be.fulfilled;
     });
 
     it('should eventually be fullfilled for signout mode', () => {
-      const currentUrl = createMockUrl('signout', apiKey, tid, redirectUri, state, hl);
+      const currentUrl = createMockUrl('signout', apiKey, tid, redirectUri, state, null);
       const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
       stubs.push(stub);
 
       const authenticationInstance = new Authentication(handler);
-      expect(authenticationInstance.start()).to.be.fulfilled;
-      // Confirm signOutOperationHandler.start called under the hood.
-      expect(startSignOutOperationHandlerStub).to.have.been.calledOnce;
+      expect(authenticationInstance.start()
+        .then(() => {
+          expect(onDomReadySpy).to.have.been.calledOnce.and.calledBefore(startSignOutOperationHandlerStub);
+          // Confirm signOutOperationHandler.start called under the hood.
+          expect(startSignOutOperationHandlerStub).to.have.been.calledOnce;
+          expect(handler.languageCode).to.be.undefined;
+        })).to.be.fulfilled;
     });
   });
 });

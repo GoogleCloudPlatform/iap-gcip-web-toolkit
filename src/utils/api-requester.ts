@@ -100,7 +100,8 @@ export class ApiRequester {
       client: HttpClient,
       urlParams: object | null = null,
       data: object | string | null = null,
-      headers: object | null = null): Promise<HttpResponse> {
+      headers: object | null = null,
+      timeout: number | null = null): Promise<HttpResponse> {
     const configCopy: HttpRequestConfig = deepCopy(this.baseConfig);
     // Substitute any variables in URL if needed.
     if (urlParams) {
@@ -118,6 +119,10 @@ export class ApiRequester {
         configCopy.headers = {};
       }
       deepExtend(configCopy.headers, headers);
+    }
+    // Override default timeout.
+    if (timeout !== null) {
+      configCopy.timeout = timeout;
     }
     return Promise.resolve().then(() => {
       // Validate request if validator available.

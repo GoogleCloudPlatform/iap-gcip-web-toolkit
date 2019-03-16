@@ -19,7 +19,7 @@ import {expect} from 'chai';
 import {
   addReadonlyGetter, removeUndefinedFields, formatString,
   formSubmitWithRedirect, getCurrentUrl, setCurrentUrl, runIfDefined,
-  generateRandomAlphaNumericString, mapObject,
+  generateRandomAlphaNumericString, mapObject, onDomReady,
 } from '../../../src/utils/index';
 
 interface Obj {
@@ -317,5 +317,30 @@ describe('mapObject()', () => {
 
   it('should return expected object for input object with object values', () => {
     expect(mapObject(input2, cb2)).to.deep.equal(output2);
+  });
+});
+
+describe('onDomReady()', () => {
+  it('should resolve when document.readyState is complete', () => {
+    // Create fake ready document.
+    const dummyDocument: any = document.createElement('div');
+    dummyDocument.readyState = 'complete';
+
+    // Test will timeout if promise does not eventually resolve;
+    return expect(onDomReady(dummyDocument)).to.eventually.be.fulfilled;
+  });
+
+  it('should resolve on DOMContentLoaded event', () => {
+    // Create fake loading document.
+    const dummyDocument: any = document.createElement('div');
+    dummyDocument.readyState = 'loading';
+    const customEvent = new CustomEvent('DOMContentLoaded', {bubbles: false, cancelable: false});
+
+    // Test will timeout if promise does not eventually resolve;
+    const testResult = expect(onDomReady(dummyDocument)).to.eventually.be.fulfilled;
+
+    // Dispatch custom DOMContentLoaded event.
+    (dummyDocument as Element).dispatchEvent(customEvent);
+    return testResult;
   });
 });

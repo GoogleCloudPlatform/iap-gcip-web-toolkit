@@ -20,7 +20,7 @@ import {
 import { HttpResponse, LowLevelError, HttpClient } from '../utils/http-client';
 import { ApiRequester } from '../utils/api-requester';
 import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
-import { getClientVersion } from '../utils/browser';
+import { getClientVersion, isMobileBrowser } from '../utils/browser';
 
 
 /** CICP backend host. */
@@ -33,10 +33,15 @@ const CICP_HEADERS = {
   'X-Client-Version': getClientVersion(),
 };
 /**
- * CICP request timeout duration in milliseconds. This should become variable depending on
- * whether this is a desktop or mobile browser.
+ * Enum for CICP request timeout durations in milliseconds.
+ * Short timeout is used for desktop browsers.
+ * Long timeout is used for mobile browsers.
+ * @enum {number}
  */
-const CICP_TIMEOUT = 30000;
+enum CICP_TIMEOUT {
+  Short = 30000,
+  Long = 60000,
+}
 
 /** Defines GetProjectConfig response interface. */
 interface GetProjectConfigResponse {
@@ -56,7 +61,6 @@ export class CICPRequestHandler {
     cache: 'no-cache',
     headers: CICP_HEADERS,
     url: `https://${CICP_HOST}${CICP_PATH}getProjectConfig?key={apiKey}`,
-    timeout: CICP_TIMEOUT,
   }).setResponseValidator((response: HttpResponse) => {
     if (!response.isJson() ||
         !isArray(response.data.authorizedDomains) ||
@@ -65,6 +69,7 @@ export class CICPRequestHandler {
     }
   });
 
+  private readonly timeout: number;
   /**
    * Initializes the CICP request handler with the provided API key and HttpClient instance.
    *
@@ -80,6 +85,7 @@ export class CICPRequestHandler {
     if (!httpClient || typeof httpClient.send !== 'function') {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid HTTP client instance');
     }
+    this.timeout = isMobileBrowser() ? CICP_TIMEOUT.Long : CICP_TIMEOUT.Short;
   }
 
   /**
@@ -98,7 +104,8 @@ export class CICPRequestHandler {
         }
       });
 
-      return CICPRequestHandler.GET_PROJECT_CONFIG.process(this.httpClient, {apiKey: this.apiKey})
+      return CICPRequestHandler.GET_PROJECT_CONFIG.process(
+          this.httpClient, {apiKey: this.apiKey}, null, null, this.timeout)
           .then((response: HttpResponse) => {
             const responseJson = response.data as GetProjectConfigResponse;
             // Check each URL.

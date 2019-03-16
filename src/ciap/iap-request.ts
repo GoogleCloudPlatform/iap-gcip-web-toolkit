@@ -18,12 +18,18 @@ import { isNonEmptyString, isHttpsURL } from '../utils/validator';
 import { HttpResponse, HttpRequestConfig, HttpClient, LowLevelError } from '../utils/http-client';
 import { ApiRequester } from '../utils/api-requester';
 import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
+import { isMobileBrowser } from '../utils/browser';
 
 /**
- * IAP request timeout duration in milliseconds. This should become variable depending on
- * whether this is a desktop or mobile browser.
+ * Enum for IAP request timeout durations in milliseconds.
+ * Short timeout is used for desktop browsers.
+ * Long timeout is used for mobile browsers.
+ * @enum {number}
  */
-const IAP_TIMEOUT = 30000;
+enum IAP_TIMEOUT {
+  Short = 30000,
+  Long = 60000,
+}
 /** IAP request headers. */
 const IAP_HEADERS = {
   'Content-Type': 'application/json',
@@ -55,7 +61,6 @@ export class IAPRequestHandler {
     cache: 'no-cache',
     headers: IAP_HEADERS,
     url: '{iapRedirectServerUrl}',
-    timeout: IAP_TIMEOUT,
   }).setRequestValidator((config: HttpRequestConfig) => {
     // Validate redirect server URL.
     if (!isHttpsURL(config.url)) {
@@ -85,7 +90,6 @@ export class IAPRequestHandler {
     headers: IAP_HEADERS,
     credentials: 'include',
     url: '{targetUrl}',
-    timeout: IAP_TIMEOUT,
   }).setRequestValidator((config: HttpRequestConfig) => {
     // Validate target URL.
     if (!isHttpsURL(config.url)) {
@@ -97,6 +101,7 @@ export class IAPRequestHandler {
     }
   });
 
+  private readonly timeout: number;
   /**
    * Initializes the IAP request handler with the provided HttpClient instance.
    *
@@ -107,6 +112,7 @@ export class IAPRequestHandler {
     if (!httpClient || typeof httpClient.send !== 'function') {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid HTTP client instance');
     }
+    this.timeout = isMobileBrowser() ? IAP_TIMEOUT.Long : IAP_TIMEOUT.Short;
   }
 
   /**
@@ -130,7 +136,7 @@ export class IAPRequestHandler {
       state,
       id_token_tenant_id: tenantId,
     };
-    return IAPRequestHandler.EXCHANGE_ID_TOKEN.process(this.httpClient, urlParams, requestData)
+    return IAPRequestHandler.EXCHANGE_ID_TOKEN.process(this.httpClient, urlParams, requestData, null, this.timeout)
         .then((response: HttpResponse) => {
           return response.data as RedirectServerResponse;
         })
@@ -153,7 +159,7 @@ export class IAPRequestHandler {
     const headers = {
       'x-iap-3p-token': redirectToken,
     };
-    return IAPRequestHandler.SET_COOKIE.process(this.httpClient, urlParams, null, headers)
+    return IAPRequestHandler.SET_COOKIE.process(this.httpClient, urlParams, null, headers, this.timeout)
         .then((response: HttpResponse) => {
           // Do nothing.
         })
@@ -181,7 +187,7 @@ export class IAPRequestHandler {
       id_token_tenant_id: tenantId,
     };
     // Re-use same API for sign-in with dummy variable passed as ID token.
-    return IAPRequestHandler.EXCHANGE_ID_TOKEN.process(this.httpClient, urlParams, requestData)
+    return IAPRequestHandler.EXCHANGE_ID_TOKEN.process(this.httpClient, urlParams, requestData, null, this.timeout)
         .then((response: HttpResponse) => {
           // Only original URI is needed.
           return (response.data as RedirectServerResponse).originalUri;

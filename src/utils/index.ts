@@ -178,3 +178,21 @@ export function mapObject<T, V>(
   });
   return mappedObject;
 }
+
+/**
+ * Returns a promise that resolves on DOM readiness.
+ *
+ * @param {Document} doc The document reference.
+ * @return {Promise<void>} A promise that resolves when DOM is ready.
+ */
+export function onDomReady(doc: Document): Promise<void> {
+  return new Promise((resolve) => {
+    if (doc.readyState === 'complete') {
+      resolve();
+    } else {
+      doc.addEventListener('DOMContentLoaded', (event) => {
+        resolve();
+      });
+    }
+  });
+}

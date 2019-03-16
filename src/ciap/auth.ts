@@ -19,7 +19,7 @@ import { SignInOperationHandler } from './sign-in-handler';
 import { SignOutOperationHandler } from './sign-out-handler';
 import { Config, ConfigMode } from './config';
 import { AuthenticationHandler, isAuthenticationHandler } from './authentication-handler';
-import { getCurrentUrl } from '../utils/index';
+import { getCurrentUrl, onDomReady, runIfDefined } from '../utils/index';
 import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 
 /**
@@ -30,6 +30,7 @@ import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
  */
 export class Authentication {
   private readonly operationHandler: OperationHandler;
+  private readonly fatalError: CIAPError;
 
   /**
    * Initializes the Authentication instance used to handle a sign-in, sign-out or re-auth operation.
@@ -38,24 +39,41 @@ export class Authentication {
    *     interact with the CICP/Firebase Auth instance and display sign-in or sign-out related UI.
    * @constructor
    */
-  constructor(handler: AuthenticationHandler) {
+  constructor(private readonly handler: AuthenticationHandler) {
+    // This is a developer error and should be thrown synchronously.
     if (!isAuthenticationHandler(handler)) {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid AuthenticationHandler');
     }
-    // Determine the current operation mode.
-    const config = new Config(getCurrentUrl(window));
-    switch (config.mode) {
-      case ConfigMode.Login:
-        this.operationHandler = new SignInOperationHandler(config, handler);
-        break;
-      case ConfigMode.Reauth:
-        this.operationHandler = new SignInOperationHandler(config, handler, true);
-        break;
-      case ConfigMode.Signout:
-        this.operationHandler = new SignOutOperationHandler(config, handler);
-        break;
-      default:
-      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid mode');
+    // Delay throwing error until start(). This will make error handling easier as all error handling can be
+    // done from the same catcher. In addition, it will give the AuthenticationHandler the ability to handle
+    // the error.
+    try {
+      // Determine the current operation mode.
+      const config = new Config(getCurrentUrl(window));
+      try {
+        // Set language code on initialization.
+        // This may be needed for various UI related contexts:
+        // Displaying localized errors, sign in UI, sign out UI, etc.
+        this.handler.languageCode = config.hl;
+      } catch (e) {
+        // Ignore error.
+      }
+      switch (config.mode) {
+        case ConfigMode.Login:
+          this.operationHandler = new SignInOperationHandler(config, handler);
+          break;
+        case ConfigMode.Reauth:
+          this.operationHandler = new SignInOperationHandler(config, handler, true);
+          break;
+        case ConfigMode.Signout:
+          this.operationHandler = new SignOutOperationHandler(config, handler);
+          break;
+        default:
+          throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid mode');
+      }
+    } catch (error) {
+      // Catch error to rethrow in start().
+      this.fatalError = error;
     }
   }
 
@@ -63,6 +81,13 @@ export class Authentication {
    * @return {Promise<void>} A promise that resolves when underlying operation handler is rendered.
    */
   public start(): Promise<void> {
-    return this.operationHandler.start();
+    // Wait for DOM to be ready.
+    return onDomReady(window.document).then(() => {
+      if (typeof this.fatalError === 'undefined') {
+        return this.operationHandler.start();
+      }
+      runIfDefined(this.handler.handleError, this.handler, [this.fatalError]);
+      throw this.fatalError;
+    });
   }
 }
