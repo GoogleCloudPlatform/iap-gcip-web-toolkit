@@ -15,7 +15,16 @@
  */
 
 import {isNonNullObject} from './validator';
-import { callbackify } from 'util';
+
+// REGEX pattern for safe URL.
+const SAFE_URL_PATTERN = /^(?:(?:https?|mailto|ftp):|[^:/?#]*(?:[/?#]|$))/i;
+
+/**
+ * The innocuous string returned when an unsafe URL is to be sanitized.
+ * about:invalid is registered in
+ * http://www.w3.org/TR/css3-values/#about-invalid.
+ */
+const INNOCUOUS_STRING = 'about:invalid';
 
 /**
  * Defines a new read-only property directly on an object and returns the object.
@@ -126,8 +135,7 @@ export function getCurrentUrl(windowInstance: Window) {
  * @param {string} url The URL to redirect to.
  */
 export function setCurrentUrl(windowInstance: Window, url: string) {
-  // TODO: use safe assign.
-  windowInstance.location.assign(url);
+  windowInstance.location.assign(sanitizeUrl(url));
 }
 
 /**
@@ -195,4 +203,25 @@ export function onDomReady(doc: Document): Promise<void> {
       });
     }
   });
+}
+
+/**
+ * Sanitizes the URL provided.
+ *
+ * @param {string} url The unsanitized URL.
+ * @return {string} The sanitized URL.
+ */
+export function sanitizeUrl(url: string): string {
+  if (!isSafeUrl(url)) {
+    return INNOCUOUS_STRING;
+  }
+  return url;
+}
+
+/**
+ * @param {string} url The URL to validate for safety.
+ * @return {boolean} Whether the URL is safe to use.
+ */
+export function isSafeUrl(url: string): boolean {
+  return SAFE_URL_PATTERN.test(url);
 }

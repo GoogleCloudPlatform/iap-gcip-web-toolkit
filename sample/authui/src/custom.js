@@ -16,14 +16,14 @@
 import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
 import '../public/style.css';
 
-// Import configuration.
-const config = require('./config.json');
 import 'bootstrap';
 // Import CICP/IAP module (using local build).
 import * as ciap from '../../../dist/index.esm';
 import * as templates from './templates';
 import jQuery from 'jquery';
 window.$ = window.jQuery = jQuery;
+
+const SAML_PROVIDER_ID = 'saml.okta-cicp-app';
 
 class CustomUiHandler {
   constructor(element, config) {
@@ -34,20 +34,20 @@ class CustomUiHandler {
   getAuth(apiKey, tenantId) {
     let auth = null;
     if (apiKey !== this.config.apiKey) {
-       throw new Error('Invalid project!');
-     }
-     if (!tenantId) {
-       return null;
-     }
-     try {
-       auth = firebase.app(tenantId).auth();
-       // Tenant ID should be already set on initialization below.
-     } catch (e) {
-       const app = firebase.initializeApp(this.config, tenantId);
-       auth = app.auth();
-       auth.tenantId = tenantId;
-     }
-     return auth;
+      throw new Error('Invalid project!');
+    }
+    if (!tenantId) {
+      return null;
+    }
+    try {
+      auth = firebase.app(tenantId).auth();
+      // Tenant ID should be already set on initialization below.
+    } catch (e) {
+      const app = firebase.initializeApp(this.config, tenantId);
+      auth = app.auth();
+      auth.tenantId = tenantId;
+    }
+    return auth;
   }
 
   handleError(error) {
@@ -71,7 +71,7 @@ class CustomUiHandler {
       $('#sign-in-saml').on('click', (e) => {
         $('#error').hide();
         e.preventDefault();
-        auth.signInWithRedirect(new firebase.auth.SAMLAuthProvider('saml.okta-cicp-app'))
+        auth.signInWithRedirect(new firebase.auth.SAMLAuthProvider(SAML_PROVIDER_ID))
           .catch((error) => {
             $('#error').html(templates.showAlert({message: error.message})).show();
           });
@@ -146,18 +146,14 @@ $(() => {
   $('#navbar').html(templates.showNavbar({
     link: `/${window.location.search}`,
   }));
-  // This will handle the underlying handshake for sign-in, sign-out,
-  // token refresh, safe redirect to callback URL, etc.
-  try {
+  // Fetch configuration via reserved Firebase Hosting URL.
+  fetch('/__/firebase/init.json').then((response) => {
+    return response.json();
+  }).then((config) => {
+    // This will handle the underlying handshake for sign-in, sign-out,
+    // token refresh, safe redirect to callback URL, etc.
     const handler = new CustomUiHandler('#sign-in-ui-container', config);
-    // Consider delaying error until start is called so all errors can be caught and
-    // handled in the same place.
     const ciapInstance = new ciap.Authentication(handler);
     ciapInstance.start();
-  } catch (error) {
-    document.querySelector('#sign-in-ui-container').innerHTML = templates.showAlert({
-      code: error.code,
-      message: error.message,
-    });
-  }
+  });
 });

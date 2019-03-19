@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { sanitizeUrl } from '../utils/index';
+
 /**
  * Enum for the configuration mode.
  * @enum {string}
@@ -50,6 +52,10 @@ export class Config {
     this.apiKey = this.parsedUrl.searchParams.get('apiKey') || null;
     this.tid = this.parsedUrl.searchParams.get('tid') || null;
     this.redirectUrl = this.parsedUrl.searchParams.get('redirect_uri') || null;
+    // Sanitize redirect URL if provided.
+    if (this.redirectUrl) {
+      this.redirectUrl = sanitizeUrl(this.redirectUrl);
+    }
     this.state = this.parsedUrl.searchParams.get('state') || null;
     this.hl = this.parsedUrl.searchParams.get('hl') || null;
   }

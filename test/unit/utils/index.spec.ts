@@ -19,12 +19,31 @@ import {expect} from 'chai';
 import {
   addReadonlyGetter, removeUndefinedFields, formatString,
   formSubmitWithRedirect, getCurrentUrl, setCurrentUrl, runIfDefined,
-  generateRandomAlphaNumericString, mapObject, onDomReady,
+  generateRandomAlphaNumericString, mapObject, onDomReady, sanitizeUrl,
+  isSafeUrl,
 } from '../../../src/utils/index';
 
 interface Obj {
   [key: string]: any;
 }
+
+const safeUrls = [
+  'https://example.com/path/page?a=1&b=2#c=3',
+  'http://example.com/path/page?a=1&b=2#c=3',
+  'mailto:example@foo.com?subject=HelloWorld',
+  'ftp://user:password@host:port/path',
+];
+
+const unsafeUrls = [
+  'javascript:doEvil()',
+  'chrome-extension://1234567890abcdef/foo/bar',
+  'file://path/filename.txt',
+  'moz-extension://1234-5678-90ab-cdef/foo/bar',
+  'ms-browser-extension://1234-5678-90ab-cdef/foo/bar',
+  'data:image/png;base64,iVBORw0KGgoA%0AAAANSUhEUgA%0DAAT4AAA%0A',
+  'disallowed:foo',
+  'about:blank',
+];
 
 describe('addReadonlyGetter()', () => {
   it('should add a new property to the provided object', () => {
@@ -235,6 +254,17 @@ describe('setCurrentUrl()', () => {
 
     expect(assignStub).to.have.been.calledOnce.and.calledWith(expectedUrl);
   });
+
+  it('should safe assign URLs', () => {
+    unsafeUrls.forEach((unsafeUrl) => {
+      const expectedUrl = 'about:invalid';
+      const assignStub: sinon.SinonStub = sinon.stub();
+
+      setCurrentUrl({location: {assign: assignStub}} as any, unsafeUrl);
+
+      expect(assignStub).to.have.been.calledOnce.and.calledWith(expectedUrl);
+    });
+  });
 });
 
 describe('runIfDefined()', () => {
@@ -342,5 +372,33 @@ describe('onDomReady()', () => {
     // Dispatch custom DOMContentLoaded event.
     (dummyDocument as Element).dispatchEvent(customEvent);
     return testResult;
+  });
+});
+
+describe('santizeUrl()', () => {
+  it('should echo safe URLs', () => {
+    safeUrls.forEach((url) => {
+      expect(sanitizeUrl(url)).to.equal(url);
+    });
+  });
+
+  it('should sanitize unsafe URLs', () => {
+    unsafeUrls.forEach((url) => {
+      expect(sanitizeUrl(url)).to.equal('about:invalid');
+    });
+  });
+});
+
+describe('isSafeUrl()', () => {
+  it('should return true for safe URLs', () => {
+    safeUrls.forEach((url) => {
+      expect(isSafeUrl(url)).to.be.true;
+    });
+  });
+
+  it('should return false for unsafe URLs', () => {
+    unsafeUrls.forEach((url) => {
+      expect(isSafeUrl(url)).to.be.false;
+    });
   });
 });

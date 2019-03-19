@@ -24,7 +24,6 @@ node_modules/
 
 # Do not check in any configuration related data.
 **/.firebaserc
-sample/authui/src/config.json
 
 # Exclude webpack generated files.
 sample/authui/public/script.js

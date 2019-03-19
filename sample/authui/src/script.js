@@ -17,57 +17,34 @@ import firebase from 'firebase/app';
 import 'firebase/auth';
 // Import FirebaseUI dependencies.
 import * as firebaseui from 'firebaseui';
-// Import configuration.
-const config = require('./config.json');
 
 // Import CICP/IAP module (using local build).
-import * as ciap from '../../../dist/index.esm.js';
+import * as ciap from '../../../dist/index.esm';
 
 // The list of UI configs for each supported tenant.
 const uiConfigs = {
-  // TODO: replace tenantId1 with actual tenant ID as well as the
-  // corresponding signInOptions for that tenant.
-  tenantId1: {
+  // Tenant ID.
+  '1036546636501': {
     signInOptions: [
       firebase.auth.EmailAuthProvider.PROVIDER_ID,
       {
-        provider: 'oidc.myProvider1',
-        providerName: 'Provider1',
+        provider: 'saml.okta-cicp-app',
+        providerName: 'SAML Provider',
         buttonColor: '#ADD8E6',
-        iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png'
-      },
-      {
-        provider: 'oidc.myProvider2',
-        providerName: 'Provider1',
-        buttonColor: '#FFB6C1',
-        iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png'
-      },
-    ]
-  },
-  // TODO: replace tenantId2 with actual tenant ID as well as the
-  // corresponding signInOptions for that tenant.
-  tenantId2: {
-    signInOptions: [
-      firebase.auth.EmailAuthProvider.PROVIDER_ID,
-      {
-        provider: 'saml.myProvider1',
-        providerName: 'Provider1',
-        buttonColor: '#ADD8E6',
-        iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png'
-      },
-      {
-        provider: 'saml.myProvider2',
-        providerName: 'Provider1',
-        buttonColor: '#FFB6C1',
         iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png'
       },
     ]
   },
 };
 
-// This will handle the underlying handshake for sign-in, sign-out,
-// token refresh, safe redirect to callback URL, etc.
-const handler = new firebaseui.auth.FirebaseUiHandler(
-    '#firebaseui-container', config, uiConfigs);
-const ciapInstance = new ciap.Authentication(handler);
-ciapInstance.start();
+// Fetch configuration via reserved Firebase Hosting URL.
+fetch('/__/firebase/init.json').then((response) => {
+  return response.json();
+}).then((config) => {
+  // This will handle the underlying handshake for sign-in, sign-out,
+  // token refresh, safe redirect to callback URL, etc.
+  const handler = new firebaseui.auth.FirebaseUiHandler(
+      '#firebaseui-container', config, uiConfigs);
+  const ciapInstance = new ciap.Authentication(handler);
+  ciapInstance.start();
+});

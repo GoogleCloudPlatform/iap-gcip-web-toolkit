@@ -19,6 +19,7 @@ import { HttpResponse, HttpRequestConfig, HttpClient, LowLevelError } from '../u
 import { ApiRequester } from '../utils/api-requester';
 import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 import { isMobileBrowser } from '../utils/browser';
+import { isSafeUrl } from '../utils/index';
 
 /**
  * Enum for IAP request timeout durations in milliseconds.
@@ -63,7 +64,7 @@ export class IAPRequestHandler {
     url: '{iapRedirectServerUrl}',
   }).setRequestValidator((config: HttpRequestConfig) => {
     // Validate redirect server URL.
-    if (!isHttpsURL(config.url)) {
+    if (!isSafeUrl(config.url) || !isHttpsURL(config.url)) {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid URL');
     }
     // Validate all data parameters.
@@ -77,7 +78,9 @@ export class IAPRequestHandler {
     if (!response.isJson() ||
         !isNonEmptyString(response.data.redirectToken) ||
         !isNonEmptyString(response.data.originalUri) ||
-        !isNonEmptyString(response.data.targetUri)) {
+        !isNonEmptyString(response.data.targetUri) ||
+        !isSafeUrl(response.data.originalUri) ||
+        !isSafeUrl(response.data.targetUri)) {
       throw new CIAPError(CLIENT_ERROR_CODES.unknown, 'Invalid response');
     }
   });
@@ -92,7 +95,7 @@ export class IAPRequestHandler {
     url: '{targetUrl}',
   }).setRequestValidator((config: HttpRequestConfig) => {
     // Validate target URL.
-    if (!isHttpsURL(config.url)) {
+    if (!isSafeUrl(config.url) || !isHttpsURL(config.url)) {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid URL');
     }
     // Validate redirect token.

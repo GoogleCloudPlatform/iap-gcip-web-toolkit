@@ -28,6 +28,7 @@ import { createMockLowLevelError } from '../../resources/utils';
 import { HttpCIAPError } from '../../../src/utils/error';
 import * as browser from '../../../src/utils/browser';
 import { deepCopy } from '../../../src/utils/deep-copy';
+import * as utils from '../../../src/utils/index';
 
 chai.should();
 chai.use(sinonChai);
@@ -72,13 +73,16 @@ describe('IAPRequestHandler', () => {
   const apiKey = 'API_KEY';
   const stubs: sinon.SinonStub[] = [];
   let isHttpsUrlSpy: sinon.SinonSpy;
+  let isSafeUrlSpy: sinon.SinonSpy;
 
   beforeEach(() => {
     isHttpsUrlSpy = sinon.spy(validator, 'isHttpsURL');
+    isSafeUrlSpy = sinon.spy(utils, 'isSafeUrl');
   });
 
   afterEach(() => {
     isHttpsUrlSpy.restore();
+    isSafeUrlSpy.restore();
     stubs.forEach((s) => s.restore());
   });
 
@@ -173,6 +177,25 @@ describe('IAPRequestHandler', () => {
         });
     });
 
+    it('should reject on unsafe URL', () => {
+      const unsafeUrl = 'javascript:doEvil()';
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+      stubs.push(stub);
+
+      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(unsafeUrl, idToken, tenantId, state)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(isSafeUrlSpy).to.have.been.calledOnce
+            .and.calledWith(unsafeUrl)
+            .and.returned(false);
+          expect(error).to.have.property('message', 'Invalid URL');
+          expect(error).to.have.property('code', 'invalid-argument');
+          expect(stub).to.not.have.been.called;
+        });
+    });
+
     const invalidNonEmptyStrings = [null, NaN, 0, 1, true, false, [], '', ['a'], {}, { a: 1 }, _.noop];
     invalidNonEmptyStrings.forEach((invalidNonEmptyString) => {
       it('should reject on invalid idToken: ' + JSON.stringify(invalidNonEmptyString), () => {
@@ -243,6 +266,54 @@ describe('IAPRequestHandler', () => {
         .catch((error) => {
           expect(error).to.have.property('message', 'Invalid response');
           expect(error).to.have.property('code', 'unknown');
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+
+    it('should reject on unsafe originalUri response', () => {
+      const unsafeUrl = 'javascript:doEvil()';
+      const invalidResponse = createMockHttpResponse(
+        {'Content-Type': 'application/json'},
+        {
+          redirectToken,
+          originalUri: unsafeUrl,
+          targetUri,
+        });
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(invalidResponse);
+      stubs.push(stub);
+
+      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, tenantId, state)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.have.property('message', 'Invalid response');
+          expect(error).to.have.property('code', 'unknown');
+          expect(isSafeUrlSpy).to.have.been.calledWith(unsafeUrl).and.returned(false);
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+
+    it('should reject on unsafe targetUri response', () => {
+      const unsafeUrl = 'javascript:doEvil()';
+      const invalidResponse = createMockHttpResponse(
+        {'Content-Type': 'application/json'},
+        {
+          redirectToken,
+          targetUri: unsafeUrl,
+          originalUri,
+        });
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(invalidResponse);
+      stubs.push(stub);
+
+      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, tenantId, state)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.have.property('message', 'Invalid response');
+          expect(error).to.have.property('code', 'unknown');
+          expect(isSafeUrlSpy).to.have.been.calledWith(unsafeUrl).and.returned(false);
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
     });
@@ -356,6 +427,25 @@ describe('IAPRequestHandler', () => {
         .catch((error) => {
           expect(isHttpsUrlSpy).to.have.been.calledOnce
             .and.calledWith(invalidUrl)
+            .and.returned(false);
+          expect(error).to.have.property('message', 'Invalid URL');
+          expect(error).to.have.property('code', 'invalid-argument');
+          expect(stub).to.not.have.been.called;
+        });
+    });
+
+    it('should reject on unsafe URL', () => {
+      const unsafeUrl = 'javascript:doEvil()';
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+      stubs.push(stub);
+
+      return requestHandler.setCookieAtTargetUrl(unsafeUrl, redirectToken)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(isSafeUrlSpy).to.have.been.calledOnce
+            .and.calledWith(unsafeUrl)
             .and.returned(false);
           expect(error).to.have.property('message', 'Invalid URL');
           expect(error).to.have.property('code', 'invalid-argument');
@@ -512,6 +602,25 @@ describe('IAPRequestHandler', () => {
         .catch((error) => {
           expect(isHttpsUrlSpy).to.have.been.calledOnce
             .and.calledWith(invalidUrl)
+            .and.returned(false);
+          expect(error).to.have.property('message', 'Invalid URL');
+          expect(error).to.have.property('code', 'invalid-argument');
+          expect(stub).to.not.have.been.called;
+        });
+    });
+
+    it('should reject on unsafe URL', () => {
+      const unsafeUrl = 'javascript:doEvil()';
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+      stubs.push(stub);
+
+      return requestHandler.getOriginalUrlForSignOut(unsafeUrl, tenantId, state)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(isSafeUrlSpy).to.have.been.calledOnce
+            .and.calledWith(unsafeUrl)
             .and.returned(false);
           expect(error).to.have.property('message', 'Invalid URL');
           expect(error).to.have.property('code', 'invalid-argument');

@@ -36,6 +36,17 @@ describe('Config', () => {
       expect(config.redirectUrl).to.equal(redirectUri);
     });
 
+    it('should sanitize the redirect URL in the query string', () => {
+      const unsafeUrl = 'javascript:doEvil()';
+      const config = new Config(createMockUrl('login', apiKey, tid, unsafeUrl, state, hl));
+      expect(config.mode).to.equal(ConfigMode.Login);
+      expect(config.apiKey).to.equal(apiKey);
+      expect(config.tid).to.equal(tid);
+      expect(config.state).to.equal(state);
+      expect(config.hl).to.equal(hl);
+      expect(config.redirectUrl).to.equal('about:invalid');
+    });
+
     it('should initialize successfully with reauth config mode', () => {
       const config = new Config(createMockUrl('reauth', apiKey, tid, redirectUri, state, hl));
       expect(config.mode).to.equal(ConfigMode.Reauth);
