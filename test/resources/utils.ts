@@ -315,12 +315,13 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
    * Returns the FirebaseAuth instance corresponding to the requested API key and tenant ID.
    *
    * @param {string} apiKey The API key whose FirebaseAuth instance is to be returned.
-   * @param {string} tenantId the tenant identifier whose FirebaseAuth instance is to be
+   * @param {?string} tenantId the tenant identifier whose FirebaseAuth instance is to be
    *     returned.
    * @return {FirebaseAuth|null} The Auth instance for the corresponding tenant.
    */
-  public getAuth(apiKey: string, tenantId: string): FirebaseAuth | null {
-    return this.tenant2Auth[tenantId];
+  public getAuth(apiKey: string, tenantId: string | null): FirebaseAuth | null {
+    // Simulate agent configuration identifier by underscore key.
+    return this.tenant2Auth[tenantId || '_'];
   }
 
   /**

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { FirebaseAuth } from './firebase-auth';
+import { FirebaseAuth, User } from './firebase-auth';
 import { AuthenticationHandler } from './authentication-handler';
 import { Config } from './config';
 import { HttpClient } from '../utils/http-client';
@@ -66,6 +66,7 @@ export abstract class BaseOperationHandler implements OperationHandler {
   protected readonly state: string;
   protected readonly languageCode: string;
   protected readonly cache: PromiseCache;
+  private readonly realTenantId: string | null;
   private authTenantsStorageManager: AuthTenantsStorageManager;
   private readonly httpClient: HttpClient;
   private progressBarVisible: boolean;
@@ -86,6 +87,8 @@ export abstract class BaseOperationHandler implements OperationHandler {
     this.httpClient = new HttpClient();
     this.cicpRequest = new CICPRequestHandler(this.config.apiKey, this.httpClient);
     this.iapRequest = new IAPRequestHandler(this.httpClient);
+    // This is the real tenant ID. For an agent flow, this is null.
+    this.realTenantId = this.getRealTenantId(this.config.tid);
     // Initialize the corresponding Auth instance for the requested tenant ID if available.
     this.auth = this.getAuth(this.config.tid);
     // The redirect URL if available.
@@ -115,6 +118,12 @@ export abstract class BaseOperationHandler implements OperationHandler {
     // Validate URLs and get project ID.
     return this.validateAppAndGetProjectId()
       .then((projectId: string) => {
+        // Validate agent flow has matching project ID.
+        if (this.tenantId &&
+            !this.realTenantId &&
+            `_${projectId}` !== this.tenantId) {
+          throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Mismatching project numbers');
+        }
         // Initialize auth tenants storage manager if not yet initialized. Use project ID as identifier as this is more
         // unique than API key.
         if (!this.authTenantsStorageManager) {
@@ -166,12 +175,17 @@ export abstract class BaseOperationHandler implements OperationHandler {
   /**
    * Returns the Auth instance corresponding to tenant ID.
    *
-   * @param {string} tenantId The requested tenant ID.
+   * @param {string} tenantId The requested tenant ID. For agent flows, this is "_<ProjectNumber>".
+   *     For tenant flows, this is "<TenantId>".
    * @return {?FirebaseAuth} The corresponding Auth instance.
    */
   protected getAuth(tenantId: string): FirebaseAuth | null {
+    // For sign out from all flow, no tenant ID or agent ID will be available.
+    if (!tenantId) {
+      return null;
+    }
     // Pass API key to handler. It is possible the developer may be using same URL for multiple projects.
-    const auth = this.handler.getAuth(this.config.apiKey, tenantId);
+    const auth = this.handler.getAuth(this.config.apiKey, this.getRealTenantId(tenantId));
     // It is critical that requested API key aligns with handler API key.
     // This is important as we could end up checking authorized domain using config API key
     // whose project allows usage of requested domain.
@@ -245,6 +259,21 @@ export abstract class BaseOperationHandler implements OperationHandler {
   }
 
   /**
+   * Returns whether the provided user has a tenant ID matching current configuration.
+   *
+   * @param {User} user The user whose tenant ID should match the current instance's.
+   * @return {boolean} Whether the user matches the configuration tenant ID.
+   */
+  protected userHasMatchingTenantId(user: User): boolean {
+    // If both user tenant ID and config tid are null or undefined, skip check.
+    if ((user.tenantId || this.realTenantId) &&
+        user.tenantId !== this.realTenantId) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
    * Confirms AuthTenantsStorageManager is initialized and ready to use.
    * This is needed to access related operations for managing Auth tenants.
    */
@@ -252,5 +281,19 @@ export abstract class BaseOperationHandler implements OperationHandler {
     if (!this.authTenantsStorageManager) {
       throw new CIAPError(CLIENT_ERROR_CODES.internal, 'Instance not started');
     }
+  }
+
+  /**
+   * @param {string} tenantId The configuration tenant ID.
+   * @return {?string} The real tenant ID from Auth SDK perspective.
+   *     For agent flows, this is null.
+   */
+  private getRealTenantId(tenantId: string): string | null {
+    // Agent flow.
+    if (tenantId && tenantId.charAt(0) === '_') {
+      return null;
+    }
+    // Tenant flow.
+    return tenantId;
   }
 }

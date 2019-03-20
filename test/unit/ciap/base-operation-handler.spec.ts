@@ -25,7 +25,7 @@ import { CICPRequestHandler } from '../../../src/ciap/cicp-request';
 import { IAPRequestHandler } from '../../../src/ciap/iap-request';
 import {
   createMockUrl, createMockAuth, createMockAuthenticationHandler, MockAuthenticationHandler,
-  createMockStorageManager,
+  createMockStorageManager, createMockUser,
 } from '../../resources/utils';
 import * as storageManager from '../../../src/storage/manager';
 import * as authTenantsStorage from '../../../src/ciap/auth-tenants-storage';
@@ -100,6 +100,15 @@ class ConcreteOperationHandler extends BaseOperationHandler {
     expect(() => this.removeAuthTenant('TENANT_ID')).to.throw().with.property('code', 'internal');
     expect(() => this.addAuthTenant('TENANT_ID')).to.throw().with.property('code', 'internal');
     expect(() => this.clearAuthTenants()).to.throw().with.property('code', 'internal');
+    // Confirm userHasMatchingTenantId behavior.
+    if (config.tid.charAt(0) === '_') {
+      // Agent flow.
+      expect(this.userHasMatchingTenantId(createMockUser('UID1', 'ID_TOKEN1', null))).to.be.true;
+    } else {
+      // Tenant flow.
+      expect(this.userHasMatchingTenantId(createMockUser('UID1', 'ID_TOKEN1', config.tid))).to.be.true;
+    }
+    expect(this.userHasMatchingTenantId(createMockUser('UID1', 'ID_TOKEN1', 'mismatchTenantId'))).to.be.false;
   }
 
   /**
@@ -159,12 +168,14 @@ describe('BaseOperationHandler', () => {
   const tid = 'TENANT_ID';
   const state = 'STATE';
   const hl = 'en-US';
+  const agentId = `_${projectId}`;
   const currentUrl = getCurrentUrl(window);
   const redirectUri = `https://iap.googleapis.com/v1alpha1/cicp/tenantIds/${tid}:handleRedirect`;
   // Dummy FirebaseAuth instance.
   const auth = createMockAuth(apiKey, tid);
   const tenant2Auth: {[key: string]: FirebaseAuth} = {};
   tenant2Auth[tid] = auth;
+  tenant2Auth._ = createMockAuth(apiKey, null);
   let checkAuthorizedDomainsAndGetProjectIdStub: sinon.SinonStub;
   let showProgressBarSpy: sinon.SinonSpy;
   let hideProgressBarSpy: sinon.SinonSpy;
@@ -204,7 +215,7 @@ describe('BaseOperationHandler', () => {
     startSpy.restore();
   });
 
-  it('should initialize all underlying parameters as expected', () => {
+  it('should initialize all underlying parameters as expected for tenant flow', () => {
     // Dummy authentication handler.
     const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
     const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
@@ -212,6 +223,16 @@ describe('BaseOperationHandler', () => {
     const concreteInstance = new ConcreteOperationHandler(config, authenticationHandler);
 
     concreteInstance.runTests(auth, config);
+  });
+
+  it('should initialize all underlying parameters as expected for agent flow', () => {
+    // Dummy authentication handler.
+    const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+    const config = new Config(createMockUrl('login', apiKey, agentId, redirectUri, state, hl));
+
+    const concreteInstance = new ConcreteOperationHandler(config, authenticationHandler);
+
+    concreteInstance.runTests(tenant2Auth._, config);
   });
 
   it('should throw when no API key is provided', () => {
@@ -318,6 +339,67 @@ describe('BaseOperationHandler', () => {
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledTwice;
           expect(checkAuthorizedDomainsAndGetProjectIdStub.getCalls()[1].args)
             .to.deep.equal([[currentUrl, config.redirectUrl]]);
+        });
+    });
+
+    it('should reject on agent project mismatch', () => {
+      const mismatchAgentId = '_mismatchProjectId';
+      const processorStub = sinon.stub().resolves();
+      const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+      const config = new Config(createMockUrl('login', apiKey, mismatchAgentId, redirectUri, state, hl));
+
+      const concreteInstance =
+          new ConcreteOperationHandler(config, authenticationHandler, processorStub);
+
+      return concreteInstance.start()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.have.property('message', 'Mismatching project numbers');
+          expect(error).to.have.property('code', 'invalid-argument');
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
+            .and.calledWith([currentUrl, config.redirectUrl]);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+          expect(processorStub).to.not.have.been.called;
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
+        });
+    });
+
+    it('should resolve on successful domain validation and agent project ID match', () => {
+      const processorStub = sinon.stub().resolves();
+      const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+      const config = new Config(createMockUrl('login', apiKey, agentId, redirectUri, state, hl));
+
+      const concreteInstance =
+          new ConcreteOperationHandler(config, authenticationHandler, processorStub);
+
+      return concreteInstance.start()
+        .then(() => {
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
+            .and.calledWith([currentUrl, config.redirectUrl])
+            .and.calledBefore(processorStub);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          expect(processorStub).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+          expect(hideProgressBarSpy).to.not.have.been.called;
+          // Expect result to be cached for 30 mins.
+          expect(cacheAndReturnResultSpy).to.be.calledOnce;
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(CICPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[2]).to.deep.equal([[currentUrl, config.redirectUrl]]);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
+          // Second call should return cached result.
+          return concreteInstance.start();
+        })
+        .then(() => {
+          // No additional call. Cached result should be used.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce;
         });
     });
 
