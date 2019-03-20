@@ -680,6 +680,200 @@ describe('SignInOperationHandler', () => {
         });
     });
 
+    it('should call startSignIn when getIdtoken() throws auth/user-disabled', () => {
+      // Create valid user.
+      const validUser = createMockUser('UID2', 'ID_TOKEN2', tid);
+      // Created disabled user.
+      const disabledUser = createMockUser('UID1', 'ID_TOKEN1', tid);
+      disabledUser.disableUser();
+      auth.setCurrentMockUser(disabledUser);
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock ID token exchange endpoint.
+      const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
+            .resolves(redirectServerResp);
+      stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+      // Mock set cookie.
+      const setCookieAtTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+      stubs.push(setCookieAtTargetUrlStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+      // Simulate onStartSignIn will sign in the validUser.
+      // This will be called after disabledUser is signed out.
+      authenticationHandler = createMockAuthenticationHandler(
+          tenant2Auth,
+          // onStartSignIn simulates user signing in.
+          () => {
+            // Disabled user should be signed out at this point.
+            expect(auth.currentUser).to.be.null;
+            expect(showProgressBarSpy).to.be.calledOnce
+              .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+            expect(checkAuthorizedDomainsAndGetProjectIdStub).to.be.calledOnce;
+            expect(hideProgressBarSpy).to.be.calledOnce
+              .and.calledBefore(startSignInSpy);
+            // ID token exchange flow should not have been triggered.
+            expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub).to.not.be.called;
+            expect(setCookieAtTargetUrlStub).to.not.be.called;
+            expect(setCurrentUrlStub).to.not.be.called;
+            // Simulate valid user signs in.
+            auth.setCurrentMockUser(validUser);
+            // Progress bar should be hidden.
+            expect(authenticationHandler.isProgressBarVisible()).to.be.false;
+            // Confirm tenant cleared at this point.
+            return authTenantsStorageManager.listTenants()
+              .then((tenantList: string[]) => {
+                expect(tenantList.length).to.equal(0);
+              });
+          });
+      operationHandler = new SignInOperationHandler(config, authenticationHandler);
+
+      // When ID token is already available, the tenant ID is likely already stored.
+      return authTenantsStorageManager.addTenant(tid)
+        .then(() => {
+          return operationHandler.start();
+        })
+        .then(() => {
+          expect(showProgressBarSpy).to.be.calledTwice
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+          // User should be processed before calling exchangeIdTokenAndGetOriginalAndTargetUrl.
+          expect(processUserSpy).to.have.been.calledTwice
+            .and.calledWith(disabledUser)
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
+            .and.calledBefore(startSignInSpy);
+          expect(hideProgressBarSpy).to.be.calledOnce
+            .and.calledBefore(startSignInSpy)
+            .and.calledBefore(showProgressBarSpy);
+          expect(showProgressBarSpy).to.be.calledTwice
+            .and.calledBefore(startSignInSpy);
+          expect(startSignInSpy).to.be.calledOnce;
+          expect(processUserSpy).to.have.been.calledTwice
+            .and.calledWith(validUser)
+            .and.calledAfter(startSignInSpy)
+            .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+          // ID token for processed valid user should be used.
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(processUserSpy)
+            .and.calledWith(config.redirectUrl, 'ID_TOKEN2-processed', config.tid, config.state);
+          expect(setCookieAtTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
+          expect(setCurrentUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(setCookieAtTargetUrlStub)
+            .and.calledWith(window, redirectServerResp.originalUri);
+          // Confirm expected tenant ID remains after success.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.have.same.members([tid]);
+        });
+    });
+
+    it('should call startSignIn when getIdtoken() throws auth/user-token-expired', () => {
+      // Create valid user.
+      const validUser = createMockUser('UID2', 'ID_TOKEN2', tid);
+      // Created expired user.
+      const expiredUser = createMockUser('UID1', 'ID_TOKEN1', tid);
+      expiredUser.expireToken();
+      auth.setCurrentMockUser(expiredUser);
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          CICPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock ID token exchange endpoint.
+      const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
+            .resolves(redirectServerResp);
+      stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+      // Mock set cookie.
+      const setCookieAtTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+      stubs.push(setCookieAtTargetUrlStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+      // Simulate onStartSignIn will sign in the validUser.
+      // This will be called after expiredUser is signed out.
+      authenticationHandler = createMockAuthenticationHandler(
+          tenant2Auth,
+          // onStartSignIn simulates user signing in.
+          () => {
+            // Expired user should be signed out at this point.
+            expect(auth.currentUser).to.be.null;
+            expect(showProgressBarSpy).to.be.calledOnce
+              .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+            expect(checkAuthorizedDomainsAndGetProjectIdStub).to.be.calledOnce;
+            expect(hideProgressBarSpy).to.be.calledOnce
+              .and.calledBefore(startSignInSpy);
+            // ID token exchange flow should not have been triggered.
+            expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub).to.not.be.called;
+            expect(setCookieAtTargetUrlStub).to.not.be.called;
+            expect(setCurrentUrlStub).to.not.be.called;
+            // Simulate valid user signs in.
+            auth.setCurrentMockUser(validUser);
+            // Progress bar should be hidden.
+            expect(authenticationHandler.isProgressBarVisible()).to.be.false;
+            // Confirm tenant cleared at this point.
+            return authTenantsStorageManager.listTenants()
+              .then((tenantList: string[]) => {
+                expect(tenantList.length).to.equal(0);
+              });
+          });
+      operationHandler = new SignInOperationHandler(config, authenticationHandler);
+
+      // When ID token is already available, the tenant ID is likely already stored.
+      return authTenantsStorageManager.addTenant(tid)
+        .then(() => {
+          return operationHandler.start();
+        })
+        .then(() => {
+          expect(showProgressBarSpy).to.be.calledTwice
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+          // User should be processed before calling exchangeIdTokenAndGetOriginalAndTargetUrl.
+          expect(processUserSpy).to.have.been.calledTwice
+            .and.calledWith(expiredUser)
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
+            .and.calledBefore(startSignInSpy);
+          expect(hideProgressBarSpy).to.be.calledOnce
+            .and.calledBefore(startSignInSpy)
+            .and.calledBefore(showProgressBarSpy);
+          expect(showProgressBarSpy).to.be.calledTwice
+            .and.calledBefore(startSignInSpy);
+          expect(startSignInSpy).to.be.calledOnce;
+          expect(processUserSpy).to.have.been.calledTwice
+            .and.calledWith(validUser)
+            .and.calledAfter(startSignInSpy)
+            .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+          // ID token for processed valid user should be used.
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(processUserSpy)
+            .and.calledWith(config.redirectUrl, 'ID_TOKEN2-processed', config.tid, config.state);
+          expect(setCookieAtTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
+          expect(setCurrentUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(setCookieAtTargetUrlStub)
+            .and.calledWith(window, redirectServerResp.originalUri);
+          // Confirm expected tenant ID remains after success.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.have.same.members([tid]);
+        });
+    });
+
     it('should reject when isAuthorizedDomain rejects', () => {
       const expectedError = new HttpCIAPError(504);
       auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));

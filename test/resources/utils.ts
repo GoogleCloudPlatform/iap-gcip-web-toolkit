@@ -191,9 +191,12 @@ export class MockAuth implements FirebaseAuth {
   /**
    * Simulates a mock user signing in. This will trigger any existing Auth state listeners.
    *
-   * @param {User} mockUser The mock user signing in.
+   * @param {MockUser} mockUser The mock user signing in.
    */
-  public setCurrentMockUser(mockUser: User) {
+  public setCurrentMockUser(mockUser: MockUser) {
+    // Set Auth instance on the user. This makes it easy for an expired or disabled user to
+    // remove itself as currentUser from the corresponding Auth instance.
+    mockUser.auth = this;
     if (this.user !== mockUser) {
       this.user = mockUser;
       this.listeners.forEach((cb: (user: User) => void) => {
@@ -220,7 +223,11 @@ export class MockAuth implements FirebaseAuth {
 
 /** Defines the mock User class. */
 export class MockUser {
+  public auth: MockAuth;
   public processed: boolean;
+  private expiredToken: boolean;
+  private disabledUser: boolean;
+
   /**
    * Initializes the mock user.
    *
@@ -234,6 +241,8 @@ export class MockUser {
       private idToken: string,
       public readonly tenantId: string | null = null) {
     this.processed = false;
+    this.expiredToken = false;
+    this.disabledUser = false;
   }
 
   /**
@@ -249,10 +258,37 @@ export class MockUser {
    * @return {Promise<string>} A promise that resolves with the ID token
    */
   public getIdToken(): Promise<string> {
-    // Append user processed status on ID token. This helps confirm the ID token was
-    // generated after the user was processed.
-    return Promise.resolve(
-        this.idToken + (this.processed ? '-processed' : ''));
+    const error = new Error('message');
+    if (this.expiredToken) {
+      addReadonlyGetter(error, 'code', 'auth/user-token-expired');
+      // Auth will auto-signout the user when its refresh token is expired.
+      return (this.auth ? this.auth.signOut() : Promise.resolve())
+        .then(() => {
+          throw error;
+        });
+    } else if (this.disabledUser) {
+      addReadonlyGetter(error, 'code', 'auth/user-disabled');
+      // Auth will auto-signout the user when it is disabled.
+      return (this.auth ? this.auth.signOut() : Promise.resolve())
+        .then(() => {
+          throw error;
+        });
+    } else {
+      // Append user processed status on ID token. This helps confirm the ID token was
+      // generated after the user was processed.
+      return Promise.resolve(
+          this.idToken + (this.processed ? '-processed' : ''));
+      }
+  }
+
+  /** Expires the user's refresh token. */
+  public expireToken() {
+    this.expiredToken = true;
+  }
+
+  /** Disables the current user. */
+  public disableUser() {
+    this.disabledUser = true;
   }
 }
 

@@ -204,6 +204,23 @@ export class SignInOperationHandler extends BaseOperationHandler {
       .then(() => {
         // Redirect to original URI.
         setCurrentUrl(window, originalUrl);
+      })
+      .catch((error) => {
+        // Check if error thrown due to user being disabled, deleted or token revoked
+        // (big account change). This error will be thrown on getIdToken().
+        // In that case, core SDK will automatically sign out the user.
+        // We should just trigger sign-in flow again.
+        if (error.code === 'auth/user-disabled' || error.code === 'auth/user-token-expired') {
+          // User should be automatically signed out.
+          // Restart sign-in flow.
+          return this.removeAuthTenant(this.tenantId)
+            .then(() => {
+              // Progress bar should still be visible at this point.
+              return this.startSignIn();
+            });
+        }
+        // Rethrow error for all other errors.
+        throw error;
       });
   }
 }
