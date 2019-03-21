@@ -21,7 +21,7 @@ import {
   BaseOperationHandler, OperationType, CacheDuration,
 } from '../../../src/ciap/base-operation-handler';
 import { FirebaseAuth } from '../../../src/ciap/firebase-auth';
-import { CICPRequestHandler } from '../../../src/ciap/cicp-request';
+import { GCIPRequestHandler } from '../../../src/ciap/gcip-request';
 import { IAPRequestHandler } from '../../../src/ciap/iap-request';
 import {
   createMockUrl, createMockAuth, createMockAuthenticationHandler, MockAuthenticationHandler,
@@ -73,7 +73,7 @@ class ConcreteOperationHandler extends BaseOperationHandler {
    * @param {Config} config The operation configuration to assert.
    */
   public runTests(auth: FirebaseAuth, config: Config): void {
-    expect(this.cicpRequest).to.be.instanceOf(CICPRequestHandler);
+    expect(this.gcipRequest).to.be.instanceOf(GCIPRequestHandler);
     expect(this.iapRequest).to.be.instanceOf(IAPRequestHandler);
     expect(this.auth).to.equal(auth);
     expect(this.redirectUrl).to.equal(config.redirectUrl);
@@ -184,7 +184,7 @@ describe('BaseOperationHandler', () => {
 
   beforeEach(() => {
     checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-        CICPRequestHandler.prototype,
+        GCIPRequestHandler.prototype,
         'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
     stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
     mockStorageManager = createMockStorageManager();
@@ -290,7 +290,7 @@ describe('BaseOperationHandler', () => {
           expect(cacheAndReturnResultSpy).to.be.calledOnce;
           expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
-          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(CICPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[2]).to.deep.equal([[currentUrl, config.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
           // Second call should return cached result.
@@ -307,7 +307,7 @@ describe('BaseOperationHandler', () => {
       const unauthorizedDomainError = new CIAPError(CLIENT_ERROR_CODES['permission-denied'], 'Unauthorized domain');
       checkAuthorizedDomainsAndGetProjectIdStub.restore();
       checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId');
       checkAuthorizedDomainsAndGetProjectIdStub.onFirstCall().rejects(unauthorizedDomainError);
       checkAuthorizedDomainsAndGetProjectIdStub.onSecondCall().resolves(projectId);
@@ -391,7 +391,7 @@ describe('BaseOperationHandler', () => {
           expect(cacheAndReturnResultSpy).to.be.calledOnce;
           expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
-          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(CICPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[2]).to.deep.equal([[currentUrl, config.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
           // Second call should return cached result.

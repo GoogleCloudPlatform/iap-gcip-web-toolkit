@@ -25,7 +25,7 @@ import {
 } from '../../resources/utils';
 import * as utils from '../../../src/utils/index';
 import { FirebaseAuth } from '../../../src/ciap/firebase-auth';
-import { CICPRequestHandler } from '../../../src/ciap/cicp-request';
+import { GCIPRequestHandler } from '../../../src/ciap/gcip-request';
 import { IAPRequestHandler } from '../../../src/ciap/iap-request';
 import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../../../src/utils/error';
 import * as storageManager from '../../../src/storage/manager';
@@ -153,7 +153,7 @@ describe('SignOutOperationHandler', () => {
     it('should fail on unauthorized redirect URL for single tenant', () => {
       // Mock domains are not authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').rejects(unauthorizedDomainError);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
@@ -201,7 +201,7 @@ describe('SignOutOperationHandler', () => {
     it('should sign out from single tenant and redirect when tenant ID and redirectUrl are specified', () => {
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
@@ -222,7 +222,7 @@ describe('SignOutOperationHandler', () => {
           expect(cacheAndReturnResultSpy).to.be.calledTwice;
           expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
-          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(CICPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
             .to.deep.equal([[currentUrl, singleSignOutConfig.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
@@ -277,7 +277,7 @@ describe('SignOutOperationHandler', () => {
     it('should sign out from agent and redirect when agent ID and redirectUrl are specified', () => {
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
@@ -298,7 +298,7 @@ describe('SignOutOperationHandler', () => {
           expect(cacheAndReturnResultSpy).to.be.calledTwice;
           expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
-          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(CICPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
             .to.deep.equal([[currentUrl, agentConfig.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
@@ -356,7 +356,7 @@ describe('SignOutOperationHandler', () => {
     it('should sign out from single tenant and not redirect when tenant ID and no redirectUrl are specified', () => {
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
@@ -405,7 +405,7 @@ describe('SignOutOperationHandler', () => {
     it('should sign out from agent and not redirect when agent ID and no redirectUrl are specified', () => {
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
@@ -456,7 +456,7 @@ describe('SignOutOperationHandler', () => {
       const expectedError = new HttpCIAPError(504);
       // Mock domain authorization check throws an error.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').rejects(expectedError);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
@@ -507,7 +507,7 @@ describe('SignOutOperationHandler', () => {
       const expectedError = new Error('signout error');
       // Mock domain authorization succeeds.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
@@ -562,7 +562,7 @@ describe('SignOutOperationHandler', () => {
       const expectedError = new HttpCIAPError(504);
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
@@ -639,7 +639,7 @@ describe('SignOutOperationHandler', () => {
     it('should sign out from all tenants and agents when no tenant ID is specified', () => {
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
@@ -697,7 +697,7 @@ describe('SignOutOperationHandler', () => {
     it('should not redirect to redirectUrl on multi-tenant signout', () => {
       // Mock domain is authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
@@ -762,7 +762,7 @@ describe('SignOutOperationHandler', () => {
     it('should fail on unauthorized redirect URL for multiple tenants', () => {
       // Mock domains are not authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').rejects(unauthorizedDomainError);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.
@@ -831,7 +831,7 @@ describe('SignOutOperationHandler', () => {
       const expectedError = new Error('signout error');
       // Mock domain authorization succeeds.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock getOriginalUrlForSignOut API.

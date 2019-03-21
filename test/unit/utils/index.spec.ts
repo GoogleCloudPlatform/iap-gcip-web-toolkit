@@ -360,6 +360,15 @@ describe('onDomReady()', () => {
     return expect(onDomReady(dummyDocument)).to.eventually.be.fulfilled;
   });
 
+  it('should resolve when document.readyState is interactive', () => {
+    // Create fake ready document.
+    const dummyDocument: any = document.createElement('div');
+    dummyDocument.readyState = 'interactive';
+
+    // Test will timeout if promise does not eventually resolve;
+    return expect(onDomReady(dummyDocument)).to.eventually.be.fulfilled;
+  });
+
   it('should resolve on DOMContentLoaded event', () => {
     // Create fake loading document.
     const dummyDocument: any = document.createElement('div');

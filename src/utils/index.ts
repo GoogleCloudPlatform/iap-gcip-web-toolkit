@@ -195,7 +195,7 @@ export function mapObject<T, V>(
  */
 export function onDomReady(doc: Document): Promise<void> {
   return new Promise((resolve) => {
-    if (doc.readyState === 'complete') {
+    if (doc.readyState !== 'loading') {
       resolve();
     } else {
       doc.addEventListener('DOMContentLoaded', (event) => {

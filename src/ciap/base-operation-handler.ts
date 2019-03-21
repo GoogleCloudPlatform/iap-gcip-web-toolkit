@@ -18,7 +18,7 @@ import { FirebaseAuth, User } from './firebase-auth';
 import { AuthenticationHandler } from './authentication-handler';
 import { Config } from './config';
 import { HttpClient } from '../utils/http-client';
-import { CICPRequestHandler } from './cicp-request';
+import { GCIPRequestHandler } from './gcip-request';
 import { IAPRequestHandler } from './iap-request';
 import { runIfDefined, getCurrentUrl, addReadonlyGetter } from '../utils/index';
 import { AuthTenantsStorageManager } from './auth-tenants-storage';
@@ -26,7 +26,7 @@ import { globalStorageManager } from '../storage/manager';
 import { CLIENT_ERROR_CODES, CIAPError, isRecoverableError } from '../utils/error';
 import { PromiseCache } from '../utils/promise-cache';
 
-/** Interface defining IAP/CICP operation handler for sign-in, sign-out and re-auth flows. */
+/** Interface defining IAP/GCIP operation handler for sign-in, sign-out and re-auth flows. */
 export interface OperationHandler {
   type: string;
   start(): Promise<void>;
@@ -58,7 +58,7 @@ export enum CacheDuration {
  * The abstract class is used to factor out common logic in subclasses.
  */
 export abstract class BaseOperationHandler implements OperationHandler {
-  protected readonly cicpRequest: CICPRequestHandler;
+  protected readonly gcipRequest: GCIPRequestHandler;
   protected readonly iapRequest: IAPRequestHandler;
   protected readonly auth: FirebaseAuth;
   protected readonly redirectUrl: string;
@@ -74,7 +74,7 @@ export abstract class BaseOperationHandler implements OperationHandler {
   /**
    * Initializes an operation handler for a specific Auth operation.
    * It will also initialize all underlying dependencies needed to get the current
-   * Auth state, CICP and IAP request handlers, etc.
+   * Auth state, GCIP and IAP request handlers, etc.
    *
    * @param {Config} config The current operation configuration.
    * @param {AuthenticationHandler} handler The Authentication handler instance.
@@ -83,9 +83,9 @@ export abstract class BaseOperationHandler implements OperationHandler {
   constructor(
       protected readonly config: Config,
       protected readonly handler: AuthenticationHandler) {
-    // Initialize the CICP and IAP request handlers.
+    // Initialize the GCIP and IAP request handlers.
     this.httpClient = new HttpClient();
-    this.cicpRequest = new CICPRequestHandler(this.config.apiKey, this.httpClient);
+    this.gcipRequest = new GCIPRequestHandler(this.config.apiKey, this.httpClient);
     this.iapRequest = new IAPRequestHandler(this.httpClient);
     // This is the real tenant ID. For an agent flow, this is null.
     this.realTenantId = this.getRealTenantId(this.config.tid);
@@ -166,8 +166,8 @@ export abstract class BaseOperationHandler implements OperationHandler {
       urls.push(this.redirectUrl);
     }
     return this.cache.cacheAndReturnResult<string>(
-        this.cicpRequest.checkAuthorizedDomainsAndGetProjectId,
-        this.cicpRequest,
+        this.gcipRequest.checkAuthorizedDomainsAndGetProjectId,
+        this.gcipRequest,
         [urls],
         CacheDuration.CheckAuthorizedDomains);
   }

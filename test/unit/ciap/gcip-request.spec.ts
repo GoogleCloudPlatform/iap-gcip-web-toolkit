@@ -22,7 +22,7 @@ import * as chaiAsPromised from 'chai-as-promised';
 import {
   HttpClient, HttpResponse,
 } from '../../../src/utils/http-client';
-import {CICPRequestHandler} from '../../../src/ciap/cicp-request';
+import { GCIPRequestHandler } from '../../../src/ciap/gcip-request';
 import { isNonNullObject } from '../../../src/utils/validator';
 import { createMockLowLevelError } from '../../resources/utils';
 import { HttpCIAPError } from '../../../src/utils/error';
@@ -60,7 +60,7 @@ function createMockHttpResponse(headers: object, response?: any): HttpResponse {
   };
 }
 
-describe('CICPRequestHandler', () => {
+describe('GCIPRequestHandler', () => {
   const httpClient = new HttpClient();
   const apiKey = 'API_KEY';
   const stubs: sinon.SinonStub[] = [];
@@ -75,7 +75,7 @@ describe('CICPRequestHandler', () => {
     invalidKeys.forEach((invalidKey) => {
       it('should throw given invalid API key: ' + JSON.stringify(invalidKey), () => {
         expect(() => {
-          return new (CICPRequestHandler as any)(invalidKey);
+          return new (GCIPRequestHandler as any)(invalidKey);
         }).to.throw().with.property('code', 'invalid-argument');
       });
     });
@@ -86,21 +86,21 @@ describe('CICPRequestHandler', () => {
     invalidHttpClients.forEach((invalidHttpClient) => {
       it('should throw given invalid http client: ' + JSON.stringify(invalidHttpClient), () => {
         expect(() => {
-          return new (CICPRequestHandler as any)(apiKey, invalidHttpClient);
+          return new (GCIPRequestHandler as any)(apiKey, invalidHttpClient);
         }).to.throw().with.property('code', 'invalid-argument');
       });
     });
 
     it('should not throw when initialized with valid parameters', () => {
       expect(() => {
-        return new CICPRequestHandler(apiKey, httpClient);
+        return new GCIPRequestHandler(apiKey, httpClient);
       }).to.not.throw();
     });
   });
 
   describe('checkAuthorizedDomainsAndGetProjectId()', () => {
     const url = 'https://www.example.com/path/api?a=1&n=2#hash';
-    const requestHandler = new CICPRequestHandler(apiKey, httpClient);
+    const requestHandler = new GCIPRequestHandler(apiKey, httpClient);
     const expectedConfigRequest = {
       method: 'GET',
       mode: 'cors',
@@ -150,7 +150,7 @@ describe('CICPRequestHandler', () => {
       const mobileConfigRequest = deepCopy(expectedConfigRequest);
       mobileConfigRequest.timeout = 60000;
 
-      const mobileRequestHandler = new CICPRequestHandler(apiKey, httpClient);
+      const mobileRequestHandler = new GCIPRequestHandler(apiKey, httpClient);
       return mobileRequestHandler
         .checkAuthorizedDomainsAndGetProjectId(['https://example.com', 'https://authorized.com'])
         .then((actualProjectId: string) => {

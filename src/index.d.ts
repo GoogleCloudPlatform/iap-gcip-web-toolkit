@@ -52,7 +52,7 @@ declare namespace ciap {
   }
 }
 
-declare module 'cicp-iap-js' {
+declare module 'gcip-iap-js' {
 }
 
 export = ciap;

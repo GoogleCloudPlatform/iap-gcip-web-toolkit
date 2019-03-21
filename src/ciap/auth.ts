@@ -25,7 +25,7 @@ import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 /**
  * Defines the main utility used to handle all incoming sign-in, re-auth and sign-out operation
  * when accessing IAP gated resources.
- * An externally provided AuthenticationHandler is required to access CICP tenant-specific Auth
+ * An externally provided AuthenticationHandler is required to access GCIP tenant-specific Auth
  * instances and display sign-in or sign-out related UIs.
  */
 export class Authentication {
@@ -36,7 +36,7 @@ export class Authentication {
    * Initializes the Authentication instance used to handle a sign-in, sign-out or re-auth operation.
    *
    * @param {AuthenticationHandler} handler The externally provided AuthenticationHandler used to
-   *     interact with the CICP/Firebase Auth instance and display sign-in or sign-out related UI.
+   *     interact with the GCIP/Firebase Auth instance and display sign-in or sign-out related UI.
    * @constructor
    */
   constructor(private readonly handler: AuthenticationHandler) {

@@ -23,7 +23,7 @@ import {
   createMockUrl, createMockAuth, createMockAuthenticationHandler, MockAuth,
   createMockUser, MockUser, MockAuthenticationHandler, createMockStorageManager,
 } from '../../resources/utils';
-import { CICPRequestHandler } from '../../../src/ciap/cicp-request';
+import { GCIPRequestHandler } from '../../../src/ciap/gcip-request';
 import { IAPRequestHandler } from '../../../src/ciap/iap-request';
 import * as utils from '../../../src/utils/index';
 import { FirebaseAuth } from '../../../src/ciap/firebase-auth';
@@ -145,7 +145,7 @@ describe('SignInOperationHandler', () => {
     it('should fail on unauthorized redirect URL if no user is signed in', () => {
       // Mock domains are not authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').rejects(unauthorizedDomainError);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
 
@@ -175,7 +175,7 @@ describe('SignInOperationHandler', () => {
     it('should fail on unauthorized redirect URL if user is signed in', () => {
       // Mock domains are not authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').rejects(unauthorizedDomainError);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Simulate user is signed in.
@@ -208,7 +208,7 @@ describe('SignInOperationHandler', () => {
       auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
@@ -271,7 +271,7 @@ describe('SignInOperationHandler', () => {
       auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
@@ -331,7 +331,7 @@ describe('SignInOperationHandler', () => {
       auth.setCurrentMockUser(createMockUser('UID2', 'ID_TOKEN2', 'MISMATCHING_TENANT_ID'));
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
@@ -398,7 +398,7 @@ describe('SignInOperationHandler', () => {
       agentAuth.setCurrentMockUser(createMockUser('UID2', 'ID_TOKEN2', 'MISMATCHING_TENANT_ID'));
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
@@ -468,7 +468,7 @@ describe('SignInOperationHandler', () => {
       operationHandler = new SignInOperationHandler(config, authenticationHandler);
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
@@ -494,7 +494,7 @@ describe('SignInOperationHandler', () => {
           expect(cacheAndReturnResultSpy).to.be.calledThrice;
           expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
-          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(CICPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
             .to.deep.equal([[currentUrl, config.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
@@ -570,7 +570,7 @@ describe('SignInOperationHandler', () => {
       operationHandler = new SignInOperationHandler(agentConfig, authenticationHandler);
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
@@ -596,7 +596,7 @@ describe('SignInOperationHandler', () => {
           expect(cacheAndReturnResultSpy).to.be.calledThrice;
           expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
-          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(CICPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
             .to.deep.equal([[currentUrl, agentConfig.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
@@ -673,7 +673,7 @@ describe('SignInOperationHandler', () => {
       operationHandler = new SignInOperationHandler(config, authenticationHandler);
       // Mock domain is authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
@@ -737,7 +737,7 @@ describe('SignInOperationHandler', () => {
       auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
       // Mock domain is authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
@@ -802,7 +802,7 @@ describe('SignInOperationHandler', () => {
       auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
@@ -865,7 +865,7 @@ describe('SignInOperationHandler', () => {
       auth.setCurrentMockUser(disabledUser);
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
@@ -962,7 +962,7 @@ describe('SignInOperationHandler', () => {
       auth.setCurrentMockUser(expiredUser);
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
@@ -1055,7 +1055,7 @@ describe('SignInOperationHandler', () => {
       agentAuth.setCurrentMockUser(createMockUser('UID_AGENT', 'ID_TOKEN_AGENT', null));
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
@@ -1114,7 +1114,7 @@ describe('SignInOperationHandler', () => {
       const expectedError = new HttpCIAPError(504);
       auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').rejects(expectedError);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
@@ -1169,7 +1169,7 @@ describe('SignInOperationHandler', () => {
       auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.
@@ -1265,7 +1265,7 @@ describe('SignInOperationHandler', () => {
       auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          CICPRequestHandler.prototype,
+          GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
       // Mock ID token exchange endpoint.

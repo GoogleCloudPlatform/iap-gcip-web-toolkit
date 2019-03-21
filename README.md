@@ -102,8 +102,8 @@ End to end testing is still not possible as there is no mechamism yet to
 configure the resource to tenant mapping on the IAP side and the IAP
 endpoints have not been created yet.
 
-When the above is ready, a project with CICP and IAP will need to be
-configured. A mapping defining the IAP resource to CICP tenant and the
+When the above is ready, a project with GCIP and IAP will need to be
+configured. A mapping defining the IAP resource to GCIP tenant and the
 corresponding URL where the sign-in UI will be hosted have to be provided via
 the Cloud Console UI.
 

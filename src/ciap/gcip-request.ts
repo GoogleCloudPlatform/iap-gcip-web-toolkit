@@ -23,22 +23,22 @@ import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 import { getClientVersion, isMobileBrowser } from '../utils/browser';
 
 
-/** CICP backend host. */
-const CICP_HOST = 'www.googleapis.com';
-/** CICP backend path. */
-const CICP_PATH = '/identitytoolkit/v3/relyingparty/';
-/** CICP temporary placeholder for request header. */
-const CICP_HEADERS = {
+/** GCIP backend host. */
+const GCIP_HOST = 'www.googleapis.com';
+/** GCIP backend path. */
+const GCIP_PATH = '/identitytoolkit/v3/relyingparty/';
+/** GCIP temporary placeholder for request header. */
+const GCIP_HEADERS = {
   'Content-Type': 'application/json',
   'X-Client-Version': getClientVersion(),
 };
 /**
- * Enum for CICP request timeout durations in milliseconds.
+ * Enum for GCIP request timeout durations in milliseconds.
  * Short timeout is used for desktop browsers.
  * Long timeout is used for mobile browsers.
  * @enum {number}
  */
-enum CICP_TIMEOUT {
+enum GCIP_TIMEOUT {
   Short = 30000,
   Long = 60000,
 }
@@ -51,16 +51,16 @@ interface GetProjectConfigResponse {
 
 
 /**
- * Defines the RPC handler for calling the CICP server APIs.
+ * Defines the RPC handler for calling the GCIP server APIs.
  */
-export class CICPRequestHandler {
+export class GCIPRequestHandler {
   /** Defines the GetProjectConfig endpoint. */
   private static GET_PROJECT_CONFIG = new ApiRequester({
     method: 'GET',
     mode: 'cors',
     cache: 'no-cache',
-    headers: CICP_HEADERS,
-    url: `https://${CICP_HOST}${CICP_PATH}getProjectConfig?key={apiKey}`,
+    headers: GCIP_HEADERS,
+    url: `https://${GCIP_HOST}${GCIP_PATH}getProjectConfig?key={apiKey}`,
   }).setResponseValidator((response: HttpResponse) => {
     if (!response.isJson() ||
         !isArray(response.data.authorizedDomains) ||
@@ -71,10 +71,10 @@ export class CICPRequestHandler {
 
   private readonly timeout: number;
   /**
-   * Initializes the CICP request handler with the provided API key and HttpClient instance.
+   * Initializes the GCIP request handler with the provided API key and HttpClient instance.
    *
    * @param {string} apiKey The browser API key.
-   * @param {HttpClient} httpClient The HTTP client used to process RPCs to CICP endpoints.
+   * @param {HttpClient} httpClient The HTTP client used to process RPCs to GCIP endpoints.
    * @constructor
    */
   constructor(private readonly apiKey: string, private readonly httpClient: HttpClient) {
@@ -85,7 +85,7 @@ export class CICPRequestHandler {
     if (!httpClient || typeof httpClient.send !== 'function') {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid HTTP client instance');
     }
-    this.timeout = isMobileBrowser() ? CICP_TIMEOUT.Long : CICP_TIMEOUT.Short;
+    this.timeout = isMobileBrowser() ? GCIP_TIMEOUT.Long : GCIP_TIMEOUT.Short;
   }
 
   /**
@@ -104,7 +104,7 @@ export class CICPRequestHandler {
         }
       });
 
-      return CICPRequestHandler.GET_PROJECT_CONFIG.process(
+      return GCIPRequestHandler.GET_PROJECT_CONFIG.process(
           this.httpClient, {apiKey: this.apiKey}, null, null, this.timeout)
           .then((response: HttpResponse) => {
             const responseJson = response.data as GetProjectConfigResponse;
@@ -124,7 +124,7 @@ export class CICPRequestHandler {
   }
 
   /**
-   * Translates a LowLevelError error thrown by CICP server to an HttpCIAPError.
+   * Translates a LowLevelError error thrown by GCIP server to an HttpCIAPError.
    * Sample error code (JSON formatted):
    * {
    *   "error": {
@@ -158,7 +158,7 @@ export class CICPRequestHandler {
    *   }
    * }
    *
-   * @param {Error} error The error caught when calling the CICP server.
+   * @param {Error} error The error caught when calling the GCIP server.
    * @return {Error} The translated error.
    */
   private translateLowLevelError(error: Error): Error {
