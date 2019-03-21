@@ -1,10 +1,10 @@
 {
-  "name": "cicp-iap-js",
+  "name": "gcip-iap-js",
   "version": "0.0.0",
-  "description": "CICP/IAP JS SDK",
+  "description": "GCIP/IAP JS SDK",
   "author": "Google",
   "license": "Apache-2.0",
-  "homepage": "https://team.git.corp.google.com/cicp-eng/cicp-iap-js",
+  "homepage": "https://github.com/GoogleCloudPlatform/gcip-iap-js",
   "engines": {
     "node": ">=8.0.0"
   },
@@ -24,7 +24,8 @@
   "keywords": [
     "cloud",
     "identity",
-    "cicp",
+    "platform",
+    "gcip",
     "iap",
     "firebase",
     "proxy",
@@ -33,7 +34,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://team.git.corp.google.com/cicp-eng/cicp-iap-js"
+    "url": "https://github.com/GoogleCloudPlatform/gcip-iap-js"
   },
   "main": "dist/index.cjs.js",
   "browser": "dist/index.iife.js",

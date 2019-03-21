@@ -1,6 +1,6 @@
-# CICP/IAP Authentication UI Quickstart
+# GCIP/IAP Authentication UI Quickstart
 
-This sample demonstrates how to integrate a CICP authentication UI with
+This sample demonstrates how to integrate a GCIP authentication UI with
 a GAE application gated with Cloud IAP. While this sample is hosted with
 Firebase Hosting, it could be hosted using any other service. Firebase
 Hosting was chosen to demonstrate cross domain authentication and the
@@ -15,12 +15,12 @@ ability to use the same authentication UI with multiple IAP resources.
 
 ## Prerequisite
 
-You need to have created a CICP Project in the
-[Cloud Console](https://pantheon.corp.google.com/customer-identity/providers/).
+You need to have created a GCIP Project in the
+[Cloud Console](https://console.cloud.google.com/customer-identity/providers/).
 
 ## Installation
 
-### Build the CICP/IAP JS binary
+### Build the GCIP/IAP JS binary
 
 To set up a development environment to build the sample from source, you must
 have the following installed:
@@ -73,14 +73,14 @@ Select the project you have created in the prerequisite, and type in `default` o
 any other name as the alias to use for this project.
 
 Note that it is not a requirement to have the same Firebase Hosting project
-as your CICP project. It is only done here for convenience. Firebase Hosting
+as your GCIP project. It is only done here for convenience. Firebase Hosting
 is merely used as a static file hosting service here. However, if a
 different project is used, the Firebase hosting domain has to be whitelisted
-in the CICP list of authorized domains.
+in the GCIP list of authorized domains.
 
 ### Configure multi-tenancy
 
-Enable multi-tenancy for the CICP project and configure a couple of
+Enable multi-tenancy for the GCIP project and configure a couple of
 tenants with different sign-in providers. You can do this by following the
 [multi-tenant quickstart documentation](https://docs.google.com/document/d/11xhYFb7wKeZ4OHfccJDwbRqhazYlQUSue5YXK8PiFME/).
 

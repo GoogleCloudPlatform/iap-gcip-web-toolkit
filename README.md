@@ -1,7 +1,7 @@
-# cicp-iap-js for CICP/IAP integration
+# gcip-iap-js for GCIP/IAP integration
 
-This library implements the protocol used to integrate CICP (Cloud Identity for
-Customers and Partners) for third party authentication with IAP (Identity Aware
+This library implements the protocol used to integrate GCIP (Google Cloud's
+Identity Platform) for third party authentication with IAP (Identity Aware
 Proxy).
 The developer will have to host a sign-in UI (or just use FirebaseUI) so
 traffic can be routed to from IAP when a user tries to access a specific IAP
@@ -9,16 +9,17 @@ resource without being authenticated.
 
 This repo is under construction and subject to change.
 
-Refer to [go/cicp-iap-integration](http://go/cicp-iap-integration) for the
-design doc.
+Refer to the
+[GCIP/IAP design doc](https://docs.google.com/document/d/1Jc8pgZd9Yr_Rg3yRQTiFz8Ole8MfD8Ut8_F8yUr3Alo/)
+for more details.
 
 This implementation will go through multiple phases:
 Phase 1:
-- One IAP resource maps to one CICP tenant.
-- One IAP resource maps to one CICP project.
+- One IAP resource maps to one GCIP tenant.
+- One IAP resource maps to one GCIP project.
 
 Phase 2:
-- One IAP resource maps to multiple CICP tenants.
+- One IAP resource maps to multiple GCIP tenants.
 
 More details will be needed for phase 2 to determine how a user will be routed
 to the appropriate tenant when trying to access a specific resource with
@@ -118,7 +119,7 @@ import 'firebase/auth';
 // firebaseui.auth.FirebaseUiHandler is required to be implemented.
 import * as firebaseui from 'firebaseui';
 
-// Import CICP/IAP module (using local build).
+// Import GCIP/IAP module (using local build).
 import * as ciap from './dist/index.esm.js';
 
 // The agent project configuration.
