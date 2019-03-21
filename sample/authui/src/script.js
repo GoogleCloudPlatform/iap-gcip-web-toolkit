@@ -12,12 +12,8 @@
  * limitations under the License.
  */
 
-// Import Firebase dependencies.
-import firebase from 'firebase/app';
-import 'firebase/auth';
-// Import FirebaseUI dependencies.
-import * as firebaseui from 'firebaseui';
-
+import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
+import '../public/style.css';
 // Import CICP/IAP module (using local build).
 import * as ciap from '../../../dist/index.esm';
 
@@ -29,11 +25,19 @@ const uiConfigs = {
       firebase.auth.EmailAuthProvider.PROVIDER_ID,
       {
         provider: 'saml.okta-cicp-app',
-        providerName: 'SAML Provider',
-        buttonColor: '#ADD8E6',
+        providerName: 'SAML',
+        buttonColor: '#4666FF',
         iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png'
       },
-    ]
+    ],
+    tosUrl: '/tos',
+    privacyPolicyUrl: '/privacypolicy',
+    credentialHelper: firebaseui.auth.CredentialHelper.NONE,
+    callbacks: {
+      uiShown: function() {
+        document.getElementById('tid').textContent='1036546636501';
+      }
+    }
   },
 };
 

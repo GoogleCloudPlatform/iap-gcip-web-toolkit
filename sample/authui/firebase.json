@@ -15,6 +15,14 @@
         "destination": "/custom.html"
       },
       {
+        "source": "/tos",
+        "destination": "/tospp.html"
+      },
+      {
+        "source": "/privacypolicy",
+        "destination": "/tospp.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

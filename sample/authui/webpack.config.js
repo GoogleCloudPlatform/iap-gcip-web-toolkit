@@ -20,8 +20,7 @@ const path = require('path');
 const config = {
   context: __dirname,
   entry: {
-    // Under construction.
-    // 'script': './src/script.js',
+    'script': './src/script.js',
     'custom': './src/custom.js',
   },
   output: {

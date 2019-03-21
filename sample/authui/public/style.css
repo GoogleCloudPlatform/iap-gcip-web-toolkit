@@ -7,6 +7,11 @@
   padding: 10px;
 }
 
+.heading-center {
+  display: flex;
+  justify-content: center;
+}
+
 /** https://stackoverflow.com/questions/23584120/line-before-and-after-title-over-image */
 h3.line-through {
   color: #777777;
