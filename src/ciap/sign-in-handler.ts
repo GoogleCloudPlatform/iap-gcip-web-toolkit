@@ -150,21 +150,6 @@ export class SignInOperationHandler extends BaseOperationHandler {
   }
 
   /**
-   * Returns whether the provided user has a tenant ID matching current configuration.
-   *
-   * @param {User} user The user whose tenant ID should match the current instance's.
-   * @return {boolean} Whether the user matches the configuration tenant ID.
-   */
-  private userHasMatchingTenantId(user: User): boolean {
-    // If both user tenant ID and config tid are null or undefined, skip check.
-    if ((user.tenantId || this.config.tid) &&
-        user.tenantId !== this.config.tid) {
-      return false;
-    }
-    return true;
-  }
-
-  /**
    * Completes sign-in using the provided user.
    *
    * @param {User} user The current signed in user.

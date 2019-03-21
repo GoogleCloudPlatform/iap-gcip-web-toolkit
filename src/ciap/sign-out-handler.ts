@@ -109,7 +109,7 @@ export class SignOutOperationHandler extends BaseOperationHandler {
           const auth = this.getAuth(tenantId);
           if (auth) {
             // Sign out the current user an remove its tenant ID from list of authenticated tenants.
-            signoutPromises.push(auth.signOut().then(() => this.removeAuthTenant(auth.tenantId)));
+            signoutPromises.push(auth.signOut().then(() => this.removeAuthTenant(tenantId)));
           }
         });
         // Sign out from all instances.
