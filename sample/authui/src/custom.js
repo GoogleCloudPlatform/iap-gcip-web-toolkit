@@ -36,16 +36,13 @@ class CustomUiHandler {
     if (apiKey !== this.config.apiKey) {
       throw new Error('Invalid project!');
     }
-    if (!tenantId) {
-      return null;
-    }
     try {
-      auth = firebase.app(tenantId).auth();
+      auth = firebase.app(tenantId || undefined).auth();
       // Tenant ID should be already set on initialization below.
     } catch (e) {
-      const app = firebase.initializeApp(this.config, tenantId);
+      const app = firebase.initializeApp(this.config, tenantId || '[DEFAULT]');
       auth = app.auth();
-      auth.tenantId = tenantId;
+      auth.tenantId = tenantId || null;
     }
     return auth;
   }
@@ -66,12 +63,34 @@ class CustomUiHandler {
 
   startSignIn(auth, locale) {
     return new Promise((resolve, reject) => {
-      this.container.innerHTML = templates.signIn({tenantId: auth.tenantId});
+      this.container.innerHTML = templates.signIn({
+        tenantId: auth.tenantId,
+        // Use SAML for tenant flow, Google otherwise.
+        saml: !!auth.tenantId,
+      });
       // Sign in with SAML provider.
       $('#sign-in-saml').on('click', (e) => {
         $('#error').hide();
         e.preventDefault();
         auth.signInWithRedirect(new firebase.auth.SAMLAuthProvider(SAML_PROVIDER_ID))
+          .catch((error) => {
+            $('#error').html(templates.showAlert({message: error.message})).show();
+          });
+        return false;
+      });
+      $('#sign-in-google').on('click', (e) => {
+        $('#error').hide();
+        e.preventDefault();
+        auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider())
+          .catch((error) => {
+            $('#error').html(templates.showAlert({message: error.message})).show();
+          });
+        return false;
+      });
+      $('#sign-in-facebook').on('click', (e) => {
+        $('#error').hide();
+        e.preventDefault();
+        auth.signInWithRedirect(new firebase.auth.FacebookAuthProvider())
           .catch((error) => {
             $('#error').html(templates.showAlert({message: error.message})).show();
           });

@@ -110,13 +110,15 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
   extended: true
 }));
-app.options('//_gcp_iap/cicp_authenticate', (req, res) => {
+const optionsHandler = (req, res) => {
   res.header('Access-Control-Allow-Origin', req.get('Origin') || '*');
   res.header('Access-Control-Allow-Methods', 'GET');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Headers', 'Content-Type, x-iap-3p-token');
   res.status(200).end();
-});
+};
+app.options('//_gcp_iap/cicp_authenticate', optionsHandler);
+app.options('/_gcp_iap/cicp_authenticate', optionsHandler);
 // Show error message if user is not signed in.
 app.use(checkIfSignedIn());
 // Static CSS assets.

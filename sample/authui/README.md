@@ -78,13 +78,18 @@ is merely used as a static file hosting service here. However, if a
 different project is used, the Firebase hosting domain has to be whitelisted
 in the GCIP list of authorized domains.
 
-### Configure multi-tenancy
+### Using multi-tenancy flow
+
+This is the recommended setting if you require session isolation between different
+IAP resources.
+
+#### Configure multi-tenancy
 
 Enable multi-tenancy for the GCIP project and configure a couple of
 tenants with different sign-in providers. You can do this by following the
 [multi-tenant quickstart documentation](https://docs.google.com/document/d/11xhYFb7wKeZ4OHfccJDwbRqhazYlQUSue5YXK8PiFME/).
 
-### Configuring Authentication URL
+#### Configuring Authentication URL
 
 You have 2 options to deploy an authentication page:
 
@@ -98,6 +103,35 @@ You have 2 options to deploy an authentication page:
   the `SAML_PROVIDER_ID` constant in `src/custom.js` identifying the SAML provider
   configured.
   This page will be accessible via `/custom` URL path.
+
+You will also need to whitelist the IAP redirect domain as an Authorized
+domain in your GCIP settings: `iap.googleapis.com`.
+
+### Using GCIP non-tenant flow
+
+If you do not require session isolation between different IAP resources, you
+can directly use your GCIP providers to sign in users to your GAE or GCE app
+without having to enable multi-tenancy.
+
+#### Configure GCIP
+
+In the GCIP `providers` section, configure the providers you require to
+authenticate your users. In the sample app used, only email/password, Google
+and Facebook are required.
+
+#### Configuring Authentication URL
+
+You have 2 options to deploy an authentication page:
+
+- Using FirebaseUI
+  No changes are needed in `src/script.js`.
+  This page will be accessible via `/` URL path.
+- Using custom UI
+  No changes are needed in `src/custom.js`.
+  This page will be accessible via `/custom` URL path.
+
+You will also need to whitelist the IAP redirect domain as an Authorized
+domain in your GCIP settings: `iap.googleapis.com`.
 
 ## Deploy
 

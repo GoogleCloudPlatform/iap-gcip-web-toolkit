@@ -29,7 +29,12 @@ export const signIn = HandleBars.compile(`
         <button type="submit" class="btn btn-primary mb-2">Next</button>
         <div class="padded-div">
           <h3 class="line-through">OR</h3>
-          <button id="sign-in-saml" type="button" class="btn btn-primary btn-block">Sign in with SAML</button>
+          {{#if saml}}
+            <button id="sign-in-saml" type="button" class="btn btn-primary btn-block">Sign in with SAML</button>
+          {{else}}
+            <button id="sign-in-google" type="button" class="btn btn-primary btn-block">Sign in with Google</button>
+            <button id="sign-in-facebook" type="button" class="btn btn-primary btn-block">Sign in with Facebook</button>
+          {{/if}}
         </div>
         <div id="error"></div>
       </form>

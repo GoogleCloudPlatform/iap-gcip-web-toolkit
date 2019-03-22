@@ -19,7 +19,24 @@ import * as ciap from '../../../dist/index.esm';
 
 // The list of UI configs for each supported tenant.
 const uiConfigs = {
-  // Tenant ID.
+  // Agent flow.
+  '_': {
+    signInOptions: [
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
+      firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+      firebase.auth.FacebookAuthProvider.PROVIDER_ID,
+    ],
+    tosUrl: '/tos',
+    privacyPolicyUrl: '/privacypolicy',
+    credentialHelper: firebaseui.auth.CredentialHelper.NONE,
+    callbacks: {
+      uiShown: function() {
+        document.getElementById('tid').textContent = 'Awesome App';
+        document.getElementById('tenant-header').classList.remove('hidden');
+      },
+    },
+  },
+  // Tenant flow.
   '1036546636501': {
     signInOptions: [
       firebase.auth.EmailAuthProvider.PROVIDER_ID,
@@ -35,7 +52,7 @@ const uiConfigs = {
     credentialHelper: firebaseui.auth.CredentialHelper.NONE,
     callbacks: {
       uiShown: function() {
-        document.getElementById('tid').textContent='1036546636501';
+        document.getElementById('tid').textContent = 'Tenant 1036546636501';
         document.getElementById('tenant-header').classList.remove('hidden');
       }
     }
