@@ -36,6 +36,7 @@ const uiConfigs = {
     callbacks: {
       uiShown: function() {
         document.getElementById('tid').textContent='1036546636501';
+        document.getElementById('tenant-header').classList.remove('hidden');
       }
     }
   },

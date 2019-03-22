@@ -8,8 +8,12 @@
 }
 
 .heading-center {
-  display: flex;
+  text-align: center;
   justify-content: center;
+}
+
+.hidden {
+  display: none;
 }
 
 /** https://stackoverflow.com/questions/23584120/line-before-and-after-title-over-image */
