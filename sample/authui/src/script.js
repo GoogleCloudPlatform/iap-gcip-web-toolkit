@@ -18,7 +18,7 @@ import '../public/style.css';
 import * as ciap from '../../../dist/index.esm';
 
 // The list of UI configs for each supported tenant.
-const uiConfigs = {
+const tenantsConfig = {
   // Agent flow.
   '_': {
     signInOptions: [
@@ -34,6 +34,10 @@ const uiConfigs = {
         document.getElementById('tid').textContent = 'Awesome App';
         document.getElementById('tenant-header').classList.remove('hidden');
       },
+      beforeSignInSuccess: function(user) {
+        // Do additional processing on user before sign-in is complete.
+        return Promise.resolve(user);
+      }
     },
   },
   // Tenant flow.
@@ -54,6 +58,10 @@ const uiConfigs = {
       uiShown: function() {
         document.getElementById('tid').textContent = 'Tenant 1036546636501';
         document.getElementById('tenant-header').classList.remove('hidden');
+      },
+      beforeSignInSuccess: function(user) {
+        // Do additional processing on user before before sign-in is complete.
+        return Promise.resolve(user);
       }
     }
   },
@@ -63,10 +71,15 @@ const uiConfigs = {
 fetch('/__/firebase/init.json').then((response) => {
   return response.json();
 }).then((config) => {
+  const configs = {};
+  configs[config['apiKey']] = {
+    authDomain: config['authDomain'],
+    tenants: tenantsConfig
+  };
   // This will handle the underlying handshake for sign-in, sign-out,
   // token refresh, safe redirect to callback URL, etc.
   const handler = new firebaseui.auth.FirebaseUiHandler(
-      '#firebaseui-container', config, uiConfigs);
+      '#firebaseui-container', configs);
   const ciapInstance = new ciap.Authentication(handler);
   ciapInstance.start();
 });

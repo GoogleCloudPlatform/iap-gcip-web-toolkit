@@ -122,41 +122,59 @@ import * as firebaseui from 'firebaseui';
 // Import GCIP/IAP module (using local build).
 import * as ciap from './dist/index.esm.js';
 
-// The agent project configuration.
-const config = {
-  apiKey: 'API_KEY',
-  authDomain: 'project-id.firebaseapp.com',
-};
-
-// The list of UI configs for each supported tenant.
-const uiConfigs = {
-  tenantId1: {
-    // Tenant1 supports Google and Email sign-in.
-    signInOptions: [
-      firebase.auth.GoogleAuthProvider.PROVIDER_ID,
-      firebase.auth.EmailAuthProvider.PROVIDER_ID,
-    ]
+// The project configuration.
+const configs = {
+  API_KEY1: {
+    authDomain: 'project-id1.firebaseapp.com',
+    tenants: {
+      tenantId1: {
+        // Tenant1 supports Google and Email sign-in.
+        signInOptions: [
+          firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+          firebase.auth.EmailAuthProvider.PROVIDER_ID,
+        ]
+      },
+      tenantId2: {
+        // Tenant2 supports OIDC providers.
+        signInOptions: [
+          {provider: 'oidc.myProvider1'},
+          {provider: 'oidc.myProvider2'},
+        ]
+      },
+      tenantId3: {
+        // Tenant3 supports SAML providers.
+        signInOptions: [
+          {provider: 'saml.myProvider1'},
+          {provider: 'saml.myProvider2'},
+        ]
+      },
+    }
   },
-  tenantId2: {
-    // Tenant2 supports OIDC providers.
-    signInOptions: [
-      {provider: 'oidc.myProvider1'},
-      {provider: 'oidc.myProvider2'},
-    ]
-  },
-  tenantId3: {
-    // Tenant3 supports SAML providers.
-    signInOptions: [
-      {provider: 'saml.myProvider1'},
-      {provider: 'saml.myProvider2'},
-    ]
+  API_KEY2: {
+    authDomain: 'project-id2.firebaseapp.com',
+    tenants: {
+      _: {
+        // Agent project supports Google and Email sign-in.
+        signInOptions: [
+          firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+          firebase.auth.EmailAuthProvider.PROVIDER_ID,
+        ]
+      },
+      tenantId4: {
+        // Tenant4 supports OIDC providers.
+        signInOptions: [
+          {provider: 'oidc.myProvider1'},
+          {provider: 'oidc.myProvider2'},
+        ]
+      },
+    }
   },
 };
 
 // This will handle the underlying handshake for sign-in, sign-out,
 // token refresh, safe redirect to callback URL, etc.
 const handler = new firebaseui.auth.FirebaseUiHandler(
-    '#firebaseui-auth-container', config, uiConfigs);
+    '#firebaseui-auth-container', configs);
 const ciapInstance = new ciap.Authentication(handler);
 ciapInstance.start();
 ```
