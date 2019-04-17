@@ -100,9 +100,9 @@ class CustomUiHandler {
         $('#error').hide();
         e.preventDefault();
         const email = $('#email').val();
-        auth.fetchProvidersForEmail(email)
-          .then((providers) => {
-            if (providers.length) {
+        auth.fetchSignInMethodsForEmail(email)
+          .then((signInMethods) => {
+            if (signInMethods.length) {
               // Show password sign in.
               this.container.innerHTML = templates.signInWithEmail({email});
               $('#sign-in-form').on('submit', (e) => {
