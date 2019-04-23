@@ -31,5 +31,4 @@ sample/authui/public/custom.js
 
 # Release tarballs should not be checked in
 gcip-iap-js-*.tgz
-firebaseui.tgz
 firebase.tgz
