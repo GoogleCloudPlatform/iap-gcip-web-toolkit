@@ -17,7 +17,7 @@ import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
 import '../public/style.css';
 
 import 'bootstrap';
-// Import CICP/IAP module (using local build).
+// Import GCIP/IAP module (using local build).
 import * as ciap from '../../../dist/index.esm';
 import * as templates from './templates';
 import jQuery from 'jquery';

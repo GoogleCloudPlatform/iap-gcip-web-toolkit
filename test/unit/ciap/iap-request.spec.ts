@@ -65,8 +65,8 @@ describe('IAPRequestHandler', () => {
   const idToken = 'ID_TOKEN';
   const tenantId = 'TENANT_ID';
   const state = 'STATE';
-  const iapRedirectServerUrl = `https://iap.googleapis.com/v1alpha1/cicp/tenantIds/${tenantId}:handleRedirect`;
-  const targetUri = 'https://www.example.com/path/main/_gcp_iap/cicp_auth';
+  const iapRedirectServerUrl = `https://iap.googleapis.com/v1alpha1/gcip/tenantIds/${tenantId}:handleRedirect`;
+  const targetUri = 'https://www.example.com/path/main/_gcp_iap/gcip_authenticate';
   const originalUri = 'https://www.example.com/path/main';
   const redirectToken = 'REDIRECT_TOKEN';
   const httpClient = new HttpClient();
@@ -496,7 +496,7 @@ describe('IAPRequestHandler', () => {
           {data: serverMessage});
       // Expected translated error to be thrown.
       const expectedError = new HttpCIAPError(
-          403, 'CICP_TOKEN_INVALID', serverMessage, serverLowLevelError);
+          403, 'GCIP_TOKEN_INVALID', serverMessage, serverLowLevelError);
       const stub = sinon.stub(HttpClient.prototype, 'send').rejects(serverLowLevelError);
       stubs.push(stub);
 

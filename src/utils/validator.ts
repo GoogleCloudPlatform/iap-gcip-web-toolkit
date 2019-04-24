@@ -105,7 +105,7 @@ export function isNonNullObject(value: any): boolean {
  * as 'chrome-extension://abcdefghijklmnopqrstuvwxyz123456'.
  * The URL to check must have a chrome extension scheme and the domain
  * must be an exact match domain == 'abcdefghijklmnopqrstuvwxyz123456'.
- * For CICP/IAP purposes, only http and https domains (traditional browser application) will be accepted.
+ * For GCIP/IAP purposes, only http and https domains (traditional browser application) will be accepted.
  *
  * @param {Array<string>} authorizedDomains List of authorized domains.
  * @param {string} url The URL to check.

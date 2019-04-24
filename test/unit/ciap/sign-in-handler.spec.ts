@@ -39,10 +39,10 @@ describe('SignInOperationHandler', () => {
   const tid = 'TENANT_ID';
   const state = 'STATE';
   const hl = 'en-US';
-  const redirectUri = `https://iap.googleapis.com/v1alpha1/cicp/tenantIds/${tid}:handleRedirect`;
+  const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/tenantIds/${tid}:handleRedirect`;
   const agentId = `_${projectId}`;
   const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
-  const agentRedirectUri = `https://iap.googleapis.com/v1alpha1/cicp/tenantIds/${agentId}:handleRedirect`;
+  const agentRedirectUri = `https://iap.googleapis.com/v1alpha1/gcip/tenantIds/${agentId}:handleRedirect`;
   const agentConfig = new Config(createMockUrl('login', apiKey, agentId, agentRedirectUri, state, hl));
   let auth: MockAuth;
   let agentAuth: MockAuth;
@@ -51,7 +51,7 @@ describe('SignInOperationHandler', () => {
   let operationHandler: SignInOperationHandler;
   const redirectServerResp = {
     originalUri: 'https://www.example.com/path/main',
-    targetUri: 'https://www.example.com/path/main/_gcp_iap/cicp_auth',
+    targetUri: 'https://www.example.com/path/main/_gcp_iap/gcip_authenticate',
     redirectToken: 'REDIRECT_TOKEN',
   };
   let tenant2Auth: {[key: string]: FirebaseAuth};
@@ -1261,7 +1261,7 @@ describe('SignInOperationHandler', () => {
 
     it('should reject when setCookieAtTargetUrl rejects', () => {
       const expectedError = new HttpCIAPError(
-          400, 'RESOURCE_MISSING_CICP_TENANT_ID', 'message');
+          400, 'RESOURCE_MISSING_GCIP_SIGN_IN_URL', 'message');
       auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(

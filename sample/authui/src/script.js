@@ -14,7 +14,7 @@
 
 import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
 import '../public/style.css';
-// Import CICP/IAP module (using local build).
+// Import GCIP/IAP module (using local build).
 import * as ciap from '../../../dist/index.esm';
 
 // The list of UI configs for each supported tenant.

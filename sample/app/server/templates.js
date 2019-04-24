@@ -23,7 +23,7 @@ const main = HandleBars.compile(`
   <link href="/styles/style.css" rel="stylesheet" type="text/css"  media="screen" />
   <body>
     <div id="container">
-      <h3>Welcome to IAP/CICP integration sample app</h3>
+      <h3>Welcome to IAP/GCIP integration sample app</h3>
       <div id="main">
         <div id="user-info">
           {{#if photoURL}}
@@ -44,7 +44,7 @@ const main = HandleBars.compile(`
           </div>
           <div id="tenant">{{tenandId}}</div>
           <div class="claims">
-            <pre id="cicp-claims">{{cicpClaims}}</pre>
+            <pre id="gcip-claims">{{gcipClaims}}</pre>
           </div>
           <div class="claims">
             <pre id="iap-claims">{{iapClaims}}</pre>

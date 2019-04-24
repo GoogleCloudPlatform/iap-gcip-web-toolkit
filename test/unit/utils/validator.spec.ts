@@ -382,7 +382,7 @@ describe('isURL()', () => {
       'FEQyQZmyJK3ty%2Bmr7kAFW16I9pD11jfBSD1XXjKTJzgd%2FMGSde4Va4J1RtHoX7r5i7YR7Mvf%2Fb17zlAuGlz' +
       'VUf%2FzmhLPqtfKinVrcqdlmamMcmLoW8eLG%2B1yYW%2F7tlS2hvqSfCW8eMUUjiHiSWgZLEVIG4Lw%3D%3D'))
       .to.be.true;
-    expect(isURL('https://project.appspot.com//_gcp_iap/cicp_authenticate')).to.be.true;
+    expect(isURL('https://project.appspot.com//_gcp_iap/gcip_authenticate')).to.be.true;
   });
 
   it('should return false with an invalid web URL string', () => {

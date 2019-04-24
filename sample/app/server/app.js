@@ -64,9 +64,9 @@ function getProjectNumber() {
  * @return {!Promise} A promise that resolves on success.
  */
 function serveContentForUser(template, req, res, decodedClaims) {
-  let cicpClaims = null;
+  let gcipClaims = null;
   try {
-    cicpClaims = JSON.parse(decodedClaims.cicp);
+    gcipClaims = JSON.parse(decodedClaims.gcip);
   } catch (e) {
     // Ignore error.
   }
@@ -74,13 +74,13 @@ function serveContentForUser(template, req, res, decodedClaims) {
   res.end(template({
     sub: decodedClaims.sub,
     email: decodedClaims.email,
-    emailVerifed: !!(cicpClaims && cicpClaims.email_verified),
-    photoURL: cicpClaims && cicpClaims.picture,
-    displayName: (cicpClaims && cicpClaims.name) || 'N/A',
-    tenandId: cicpClaims && cicpClaims.firebase && cicpClaims.firebase.tenant,
-    cicpClaims: JSON.stringify(cicpClaims, null, 2),
+    emailVerifed: !!(gcipClaims && gcipClaims.email_verified),
+    photoURL: gcipClaims && gcipClaims.picture,
+    displayName: (gcipClaims && gcipClaims.name) || 'N/A',
+    tenandId: gcipClaims && gcipClaims.firebase && gcipClaims.firebase.tenant,
+    gcipClaims: JSON.stringify(gcipClaims, null, 2),
     iapClaims: JSON.stringify(decodedClaims, null, 2),
-    signoutURL: './_gcp_iap/cicp_signout',
+    signoutURL: './_gcp_iap/gcip_signout',
   }));
 }
 
@@ -117,8 +117,6 @@ const optionsHandler = (req, res) => {
   res.header('Access-Control-Allow-Headers', 'Content-Type, x-iap-3p-token');
   res.status(200).end();
 };
-app.options('//_gcp_iap/cicp_authenticate', optionsHandler);
-app.options('/_gcp_iap/cicp_authenticate', optionsHandler);
 // Show error message if user is not signed in.
 app.use(checkIfSignedIn());
 // Static CSS assets.

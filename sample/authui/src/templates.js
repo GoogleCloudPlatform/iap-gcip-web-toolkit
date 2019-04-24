@@ -17,7 +17,7 @@ import * as HandleBars from '../node_modules/handlebars/dist/handlebars';
 export const signIn = HandleBars.compile(`
   <div class="card">
     <div class="card-header">
-      IAP/CICP Sample App
+      IAP/GCIP Sample App
     </div>
     <div class="card-body">
       <h5 class="card-title">Sign in</h5>
@@ -45,7 +45,7 @@ export const signIn = HandleBars.compile(`
 export const signInWithEmail = HandleBars.compile(`
   <div class="card">
     <div class="card-header">
-      IAP/CICP Sample App
+      IAP/GCIP Sample App
     </div>
     <div class="card-body">
       <h5 class="card-title">Sign in</h5>
@@ -65,7 +65,7 @@ export const signInWithEmail = HandleBars.compile(`
 export const signUpWithEmail = HandleBars.compile(`
   <div class="card">
     <div class="card-header">
-      IAP/CICP Sample App
+      IAP/GCIP Sample App
     </div>
     <div class="card-body">
       <h5 class="card-title">Sign up</h5>
