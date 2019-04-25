@@ -16,6 +16,9 @@ import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
 import '../public/style.css';
 // Import GCIP/IAP module (using local build).
 import * as ciap from '../../../dist/index.esm';
+import firebase from '@firebase/app';
+import '@firebase/auth';
+import * as firebaseui from 'firebaseui'
 
 // The list of UI configs for each supported tenant.
 const tenantsConfig = {

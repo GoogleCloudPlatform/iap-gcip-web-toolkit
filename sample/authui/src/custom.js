@@ -19,6 +19,8 @@ import '../public/style.css';
 import 'bootstrap';
 // Import GCIP/IAP module (using local build).
 import * as ciap from '../../../dist/index.esm';
+import firebase from '@firebase/app';
+import '@firebase/auth';
 import * as templates from './templates';
 import jQuery from 'jquery';
 window.$ = window.jQuery = jQuery;

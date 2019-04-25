@@ -28,7 +28,10 @@
     "style-loader": "0.23.1",
     "url-loader": "0.6.2",
     "webpack": "^4.17.1",
-    "webpack-cli": "^3.0.8"
+    "webpack-cli": "^3.0.8",
+    "@firebase/app": "../../builds/firebase-js-sdk/firebase-app.tgz",
+    "@firebase/auth": "../../builds/firebase-js-sdk/firebase-auth.tgz",
+    "firebaseui": "../../builds/firebaseui/firebaseui.tgz"
   },
   "engines": {
     "node": ">=6"
