@@ -112,8 +112,8 @@ This can be illustrated as shown, using FirebaseUI.
 
 ```javascript
 // Import Firebase dependencies.
-import * as firebase from 'firebase/app';
-import 'firebase/auth';
+import firebase from '@firebase/app';
+import '@firebase/auth';
 
 // Import FirebaseUI dependencies.
 // firebaseui.auth.FirebaseUiHandler is required to be implemented.
