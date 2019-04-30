@@ -29,6 +29,7 @@ multiple tenants.
 
 1. [Developer Setup](#developer-setup)
 1. [Contributing](#contributing)
+1. [Alpha Package](#alpha-package)
 1. [Usage instructions](#usage-instructions)
 
 ## Developer Setup
@@ -95,6 +96,31 @@ The library is expected to run in browsers only. It will also depend on `URL`,
 `fetch` and `Promise` APIs which are not available in all browsers.
 Developers who want to support these browsers are expected to provide
 polyfills for them as peer dependencies.
+
+## Alpha Package
+
+Every time changes are made to the sample app or ciap library, the alpha
+package has to be regenerated. However, before that, ensure that the patch or
+minor version of the package version (package.json) is updated.
+
+Before building the package, make sure no sensitive information is leaked in
+the sample folders.
+
+Regenerate the alpha package by running:
+```bash
+npm run build-alpha
+```
+
+This will generate the file `dist/gcip-iap-x.y.z.tar.gz` file. This will then
+need to be uploaded to the shared folder:
+`https://drive.google.com/drive/folders/14LFq6NbbRhxbKUWv5dhJZ7yGp3_kZzb3?usp=sharing`
+Note that sample app READMEs will not be copied to the alpha directory.
+Instructions for using the sample apps are provided in the user guide.
+
+To clean up all intermediate files afterwards, run:
+```bash
+npm run clean
+```
 
 ## Usage Instructions
 

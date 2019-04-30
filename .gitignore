@@ -11,6 +11,8 @@ dist/
 typings/
 coverage/
 node_modules/
+builds/ciap/
+tmp/
 .nyc_output/
 .firebase/
 

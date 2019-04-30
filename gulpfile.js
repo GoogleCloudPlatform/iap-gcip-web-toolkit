@@ -24,6 +24,8 @@ const runSequence = require('run-sequence');
 const del = require('del');
 const header = require('gulp-header');
 const replace = require('gulp-replace');
+const tar = require('gulp-tar');
+const gzip = require('gulp-gzip');
 // Rollup
 const rollup = require('rollup');
 const typescript = require('rollup-plugin-typescript2');
@@ -38,9 +40,28 @@ const paths = {
     'src/**/*.ts'
   ],
   build: [
-    'dist/**/*.js'
+    'dist/**/*'
   ],
   dist: 'dist/',
+  // Temporary directory.
+  tmpDir: 'tmp/',
+  // Path to ciap builds to be included in alpha package.
+  ciapBuild: 'builds/ciap',
+  // Intermediate temporary files to be zipped for alpha package.
+  tmp: [
+    'tmp/**/*'
+  ],
+  // Public build files to be included in alpha package.
+  publicBuilds: [
+    'builds/**/*',
+  ],
+  // Public sample apps to be included in alpha package.
+  publicSamples: [
+    'sample/**/*',
+    // Exclude READMEs for now. This are explained in the user guide doc.
+    '!sample/app/README.md',
+    '!sample/authui/README.md',
+  ],
 };
 
 const banner = `/*! gcip-iap-js v${pkg.version} */\n`;
@@ -67,13 +88,15 @@ deps.push('promise-polyfill');
 /***********/
 /*  TASKS  */
 /***********/
-gulp.task('cleanup', function() {
+gulp.task('cleanup', () => {
   return del([
     paths.dist,
+    paths.tmpDir,
+    paths.ciapBuild,
   ]);
 });
 
-gulp.task('rollupjs', function (done) {
+gulp.task('rollupjs', (done) => {
   return rollup.rollup({
     input: 'src/index.ts',
     plugins,
@@ -89,39 +112,83 @@ gulp.task('rollupjs', function (done) {
   });
 });
 
-gulp.task('compile', ['rollupjs'], function() {
+gulp.task('compile', ['rollupjs'], () => {
   return gulp.src(paths.build)
-    // Replace SDK version
+    // Replace SDK version.
     .pipe(replace(/\<XXX_SDK_VERSION_XXX\>/g, pkg.version))
-    // Add header
+    // Add header.
     .pipe(header(banner))
-    // Write to build directory
+    // Write to build directory.
     .pipe(gulp.dest(paths.dist))
 });
 
-gulp.task('copyTypings', function() {
+gulp.task('copyTypings', () => {
   return gulp.src('src/index.d.ts')
-    // Add header
+    // Add header.
     .pipe(header(banner))
-    // Write to build directory
+    // Write to build directory.
     .pipe(gulp.dest(paths.dist))
 });
 
-// Regenerates js every time a source file changes
-gulp.task('watch', function() {
+// Regenerates js every time a source file changes.
+gulp.task('watch', () => {
   gulp.watch(paths.src, ['compile']);
 });
 
-// Build task
-gulp.task('build', function(done) {
-  runSequence('cleanup', 'compile', 'copyTypings', function(error) {
+// Builds the GCIP/IAP binaries and their type definition file.
+gulp.task('build', (done) => {
+  runSequence('cleanup', 'compile', 'copyTypings', (error) => {
     done(error && error.err);
   });
 });
 
-// Default task
-gulp.task('default', function(done) {
-  runSequence('build', function(error) {
+// Copies the generated ciap JS files to build/ciap folder.
+// This task depends on build task.
+gulp.task('copy-ciap-builds',
+    () => gulp.src(paths.build)
+    .pipe(gulp.dest(paths.ciapBuild)));
+
+// Copies the sample folder for the alpha package into a temporary folder.
+gulp.task('copy-alpha-package-sample',
+    () => gulp.src(paths.publicSamples)
+    .pipe(gulp.dest(`${paths.tmpDir}/sample`)));
+
+// Copies the builds folder for the alpha package into a temporary folder.
+// This task depends on copy-ciap-builds.
+gulp.task('copy-alpha-package-builds',
+    () => gulp.src(paths.publicBuilds)
+    .pipe(gulp.dest(`${paths.tmpDir}/builds`)));
+
+// Generates the tarball for the alpha package which includes the sample
+// apps and builds folders.
+// This task depends on copy-alpha-package-sample and copy-alpha-package-builds.
+gulp.task('compress-alpha-package',
+    () => gulp.src(paths.tmp)
+    .pipe(tar(`gcip-iap-${pkg.version}.tar`))
+    .pipe(gzip())
+    .pipe(gulp.dest(paths.dist)));
+
+// Generates the alpha package and compresses it into one file.
+// This task depends on 'copy-ciap-builds.
+gulp.task('create-alpha-package', (done) => {
+  runSequence(
+      'copy-alpha-package-sample',
+      'copy-alpha-package-builds',
+      'compress-alpha-package',
+      (error) => done(error && error.err));
+});
+
+// Builds alpha task. This will generate the dist/gcip-iap-x.y.z.tar.gz file
+// with all the files and sample apps needed for the alpha testers.
+gulp.task('build-alpha', (done) => {
+  runSequence('build', 'copy-ciap-builds', 'create-alpha-package', (error) => {
+    done(error && error.err);
+  });
+});
+
+// Default task.
+gulp.task('default', (done) => {
+  runSequence('build', (error) => {
     done(error && error.err);
   });
 });
