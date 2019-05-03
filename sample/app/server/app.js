@@ -64,12 +64,7 @@ function getProjectNumber() {
  * @return {!Promise} A promise that resolves on success.
  */
 function serveContentForUser(template, req, res, decodedClaims) {
-  let gcipClaims = null;
-  try {
-    gcipClaims = JSON.parse(decodedClaims.gcip);
-  } catch (e) {
-    // Ignore error.
-  }
+  let gcipClaims = decodedClaims.gcip || null;
   res.set('Content-Type', 'text/html');
   res.end(template({
     sub: decodedClaims.sub,

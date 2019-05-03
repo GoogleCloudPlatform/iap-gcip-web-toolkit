@@ -62,6 +62,9 @@ const paths = {
     '!sample/app/README.md',
     '!sample/authui/README.md',
   ],
+  metadata: [
+    'CHANGELOG.md',
+  ],
 };
 
 const banner = `/*! gcip-iap-js v${pkg.version} */\n`;
@@ -148,6 +151,11 @@ gulp.task('copy-ciap-builds',
     () => gulp.src(paths.build)
     .pipe(gulp.dest(paths.ciapBuild)));
 
+// Copies the metadata, eg. CHANGELOG.md.
+gulp.task('copy-metadata',
+    () => gulp.src(paths.metadata)
+    .pipe(gulp.dest(`${paths.tmpDir}/`)));
+
 // Copies the sample folder for the alpha package into a temporary folder.
 gulp.task('copy-alpha-package-sample',
     () => gulp.src(paths.publicSamples)
@@ -172,6 +180,7 @@ gulp.task('compress-alpha-package',
 // This task depends on 'copy-ciap-builds.
 gulp.task('create-alpha-package', (done) => {
   runSequence(
+      'copy-metadata',
       'copy-alpha-package-sample',
       'copy-alpha-package-builds',
       'compress-alpha-package',
