@@ -48,6 +48,24 @@ const IAP_ERROR_CODE: {[key: string]: string} = {
   43: 'GCIP_ID_TOKEN_UNESCAPE_ERROR',
 };
 
+/**
+ * Enum for GCIP customized error codes.
+ * enum {string}
+ */
+enum GCIP_ERROR_CODES {
+  RestartProcess = 'RESTART_PROCESS',
+}
+
+/**
+ * The map for IAP errors that need to be overidden by GCIP.
+ */
+const GCIP_ERROR_OVERRIDE: {[key: string]: any} = {
+  FAILED_PRECONDITION: {
+    messagePattern: /restart\sthe\sauthentication\sprocess/,
+    newCode: GCIP_ERROR_CODES.RestartProcess,
+  },
+};
+
 /** Defines EXCHANGE_ID_TOKEN response interface. */
 export interface RedirectServerResponse {
   redirectToken: string;
@@ -238,6 +256,17 @@ export class IAPRequestHandler {
         statusCode = errorResponse.error.status;
         message = errorResponse.error.details && errorResponse.error.details.length &&
             errorResponse.error.details[0] && errorResponse.error.details[0].detail;
+        // Check the status code and error message, if it's eligible to be overriden,
+        // override the status code and message so that proper instructions can be
+        // given to the end user.
+        if (GCIP_ERROR_OVERRIDE.hasOwnProperty(statusCode)) {
+          const msgRegex = new RegExp(GCIP_ERROR_OVERRIDE[statusCode].messagePattern);
+          const errorMessage = errorResponse.error.message;
+          if (msgRegex.test(errorMessage)) {
+            statusCode = GCIP_ERROR_OVERRIDE[statusCode].newCode;
+            message = errorMessage;
+          }
+        }
       }
       return new HttpCIAPError((error as LowLevelError).status, statusCode, message, error);
     }

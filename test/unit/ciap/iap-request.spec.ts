@@ -367,6 +367,37 @@ describe('IAPRequestHandler', () => {
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
     });
+
+    it('should override with GCIP error if it requires restart process', () => {
+      const jsonError = {
+        error: {
+          code: 400,
+          message: 'An issue was encountered when authenticating your request. ' +
+              'Please visit the URL that redirected you to this page again to ' +
+              'restart the authentication process.',
+          status: 'FAILED_PRECONDITION',
+        },
+      };
+      // Simulate RPC rejects with LowLevelError.
+      const serverLowLevelError = createMockLowLevelError(
+          'Server responded with status 400',
+          400,
+          {data: jsonError});
+      // Expected translated error to be thrown.
+      const expectedError = new HttpCIAPError(
+          400, 'RESTART_PROCESS', jsonError.error.message, serverLowLevelError);
+      const stub = sinon.stub(HttpClient.prototype, 'send').rejects(serverLowLevelError);
+      stubs.push(stub);
+
+      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, tenantId, state)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error.toJSON()).to.deep.equal(expectedError.toJSON());
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
   });
 
   describe('setCookieAtTargetUrl()', () => {
