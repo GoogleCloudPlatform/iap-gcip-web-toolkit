@@ -57,6 +57,13 @@ const tenantsConfig = {
         iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png'
       },
     ],
+    signInFlow: 'redirect',
+    // A boolean which determines whether to immediately redirect to the provider's site or
+    // instead show the default 'Sign in with Provider' button when there is only a single
+    // federated provider in signInOptions. In order for this option to take effect, the
+    // signInOptions must only hold a single federated provider (like 'google.com') and
+    // signInFlow must be set to 'redirect'.
+    immediateFederatedRedirect: false,
     tosUrl: '/tos',
     privacyPolicyUrl: '/privacypolicy',
     credentialHelper: firebaseui.auth.CredentialHelper.NONE,
