@@ -1,3 +1,16 @@
+/*
+ * Copyright 2019 Google Inc. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the
+ * License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 (function(){var k,aa="function"==typeof Object.defineProperties?Object.defineProperty:function(a,b,c){a!=Array.prototype&&a!=Object.prototype&&(a[b]=c.value)},ba="undefined"!=typeof window&&window===this?this:"undefined"!=typeof global&&null!=global?global:this,ca=function(a,b){if(b){var c=ba;a=a.split(".");for(var d=0;d<a.length-1;d++){var e=a[d];e in c||(c[e]={});c=c[e]}a=a[a.length-1];d=c[a];b=b(d);b!=d&&null!=b&&aa(c,a,{configurable:!0,writable:!0,value:b})}},da=function(a){var b=0;return function(){return b<
 a.length?{done:!1,value:a[b++]}:{done:!0}}},ea=function(a){var b="undefined"!=typeof Symbol&&Symbol.iterator&&a[Symbol.iterator];return b?b.call(a):{next:da(a)}};
 ca("Promise",function(a){function b(){this.Ra=null}function c(g){return g instanceof e?g:new e(function(h){h(g)})}if(a)return a;b.prototype.rf=function(g){if(null==this.Ra){this.Ra=[];var h=this;this.sf(function(){h.lh()})}this.Ra.push(g)};var d=ba.setTimeout;b.prototype.sf=function(g){d(g,0)};b.prototype.lh=function(){for(;this.Ra&&this.Ra.length;){var g=this.Ra;this.Ra=[];for(var h=0;h<g.length;++h){var m=g[h];g[h]=null;try{m()}catch(p){this.bh(p)}}}this.Ra=null};b.prototype.bh=function(g){this.sf(function(){throw g;
