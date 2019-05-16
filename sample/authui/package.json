@@ -6,7 +6,7 @@
     "bundle": "webpack --config webpack.config.js",
     "prestart": "npm run bundle",
     "start": "firebase serve",
-    "deploy": "firebase deploy"
+    "deploy": "npm run prestart && firebase deploy"
   },
   "author": "Google",
   "license": "Apache License Version 2.0",
@@ -24,11 +24,14 @@
     "handlebars": "4.1.0",
     "jquery": "3.3.1",
     "popper.js": "^1.14.7",
+    "promise-polyfill": "^8.1.0",
     "semistandard": "^12.0.1",
     "style-loader": "0.23.1",
     "url-loader": "0.6.2",
+    "url-polyfill": "^1.1.3",
     "webpack": "^4.17.1",
     "webpack-cli": "^3.0.8",
+    "whatwg-fetch": "^3.0.0",
     "@firebase/app": "../../builds/firebase-js-sdk/firebase-app.tgz",
     "@firebase/auth": "../../builds/firebase-js-sdk/firebase-auth.tgz",
     "firebaseui": "../../builds/firebaseui/firebaseui.tgz"

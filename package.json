@@ -1,6 +1,6 @@
 {
   "name": "gcip-iap-js",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "GCIP/IAP JS SDK",
   "author": "Google",
   "license": "Apache-2.0",
@@ -55,7 +55,10 @@
   "peerDependencies": {
     "@firebase/app": "^0.3.5",
     "@firebase/auth": "^0.9.1",
-    "@firebase/auth-types": "^0.5.0"
+    "@firebase/auth-types": "^0.5.0",
+    "promise-polyfill": "^8.1.0",
+    "url-polyfill": "^1.1.3",
+    "whatwg-fetch": "^3.0.0"
   },
   "devDependencies": {
     "@types/chai": "^3.4.34",
