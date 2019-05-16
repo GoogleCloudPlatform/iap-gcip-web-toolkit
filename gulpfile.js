@@ -61,6 +61,9 @@ const paths = {
     // Exclude READMEs for now. This are explained in the user guide doc.
     '!sample/app/README.md',
     '!sample/authui/README.md',
+    // Exclude node_modules folders from public sample apps.
+    '!**/node_modules',
+    '!**/node_modules/**/*',
   ],
   metadata: [
     'CHANGELOG.md',
