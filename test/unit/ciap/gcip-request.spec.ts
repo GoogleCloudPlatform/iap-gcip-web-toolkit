@@ -168,7 +168,7 @@ describe('GCIPRequestHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
-          expect(error).to.have.property('message', 'Unauthorized domain');
+          expect(error).to.have.property('message', 'Unauthorized domain: https://mismatch.com');
           expect(error).to.have.property('code', 'permission-denied');
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
@@ -183,7 +183,7 @@ describe('GCIPRequestHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
-          expect(error).to.have.property('message', 'Unauthorized domain');
+          expect(error).to.have.property('message', 'Unauthorized domain: https://mismatch.com');
           expect(error).to.have.property('code', 'permission-denied');
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });

@@ -1,6 +1,6 @@
 # Unreleased
 
--
+- [fixed] Improved unauthorized domain error message.
 
 # v0.0.3
 

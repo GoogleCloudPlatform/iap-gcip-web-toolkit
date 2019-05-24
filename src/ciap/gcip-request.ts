@@ -111,7 +111,10 @@ export class GCIPRequestHandler {
             // Check each URL.
             urls.forEach((url: string) => {
               if (!isAuthorizedDomain(responseJson.authorizedDomains, url)) {
-                throw new CIAPError(CLIENT_ERROR_CODES['permission-denied'], 'Unauthorized domain');
+                throw new CIAPError(
+                  CLIENT_ERROR_CODES['permission-denied'],
+                  `Unauthorized domain: ${url}`,
+                );
               }
             });
             // If all URLs are authorized, return project ID.
