@@ -19,7 +19,6 @@
 /**************/
 const gulp = require('gulp');
 const pkg = require('./package.json');
-const runSequence = require('run-sequence');
 // File I/O
 const del = require('del');
 const header = require('gulp-header');
@@ -118,7 +117,7 @@ gulp.task('rollupjs', (done) => {
   });
 });
 
-gulp.task('compile', ['rollupjs'], () => {
+gulp.task('compile', gulp.series('rollupjs', () => {
   return gulp.src(paths.build)
     // Replace SDK version.
     .pipe(replace(/\<XXX_SDK_VERSION_XXX\>/g, pkg.version))
@@ -126,7 +125,7 @@ gulp.task('compile', ['rollupjs'], () => {
     .pipe(header(banner))
     // Write to build directory.
     .pipe(gulp.dest(paths.dist))
-});
+}));
 
 gulp.task('copyTypings', () => {
   return gulp.src('src/index.d.ts')
@@ -142,11 +141,7 @@ gulp.task('watch', () => {
 });
 
 // Builds the GCIP/IAP binaries and their type definition file.
-gulp.task('build', (done) => {
-  runSequence('cleanup', 'compile', 'copyTypings', (error) => {
-    done(error && error.err);
-  });
-});
+gulp.task('build', gulp.series('cleanup', 'compile', 'copyTypings'));
 
 // Copies the generated ciap JS files to build/ciap folder.
 // This task depends on build task.
@@ -181,26 +176,16 @@ gulp.task('compress-alpha-package',
 
 // Generates the alpha package and compresses it into one file.
 // This task depends on 'copy-ciap-builds.
-gulp.task('create-alpha-package', (done) => {
-  runSequence(
-      'copy-metadata',
-      'copy-alpha-package-sample',
-      'copy-alpha-package-builds',
-      'compress-alpha-package',
-      (error) => done(error && error.err));
-});
+gulp.task('create-alpha-package', gulp.series(
+  'copy-metadata',
+  'copy-alpha-package-sample',
+  'copy-alpha-package-builds',
+  'compress-alpha-package'));
 
 // Builds alpha task. This will generate the dist/gcip-iap-x.y.z.tar.gz file
 // with all the files and sample apps needed for the alpha testers.
-gulp.task('build-alpha', (done) => {
-  runSequence('build', 'copy-ciap-builds', 'create-alpha-package', (error) => {
-    done(error && error.err);
-  });
-});
+gulp.task('build-alpha', gulp.series(
+  'build', 'copy-ciap-builds', 'create-alpha-package'));
 
 // Default task.
-gulp.task('default', (done) => {
-  runSequence('build', (error) => {
-    done(error && error.err);
-  });
-});
+gulp.task('default', gulp.series('build'));

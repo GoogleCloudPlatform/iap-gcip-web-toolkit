@@ -17,7 +17,7 @@
     "request": "^2.88.0"
   },
   "devDependencies": {
-    "@google-cloud/nodejs-repo-tools": "^2.3.0"
+    "@google-cloud/nodejs-repo-tools": "^3.3.0"
   },
   "engines": {
     "node": ">=4.3.2"
