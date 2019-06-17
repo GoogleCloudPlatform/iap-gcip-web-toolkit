@@ -56,6 +56,11 @@ Install all dependencies for the sample AuthUI:
 cd sample/authui
 npm install
 ```
+Update `src/custom.js` and `src/script.js` to import the GCIP/IAP module using
+local build:
+```javascript
+import * as ciap from '../../../dist/index.esm';
+```
 
 Install the Firebase command line tool with `npm install -g firebase-tools` (See
 [docs](https://firebase.google.com/docs/cli/#setup)).

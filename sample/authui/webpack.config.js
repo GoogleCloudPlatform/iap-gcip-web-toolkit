@@ -29,6 +29,11 @@ const config = {
   },
   resolve: {
     extensions: ['.js'],
+    alias: {
+      'promise-polyfill': path.resolve(__dirname, './node_modules/promise-polyfill/'),
+      'url-polyfill': path.resolve(__dirname, './node_modules/url-polyfill/'),
+      'whatwg-fetch': path.resolve(__dirname, './node_modules/whatwg-fetch/'),
+    },
   },
   stats: {
     colors: true,

@@ -1,6 +1,9 @@
 # Unreleased
 
+# v0.0.4
+
 - [fixed] Improved unauthorized domain error message.
+- [fixed] Fixed the path of CIAP module in sample app.
 
 # v0.0.3
 
