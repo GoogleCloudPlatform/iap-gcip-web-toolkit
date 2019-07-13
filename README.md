@@ -77,15 +77,12 @@ build (`index.cjs.js`) and an ES6 module browser build (`index.esm.js`)
 via `rollup` under `dist/`. The IIFE version can eventually be deployed via CDN
 for developers who want to consume it this way.
 
-To run various tests:
-Unit tests: `npm run test:browser:unit`
-Integration tests: `npm run test:browser:integration`
+### Unit tests:
+Unit tests: `npm run test:unit`
 Lint and unit tests: `npm test`
 
 Browsers tests are run using karma with `HeadlessChrome`. Additional browsers
 will be added along with future integration with saucelab.
-
-Integration tests will eventually be run in conjunction with `FirebaseUI`.
 
 Code coverage is generated with above tests in a summary form and displayed
 in the terminal window at the conclusion of the test.
@@ -96,6 +93,25 @@ The library is expected to run in browsers only. It will also depend on `URL`,
 `fetch` and `Promise` APIs which are not available in all browsers.
 Developers who want to support these browsers are expected to provide
 polyfills for them as peer dependencies.
+
+### E2E tests
+This will require the following:
+- GCIP should be enabled and email/password provider enabled.
+- The project has to be manually whitelisted / configured for IAP usage.
+- The service account JSON files needs to be provided in `test/resources/key.json`.
+- The associated sample GAE app deployed. This is the one in `sample/app`.
+- Chrome browser installed.
+
+To run E2E tests:
+```bash
+npm run test:e2e
+```
+
+The test is quite fast and normally takes up to a minute to complete.
+There is no mechanism to enforce running the test at the moment but we
+require running it before any change.
+
+It is currently automatically run before new alpha tarballs are generated.
 
 ## Alpha Package
 
@@ -121,6 +137,9 @@ To clean up all intermediate files afterwards, run:
 ```bash
 npm run clean
 ```
+
+Note that the e2e tests will be run before the latest alpha package is generated.
+It is required that these tests pass before the alpha package is generated.
 
 ## Usage Instructions
 

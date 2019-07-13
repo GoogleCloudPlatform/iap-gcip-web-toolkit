@@ -26,7 +26,7 @@ export const signIn = HandleBars.compile(`
           <label for="email">Email</label>
           <input class="form-control" type="text" placeholder="Email" name="email" id="email">
         </div>
-        <button type="submit" class="btn btn-primary mb-2">Next</button>
+        <button type="submit" class="btn btn-primary mb-2 search-email">Next</button>
         <div class="padded-div">
           <h3 class="line-through">OR</h3>
           {{#if saml}}
@@ -55,7 +55,7 @@ export const signInWithEmail = HandleBars.compile(`
           <label for="password">Password</label>
           <input class="form-control" type="password" placeholder="Password" name="password" id="password">
         </div>
-        <button type="submit" class="btn btn-primary mb-2">Sign in</button>
+        <button type="submit" class="btn btn-primary mb-2 password-sign-in">Sign in</button>
         <div id="error"></div>
       </form>
     </div>
@@ -79,7 +79,7 @@ export const signUpWithEmail = HandleBars.compile(`
           <label for="password">Password</label>
           <input class="form-control" type="password" placeholder="Password" name="password" id="password">
         </div>
-        <button type="submit" class="btn btn-primary mb-2">Sign Up</button>
+        <button type="submit" class="btn btn-primary mb-2 password-sign-up">Sign Up</button>
         <div id="error"></div>
       </form>
     </div>
