@@ -120,7 +120,7 @@ export const showNavbar = HandleBars.compile(`
   <nav class="navbar navbar-default navbar-fixed-top">
     <ul class="navbar-nav ml-auto">
       <li class="nav-item">
-        <a class="nav-link" href="{{link}}">Switch to FirebaseUI</a>
+        <a class="nav-link switch-to-firebaseui" href="{{link}}">Switch to FirebaseUI</a>
       </li>
     </ul>
   </nav>

@@ -16,6 +16,8 @@
 
 import { expect } from 'chai';
 import { MainPage } from './webdriver/main-page';
+import { FirebaseUiPage } from './webdriver/firebaseui-page';
+import { AppPage } from './webdriver/app-page';
 import * as admin from 'firebase-admin';
 import {random} from 'lodash';
 import client = require('firebase-tools');
@@ -59,15 +61,15 @@ function generateRandomString(length: number): string {
 describe('GCIP/IAP sign-in automated testing', () => {
   describe('Using IAP resource configured with 3P Auth project level IdPs', () => {
     const uids = [];
-    const mainPage = new MainPage();
     const serviceAccount = require('../resources/key.json');
-    const credential = admin.credential.cert(serviceAccount);
     const projectId = serviceAccount.project_id;
     const appUrl = `https://${projectId}.appspot.com`;
+    const credential = admin.credential.cert(serviceAccount);
     const signInUrl = `https://${projectId}.firebaseapp.com`;
     const app = admin.initializeApp({
       credential,
     });
+    const mainPage = new MainPage(appUrl);
 
     before(() => {
       return deployAuthUi(credential, projectId);
@@ -83,7 +85,8 @@ describe('GCIP/IAP sign-in automated testing', () => {
       });
     });
 
-    it('should handle sign-in and sign-out successfully', () => {
+    it('should handle sign-in and sign-out successfully for custom UI', () => {
+      let appPage: AppPage;
       const email = `user_${generateRandomString(20).toLowerCase()}@example.com`;
       const password = generateRandomString(10);
       // Create a temporary user.
@@ -93,7 +96,7 @@ describe('GCIP/IAP sign-in automated testing', () => {
           // Visit the GAE app.
           // The application has to be configured with IAP already.
           // In addition, the GAE app has to have been deployed already.
-          return mainPage.visit(appUrl);
+          return mainPage.start();
         })
         .then(() => {
           return mainPage.getCurrentUrl();
@@ -102,13 +105,21 @@ describe('GCIP/IAP sign-in automated testing', () => {
           // Should be redirected to sign-in page.
           const url = new URL(currentUrl);
           expect(url.protocol + '//' + url.hostname).to.equal(signInUrl);
+          // Start sign in with email.
+          return mainPage.startSignInWithEmail();
+        })
+        .then(() => {
           return mainPage.inputEmailAndSubmit(email);
         })
         .then(() => {
           return mainPage.inputPasswordAndSignIn(password);
         })
         .then(() => {
-          return mainPage.getSignInResult();
+          return mainPage.getAppPage();
+        })
+        .then((page) => {
+          appPage = page;
+          return appPage.getSignInResult();
         })
         .then((results) => {
           // Confirm user signed and IAP token issued with gcip claims.
@@ -120,16 +131,77 @@ describe('GCIP/IAP sign-in automated testing', () => {
           expect(results.gcip.firebase.identities.email[0]).to.equal(email);
           expect(results.gcip.firebase.sign_in_provider).to.equal('password');
           expect(results.iss).to.equal('https://cloud.google.com/iap');
-          return mainPage.getCurrentUrl();
+          return appPage.getCurrentUrl();
         })
         .then((currentUrl) => {
           // Original URL should be redirected to.
           expect(currentUrl).to.equal(`${appUrl}/resource`);
-          return mainPage.clickSignOutAndWaitForRedirect(signInUrl);
+          return appPage.clickSignOutAndWaitForRedirect(signInUrl);
         });
     });
 
-    // TODO: add test for firebaseui flow.
+    it('should handle sign-in and sign-out successfully for FirebaseUI', () => {
+      let appPage: AppPage;
+      let firebaseuiPage: FirebaseUiPage;
+      const email = `user_${generateRandomString(20).toLowerCase()}@example.com`;
+      const password = generateRandomString(10);
+      // Create a temporary user.
+      return admin.auth().createUser({email, password})
+        .then((userRecord) => {
+          uids.push(userRecord.uid);
+          // Visit the GAE app.
+          // The application has to be configured with IAP already.
+          // In addition, the GAE app has to have been deployed already.
+          return mainPage.start();
+        })
+        .then(() => {
+          return mainPage.getCurrentUrl();
+        })
+        .then((currentUrl) => {
+          // Should be redirected to sign-in page.
+          const url = new URL(currentUrl);
+          expect(url.protocol + '//' + url.hostname).to.equal(signInUrl);
+          // Redirect to FirebaseUI page.
+          return mainPage.getFirebaseUiPage();
+        })
+        .then((page) => {
+          firebaseuiPage = page;
+          // Start sign in with email.
+          return firebaseuiPage.startSignInWithEmail();
+        })
+        .then(() => {
+          // Enter email and click next button.
+          return firebaseuiPage.inputEmailAndSubmit(email);
+        })
+        .then(() => {
+          // Enter password and click sign in button.
+          return firebaseuiPage.inputPasswordAndSignIn(password);
+        })
+        .then(() => {
+          return firebaseuiPage.getAppPage();
+        })
+        .then((page) => {
+          appPage = page;
+          return appPage.getSignInResult();
+        })
+        .then((results) => {
+          // Confirm user signed and IAP token issued with gcip claims.
+          expect(results.gcip).to.not.be.undefined;
+          expect(results.gcip.firebase).to.not.be.undefined;
+          expect(results.gcip.firebase.identities).to.not.be.undefined;
+          expect(results.gcip.firebase.identities.email).to.not.be.undefined;
+          expect(results.gcip.email).to.equal(email);
+          expect(results.gcip.firebase.identities.email[0]).to.equal(email);
+          expect(results.gcip.firebase.sign_in_provider).to.equal('password');
+          expect(results.iss).to.equal('https://cloud.google.com/iap');
+          return appPage.getCurrentUrl();
+        })
+        .then((currentUrl) => {
+          // Original URL should be redirected to.
+          expect(currentUrl).to.equal(`${appUrl}/resource`);
+          return appPage.clickSignOutAndWaitForRedirect(signInUrl);
+        });
+    });
   });
 
   // TODO: when firebase-admin SDK launches with multi-tenancy, add tests

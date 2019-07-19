@@ -60,15 +60,6 @@ export class BasePage {
   }
 
   /**
-   * Visits the specified URL.
-   * @param url The URL to redirect to.
-   * @return A promise that resolves after the redirect.
-   */
-  visit(url: string): Promise<void> {
-    return this.driver.get(url);
-  }
-
-  /**
    * Quits the current session.
    * @return A promise that resolves after session is closed.
    */
@@ -77,11 +68,27 @@ export class BasePage {
   }
 
   /**
+   * @return A promise that resolves with the current URL string.
+   */
+  getCurrentUrl(): Promise<string> {
+    return this.driver.getCurrentUrl();
+  }
+
+  /**
+   * Visits the specified URL.
+   * @param url The URL to redirect to.
+   * @return A promise that resolves after the redirect.
+   */
+  protected visit(url: string): Promise<void> {
+    return this.driver.get(url);
+  }
+
+  /**
    * Waits for the element identified by ID to be found.
    * @param id The ID of the element to look for.
    * @return A promise that resolves with the WebElement to look for.
    */
-  findById(id: string): Promise<WebElement> {
+  protected findById(id: string): Promise<WebElement> {
     return this.driver.wait(
         until.elementLocated(By.id(id)),
         DELAY,
@@ -96,7 +103,7 @@ export class BasePage {
    * @param name The name of the element to look for.
    * @return A promise that resolves with the WebElement to look for.
    */
-  findByName(name: string): Promise<WebElement> {
+  protected findByName(name: string): Promise<WebElement> {
     return this.driver.wait(
         until.elementLocated(By.name(name)),
         DELAY,
@@ -111,7 +118,7 @@ export class BasePage {
    * @param className The class name of the element to look for.
    * @return A promise that resolves with the WebElement to look for.
    */
-  findByClassName(className: string): Promise<WebElement> {
+  protected findByClassName(className: string): Promise<WebElement> {
     return this.driver.wait(
         until.elementLocated(By.className(className)),
         DELAY,
@@ -127,11 +134,25 @@ export class BasePage {
    * @param substrUrl The substring of the URL to wait for.
    * @return A promise that resolves when the URL substring is redirected to.
    */
-  waitUntilUrlContains(substrUrl: string): Promise<void> {
+  protected waitUntilUrlContains(substrUrl: string): Promise<void> {
     return this.driver.wait(
         until.urlContains(substrUrl),
         DELAY,
         'Waiting for URL');
+  }
+
+  /**
+   * Waits for the page to navigate to a URL matching the specified
+   * regular expression.
+   * @param regex The regular expression to test against.
+   * @return A promise that resolves when the matching URL regular expression
+   *     is redirected to.
+   */
+  protected waitUntilUrlMatches(regex: RegExp): Promise<void> {
+    return this.driver.wait(
+        until.urlMatches(regex),
+        DELAY,
+        'Waiting for URL match');
   }
 
   /**
@@ -140,7 +161,7 @@ export class BasePage {
    * @param txt The text to input.
    * @return A promise that resolves after the text is inputted.
    */
-  write(el: WebElement, txt: string): Promise<void> {
+  protected write(el: WebElement, txt: string): Promise<void> {
     return el.sendKeys(txt);
   }
 }

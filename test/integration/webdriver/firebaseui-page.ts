@@ -16,42 +16,32 @@
 
 import {BasePage} from './base-page';
 import {SignInPage} from './sign-in-page';
-import {FirebaseUiPage} from './firebaseui-page';
 
 /**
- * The main page where the web driver test will be run from.
+ * The FirebaseUI page where the web driver test will be run from.
+ * This is redirected to from the main page.
  */
-export class MainPage extends SignInPage {
-  /** The ID of the email input element. */
-  private readonly searchEmailInputId = 'email';
+export class FirebaseUiPage extends SignInPage {
+  /** The class name of the sign in with email button. */
+  private readonly searchSignInWithEmailButtonClass = 'firebaseui-idp-password';
+  /** The class name of the email input element. */
+  private readonly searchEmailInputClass = 'firebaseui-id-email';
   /** The class name of the search email button element. */
-  private readonly searchEmailButtonClass = 'search-email';
-  /** The ID of the password input element. */
-  private readonly searchPasswordInputId = 'password';
+  private readonly searchEmailButtonClass = 'firebaseui-id-submit';
+  /** The class name of the password input element. */
+  private readonly searchPasswordInputClass = 'firebaseui-id-password';
   /** The class name of the password sign-in button element. */
-  private readonly searchSignInButtonClass = 'password-sign-in';
-  /** The class name of the switch to FirebaseUI button element. */
-  private readonly searchSwitchToFirebaseUiButtonClass = 'switch-to-firebaseui';
+  private readonly searchSignInButtonClass = 'firebaseui-id-submit';
 
   /**
-   * Initializes a main page instance for running web driver tests.
-   * @param initialUrl The initial main page URL to redirect to.
-   */
-  constructor(private readonly initialUrl: string) {
-    super();
-  }
-
-  /** @return A promise that resolves after redirecting to the initial main page URL. */
-  start(): Promise<void> {
-    return this.visit(this.initialUrl);
-  }
-
-  /**
-   * Starts email sign-in. In the custom sign-in page, this does nothing.
-   * @return A promise that resolves after starting email sign-in.
+   * Starts email sign-in.
+   * @return A promise that resolves after clicking the "Sign in with Email" button.
    */
   startSignInWithEmail(): Promise<void> {
-    return Promise.resolve();
+    return this.findByClassName(this.searchSignInWithEmailButtonClass)
+      .then((searchSignInWithEmailButton) => {
+        searchSignInWithEmailButton.click();
+      });
   }
 
   /**
@@ -60,7 +50,7 @@ export class MainPage extends SignInPage {
    * @return A promise that resolves after clicking the next button.
    */
   inputEmailAndSubmit(email: string): Promise<void> {
-    return this.findById(this.searchEmailInputId)
+    return this.findByClassName(this.searchEmailInputClass)
       .then((emailInput) => {
         return this.write(emailInput, email);
       })
@@ -78,7 +68,7 @@ export class MainPage extends SignInPage {
    * @return A promise that resolves after the sign-in button is clicked.
    */
   inputPasswordAndSignIn(password: string): Promise<void> {
-    return this.findById(this.searchPasswordInputId)
+    return this.findByClassName(this.searchPasswordInputClass)
       .then((passwordInput) => {
         return this.write(passwordInput, password);
       })
@@ -87,25 +77,6 @@ export class MainPage extends SignInPage {
       })
       .then((signInButton) => {
         signInButton.click();
-      });
-  }
-
-  /**
-   * @return A promise that resolves with the FirebaseUiPage redirected to.
-   */
-  getFirebaseUiPage(): Promise<FirebaseUiPage> {
-    let firebaseUiUrl: string;
-    return this.getCurrentUrl()
-      .then((url) => {
-        firebaseUiUrl = url.replace('/custom', '/');
-        return this.findByClassName(this.searchSwitchToFirebaseUiButtonClass);
-      })
-      .then((switchToFirebaseUiButton) => {
-        switchToFirebaseUiButton.click();
-        return this.waitUntilUrlContains(firebaseUiUrl);
-      })
-      .then(() => {
-        return new FirebaseUiPage(this.driver);
       });
   }
 }
