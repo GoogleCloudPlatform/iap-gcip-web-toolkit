@@ -92,7 +92,7 @@ export class BasePage {
     return this.driver.wait(
         until.elementLocated(By.id(id)),
         DELAY,
-        'Locating element')
+        `Locating element with id ${id}`)
         .then(() => {
           return this.driver.findElement(By.id(id));
         });
@@ -107,7 +107,7 @@ export class BasePage {
     return this.driver.wait(
         until.elementLocated(By.name(name)),
         DELAY,
-        'Locating element')
+        `Locating element with name ${name}`)
         .then(() => {
           return this.driver.findElement(By.name(name));
         });
@@ -122,7 +122,7 @@ export class BasePage {
     return this.driver.wait(
         until.elementLocated(By.className(className)),
         DELAY,
-        'Locating element')
+        `Locating element with className ${className}`)
         .then(() => {
           return this.driver.findElement(By.className(className));
         });
@@ -138,7 +138,7 @@ export class BasePage {
     return this.driver.wait(
         until.urlContains(substrUrl),
         DELAY,
-        'Waiting for URL');
+        `Waiting for URL ${substrUrl}`);
   }
 
   /**
@@ -152,7 +152,7 @@ export class BasePage {
     return this.driver.wait(
         until.urlMatches(regex),
         DELAY,
-        'Waiting for URL match');
+        `Waiting for URL match ${regex}`);
   }
 
   /**

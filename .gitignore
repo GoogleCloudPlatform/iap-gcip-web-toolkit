@@ -32,7 +32,7 @@ sample/authui/public/script.js
 sample/authui/public/custom.js
 
 # Real key file and other project information should not be checked in
-test/resources/key.json
+test/resources/key*.json
 
 # Release tarballs should not be checked in
 gcip-iap-js-*.tgz

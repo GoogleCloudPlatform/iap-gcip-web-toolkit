@@ -28,6 +28,8 @@ export class AppPage extends BasePage {
   private readonly searchClaimsResultId = 'iap-claims';
   /** The ID of the sign out button element. */
   private readonly searchSignOutButtonId = 'sign-out';
+  /** The ID of the email input element. */
+  private readonly searchEmailInputId = 'email';
 
   /**
    * Returns the sign-in result in the application page. This will be the
@@ -58,6 +60,12 @@ export class AppPage extends BasePage {
       .then((signOutButton) => {
         signOutButton.click();
         return this.waitUntilUrlContains(signInPageUrl);
+      })
+      .then(() => {
+        // Wait for email input element to be visible, signaling signout
+        // processing is complete. Otherwise, if a test ends before this
+        // completes, the user will remain signed in in the next test.
+        return this.findById(this.searchEmailInputId)
       });
   }
 }
