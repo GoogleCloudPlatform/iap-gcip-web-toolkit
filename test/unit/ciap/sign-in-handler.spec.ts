@@ -39,10 +39,10 @@ describe('SignInOperationHandler', () => {
   const tid = 'TENANT_ID';
   const state = 'STATE';
   const hl = 'en-US';
-  const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/tenantIds/${tid}:handleRedirect`;
+  const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
   const agentId = `_${projectId}`;
   const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
-  const agentRedirectUri = `https://iap.googleapis.com/v1alpha1/gcip/tenantIds/${agentId}:handleRedirect`;
+  const agentRedirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
   const agentConfig = new Config(createMockUrl('login', apiKey, agentId, agentRedirectUri, state, hl));
   let auth: MockAuth;
   let agentAuth: MockAuth;

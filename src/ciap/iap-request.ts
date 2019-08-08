@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { isNonEmptyString, isHttpsURL } from '../utils/validator';
+import { isNonEmptyString, isHttpsURL, isArray } from '../utils/validator';
 import { HttpResponse, HttpRequestConfig, HttpClient, LowLevelError } from '../utils/http-client';
 import { ApiRequester } from '../utils/api-requester';
 import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
@@ -73,6 +73,13 @@ export interface RedirectServerResponse {
   targetUri: string;
 }
 
+/** Defines GET_SESSION_INFO response interface. */
+export interface SessionInfoResponse {
+  originalUri: string;
+  targetUri: string;
+  tenantIds: string[];
+}
+
 /**
  * Defines the RPC handler for calling the IAP related APIs.
  */
@@ -126,11 +133,37 @@ export class IAPRequestHandler {
     }
   });
 
+  /** Defines the API to get the session information associated with a state JWT. */
+  private static GET_SESSION_INFO = new ApiRequester({
+    method: 'POST',
+    mode: 'cors',
+    cache: 'no-cache',
+    headers: IAP_HEADERS,
+    url: '{iapRedirectServerUrl}',
+  }).setRequestValidator((config: HttpRequestConfig) => {
+    // Validate redirect server URL.
+    if (!isSafeUrl(config.url) || !isHttpsURL(config.url)) {
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid URL');
+    }
+    // Validate state parameter.
+    if (!isNonEmptyString(config.data.state)) {
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid request');
+    }
+  }).setResponseValidator((response: HttpResponse) => {
+    // Confirm response contains required parameters.
+    if (!response.isJson() ||
+        !isNonEmptyString(response.data.originalUri) ||
+        !isSafeUrl(response.data.originalUri) ||
+        !isArray(response.data.tenantIds)) {
+      throw new CIAPError(CLIENT_ERROR_CODES.unknown, 'Invalid response');
+    }
+  });
+
   private readonly timeout: number;
   /**
    * Initializes the IAP request handler with the provided HttpClient instance.
    *
-   * @param {HttpClient} httpClient The HTTP client used to process RPCs to IAP endpoints.
+   * @param httpClient The HTTP client used to process RPCs to IAP endpoints.
    * @constructor
    */
   constructor(private readonly httpClient: HttpClient) {
@@ -141,14 +174,14 @@ export class IAPRequestHandler {
   }
 
   /**
-   * Exchanges the provided Firebase ID token for a redirect token, original and targert URI.
+   * Exchanges the provided Firebase ID token for a redirect token, original and target URI.
+   * TODO: remove depedency on id_token_tenant_id.
    *
-   * @param {string} iapRedirectServerUrl The IAP redirect server URL passed via query string.
-   * @param {string} idToken The Firebase ID token.
-   * @param {string} tenantId The tenant ID.
-   * @param {string} state The state JWT.
-   * @return {Promise<RedirectServerResponse>} A promise that resolves with the redirect token,
-   *     target and original URI.
+   * @param iapRedirectServerUrl The IAP redirect server URL passed via query string.
+   * @param idToken The Firebase ID token.
+   * @param tenantId The tenant ID.
+   * @param state The state JWT.
+   * @return A promise that resolves with the redirect token, target and original URI.
    */
   public exchangeIdTokenAndGetOriginalAndTargetUrl(
       iapRedirectServerUrl: string,
@@ -174,10 +207,10 @@ export class IAPRequestHandler {
    * Calls the corresponding IAP resource target URI to validate the redirect token
    * and set the cookie for the authenticated user.
    *
-   * @param {string} targetUrl The target URL returned from exchange ID token endpoint,
+   * @param targetUrl The target URL returned from exchange ID token endpoint,
    *     used to set the IAP cookie.
-   * @param {string} redirectToken The redirect token to pass to target URI.
-   * @return {Promise<void>} A promise that resolves on successful cookie setting.
+   * @param redirectToken The redirect token to pass to target URI.
+   * @return A promise that resolves on successful cookie setting.
    */
   public setCookieAtTargetUrl(targetUrl: string, redirectToken: string): Promise<void> {
     const urlParams = {targetUrl};
@@ -195,11 +228,12 @@ export class IAPRequestHandler {
 
   /**
    * Get the original URI associated with the state JWT used to complete signout.
+   * TODO: remove depedency on id_token_tenant_id.
    *
-   * @param {string} iapRedirectServerUrl The IAP redirect server URL passed via query string.
-   * @param {string} tenantId The tenant ID.
-   * @param {string} state The state JWT.
-   * @return {Promise<string>} A promise that resolves on successful response with the original URI.
+   * @param iapRedirectServerUrl The IAP redirect server URL passed via query string.
+   * @param tenantId The tenant ID.
+   * @param state The state JWT.
+   * @return A promise that resolves on successful response with the original URI.
    */
   public getOriginalUrlForSignOut(
       iapRedirectServerUrl: string,
@@ -223,6 +257,30 @@ export class IAPRequestHandler {
   }
 
   /**
+   * Returns the session information (associated resource tenants and original URI) for
+   * the provided state JWT.
+   *
+   * @param iapRedirectServerUrl The IAP redirect server URL passed via query string.
+   * @param state The state JWT.
+   * @return A promise that resolves with the session info response.
+   */
+  public getSessionInfo(
+      iapRedirectServerUrl: string,
+      state: string): Promise<SessionInfoResponse> {
+    const urlParams = {iapRedirectServerUrl};
+    const requestData = {
+      state,
+    };
+    return IAPRequestHandler.GET_SESSION_INFO.process(this.httpClient, urlParams, requestData, null, this.timeout)
+        .then((response: HttpResponse) => {
+          return response.data as SessionInfoResponse;
+        })
+        .catch((error: Error) => {
+          throw this.translateLowLevelCanonicalError(error);
+        });
+  }
+
+  /**
    * Translates a LowLevelError canonical error thrown by IAP redirect server to an HttpCIAPError.
    * Sample error code (JSON formatted):
    * {
@@ -239,8 +297,8 @@ export class IAPRequestHandler {
    *   }
    * }
    *
-   * @param {Error} error The error caught when calling the IAP redirect server.
-   * @return {Error} The translated error.
+   * @param error The error caught when calling the IAP redirect server.
+   * @return The translated error.
    */
   private translateLowLevelCanonicalError(error: Error): Error {
     // Check if low level error, otherwise pass it through.
@@ -278,8 +336,8 @@ export class IAPRequestHandler {
    * Sample error code (Text formatted and error code needs to be parsed separately):
    * "An internal server error occurred while authorizing your request. Error XYZ code."
    *
-   * @param {Error} error The error caught when calling the target URI.
-   * @return {Error} The translated error.
+   * @param error The error caught when calling the target URI.
+   * @return The translated error.
    */
   private translateLowLevelTextError(error: Error): Error {
     // Low level error.

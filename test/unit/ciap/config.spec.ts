@@ -24,7 +24,7 @@ describe('Config', () => {
     const tid = 'TENANT_ID';
     const state = 'STATE';
     const hl = 'en-US';
-    const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/tenantIds/${tid}:handleRedirect`;
+    const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
 
     it('should initialize successfully with login config mode', () => {
       const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));

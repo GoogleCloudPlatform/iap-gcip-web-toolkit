@@ -170,7 +170,7 @@ describe('BaseOperationHandler', () => {
   const hl = 'en-US';
   const agentId = `_${projectId}`;
   const currentUrl = getCurrentUrl(window);
-  const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/tenantIds/${tid}:handleRedirect`;
+  const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
   // Dummy FirebaseAuth instance.
   const auth = createMockAuth(apiKey, tid);
   const tenant2Auth: {[key: string]: FirebaseAuth} = {};
