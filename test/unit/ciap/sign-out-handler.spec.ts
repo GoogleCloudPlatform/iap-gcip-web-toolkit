@@ -44,10 +44,11 @@ describe('SignOutOperationHandler', () => {
   const originalUri = 'https://www.example.com/path/main';
   const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
   const agentId = `_${projectId}`;
-  const agentRedirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
   const singleSignOutConfig = new Config(createMockUrl('signout', apiKey, tid1, redirectUri, state, hl));
   const multiSignOutConfig = new Config(createMockUrl('signout', apiKey, null, null, null, hl));
-  const agentConfig = new Config(createMockUrl('signout', apiKey, agentId, agentRedirectUri, state, hl));
+  const agentConfig = new Config(createMockUrl('signout', apiKey, agentId, redirectUri, state, hl));
+  // redirectUrl and state specified. No tenantId is specified.
+  const unifiedSignOutConfig = new Config(createMockUrl('signout', apiKey, null, redirectUri, state, hl));
   let auth1: MockAuth;
   let auth2: MockAuth;
   let auth3: MockAuth;
@@ -56,6 +57,7 @@ describe('SignOutOperationHandler', () => {
   let singleSignOutOperationHandler: SignOutOperationHandler;
   let multiSignOutOperationHandler: SignOutOperationHandler;
   let agentSignOutOperationHandler: SignOutOperationHandler;
+  let unifiedSignOutOperationHandler: SignOutOperationHandler;
   let tenant2Auth: {[key: string]: FirebaseAuth};
   let completeSignOutSpy: sinon.SinonSpy;
   let showProgressBarSpy: sinon.SinonSpy;
@@ -108,6 +110,7 @@ describe('SignOutOperationHandler', () => {
     singleSignOutOperationHandler = new SignOutOperationHandler(singleSignOutConfig, authenticationHandler);
     multiSignOutOperationHandler = new SignOutOperationHandler(multiSignOutConfig, authenticationHandler);
     agentSignOutOperationHandler = new SignOutOperationHandler(agentConfig, authenticationHandler);
+    unifiedSignOutOperationHandler = new SignOutOperationHandler(unifiedSignOutConfig, authenticationHandler);
     // Simulate tenant previously signed in and saved in storage.
     return authTenantsStorageManager.addTenant(tid1);
   });
@@ -607,7 +610,7 @@ describe('SignOutOperationHandler', () => {
           // User should be signed out.
           expect(auth1.currentUser).to.be.null;
           // Progress bar should be hidden when the error is detected.
-          expect(hideProgressBarSpy) .to.have.been.calledOnce.and.calledAfter(getOriginalUrlForSignOutStub);
+          expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledAfter(getOriginalUrlForSignOutStub);
           // Confirm error passed to handler.
           expect(authenticationHandler.getLastHandledError()).to.equal(error);
           // Confirm stored tenant ID is cleared from storage.
@@ -717,7 +720,7 @@ describe('SignOutOperationHandler', () => {
       ];
 
       // Create multi-tenant signout config with redirect URL.
-      const config = new Config(createMockUrl('signout', apiKey, null, redirectUri, state, hl));
+      const config = new Config(createMockUrl('signout', apiKey, null, redirectUri, null, hl));
       multiSignOutOperationHandler = new SignOutOperationHandler(config, authenticationHandler);
 
       return Promise.all(addTenantsList)
@@ -881,6 +884,326 @@ describe('SignOutOperationHandler', () => {
           // Confirm error passed to handler.
           expect(authenticationHandler.getLastHandledError()).to.equal(error);
           // Confirm only tenants corresponding to succeeding signOut calls are cleared.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          // Second tenant remains in storage due to signOut failure on second call.
+          // Depending on order, tid1 and tid3 may or may not be removed.
+          expect(tenantList).to.include(tid2);
+        });
+    });
+
+    it('should fail on unauthorized redirect URL when redirectUrl and state are passed', () => {
+      // Mock domains are not authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          GCIPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').rejects(unauthorizedDomainError);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo');
+      stubs.push(getSessionInfoStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+
+      return unifiedSignOutOperationHandler.start()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          // Progress bar should be shown on initialization.
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, unifiedSignOutConfig.redirectUrl]);
+          // Expected error should be thrown.
+          expect(error).to.equal(unauthorizedDomainError);
+          // Confirm completeSignOut not called.
+          expect(completeSignOutSpy).to.not.have.been.called;
+          // Confirm getSessionInfoStub not called.
+          expect(getSessionInfoStub).to.not.have.been.called;
+          // No redirect should occur.
+          expect(setCurrentUrlStub).to.not.have.been.called;
+          // On failure, progress bar should be hidden.
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+          // User should still be signed in.
+          expect(auth1.currentUser).to.not.be.null;
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
+          // Confirm stored tenant ID is not cleared from storage.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.deep.equal([tid1]);
+        });
+    });
+
+    it('should sign out from multiple tenants or agent and redirect when state and redirectUrl are specified', () => {
+      const sessionInfo = {
+        originalUri,
+        // Users from each of these tenants will be signed out at the end of the flow.
+        tenantIds: [tid1, tid2, agentId],
+      };
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          GCIPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo').resolves(sessionInfo);
+      stubs.push(getSessionInfoStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+
+      // Simulate 3 tenant and one top level project users signed in and saved in storage.
+      const addTenantsList = [
+        authTenantsStorageManager.addTenant(tid1),
+        authTenantsStorageManager.addTenant(tid2),
+        authTenantsStorageManager.addTenant(agentId),
+        authTenantsStorageManager.addTenant(tid3),
+      ];
+
+      return Promise.all(addTenantsList)
+        .then(() => {
+          // Users should be signed in initially.
+          expect(auth1.currentUser.uid).to.equal('UID1');
+          expect(auth2.currentUser.uid).to.equal('UID2');
+          expect(auth3.currentUser.uid).to.equal('UID3');
+          expect(agentAuth.currentUser.uid).to.equal('UID_AGENT');
+          return unifiedSignOutOperationHandler.start();
+        })
+        .then(() => {
+          // Expect checkAuthorizedDomainsAndGetProjectId result to be cached for 30 mins.
+          expect(cacheAndReturnResultSpy).to.be.calledTwice;
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
+            .to.deep.equal([[currentUrl, unifiedSignOutConfig.redirectUrl]]);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
+          // Expect getSessionInfo result to be cached for 5 mins.
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[1].args[1].getSessionInfo);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[1]).to.be.instanceof(IAPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[2])
+            .to.deep.equal([unifiedSignOutConfig.redirectUrl, unifiedSignOutConfig.state]);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[3]).to.equal(CacheDuration.GetSessionInfo);
+
+          // Progress bar should be shown on initialization.
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, unifiedSignOutConfig.redirectUrl]);
+          // Progress bar should not be hidden.
+          expect(hideProgressBarSpy).to.not.have.been.called;
+          // Confirm completeSignOut is not called.
+          expect(completeSignOutSpy).to.not.have.been.called;
+          // Confirm signOut is called after confirming redirect URL authorization.
+          expect(signOutSpy).to.have.been.calledThrice
+            .and.calledAfter(getSessionInfoStub);
+
+          // Confirm getSessionInfoStub called.
+          expect(getSessionInfoStub)
+            .to.have.been.calledOnce.and.calledBefore(signOutSpy)
+            .and.calledWith(unifiedSignOutConfig.redirectUrl, unifiedSignOutConfig.state);
+          // Confirm redirect to originalUri.
+          expect(setCurrentUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(signOutSpy)
+            .and.calledWith(window, originalUri);
+          // Users should be signed out except for 4th tenant.
+          expect(auth1.currentUser).to.be.null;
+          expect(auth2.currentUser).to.be.null;
+          expect(agentAuth.currentUser).to.be.null;
+          expect(auth3.currentUser.uid).to.equal('UID3');
+          // Confirm only resource associated tenants are cleared from storage.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          // Only one tenant not associated with current resource should remain in storage.
+          expect(tenantList).to.deep.equal([tid3]);
+          // Call again. Cached results should be used. This is not a realistic scenario and only used
+          // to illustrate expected caching behavior.
+          return unifiedSignOutOperationHandler.start();
+        })
+        .then(() => {
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.be.calledOnce;
+          expect(getSessionInfoStub).to.be.calledOnce;
+        });
+    });
+
+    it('should reject when state and redirectUrl are specified but getSessionInfo rejects', () => {
+      const sessionInfo = {
+        originalUri,
+        // Users from each of these tenants will be signed out at the end of the flow.
+        tenantIds: [tid1, tid2],
+      };
+      let caughtError: CIAPError;
+      // Simulate recoverable error.
+      const expectedError = new HttpCIAPError(504);
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          GCIPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo');
+      // Fail on first try and succeed on second.
+      getSessionInfoStub.onFirstCall().rejects(expectedError);
+      getSessionInfoStub.onSecondCall().resolves(sessionInfo);
+      stubs.push(getSessionInfoStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+
+      const addTenantsList = [
+        authTenantsStorageManager.addTenant(tid1),
+        authTenantsStorageManager.addTenant(tid2),
+        authTenantsStorageManager.addTenant('OTHER_TENANT_ID'),
+      ];
+
+      // Simulate another tenant previously signed in and saved in storage.
+      return Promise.all(addTenantsList)
+        .then(() => {
+          expect(auth1.currentUser.uid).to.equal('UID1');
+          expect(auth2.currentUser.uid).to.equal('UID2');
+          return unifiedSignOutOperationHandler.start();
+        })
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          caughtError = error;
+          // Progress bar should be shown on initialization.
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, unifiedSignOutConfig.redirectUrl]);
+          // Confirm completeSignOut is not called.
+          expect(completeSignOutSpy).to.not.have.been.called;
+          // Confirm signOut is not called yet.
+          expect(signOutSpy).to.not.have.been.called;
+          // Confirm getSessionInfoStub called.
+          expect(getSessionInfoStub)
+            .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
+            .and.calledWith(unifiedSignOutConfig.redirectUrl, unifiedSignOutConfig.state);
+          // No redirect should occur.
+          expect(setCurrentUrlStub).to.not.have.been.called;
+          // Users should not be signed out.
+          expect(auth1.currentUser).to.not.be.null;
+          expect(auth2.currentUser).to.not.be.null;
+          // Progress bar should be hidden when the error is detected.
+          expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledAfter(getSessionInfoStub);
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
+          expect(startSpy).to.be.calledOnce;
+          expect(caughtError).to.haveOwnProperty('retry');
+          // Confirm expected tenant IDs are not cleared from storage.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.deep.equal([tid1, tid2, 'OTHER_TENANT_ID']);
+          // Try again to confirm caching behavior.
+          return (caughtError as any).retry();
+        })
+        .then(() => {
+          expect(startSpy).to.be.calledTwice;
+          expect(startSpy.getCall(0).thisValue).to.equal(unifiedSignOutOperationHandler);
+          // Only getSessionInfoStub call should retry.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce;
+          expect(getSessionInfoStub).to.have.been.calledTwice;
+          expect(getSessionInfoStub.getCalls()[1].args)
+            .to.deep.equal([unifiedSignOutConfig.redirectUrl, unifiedSignOutConfig.state]);
+          expect(signOutSpy).to.have.been.calledTwice;
+          // Users should be signed out.
+          expect(auth1.currentUser).to.be.null;
+          expect(auth2.currentUser).to.be.null;
+          // Confirm redirect to originalUri.
+          expect(setCurrentUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(signOutSpy)
+            .and.calledWith(window, originalUri);
+          // Confirm expected tenant IDs are cleared from storage.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+         // Other tenant ID should remain in storage.
+          expect(tenantList).to.deep.equal(['OTHER_TENANT_ID']);
+        });
+    });
+
+    it('should reject for signout with redirect URL and state when auth.signOut() rejects', () => {
+      const sessionInfo = {
+        originalUri,
+        // Users from each of these tenants will be signed out at the end of the flow.
+        tenantIds: [tid1, tid2, tid3],
+      };
+      const expectedError = new Error('signout error');
+      // Mock domain authorization succeeds.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          GCIPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo').resolves(sessionInfo);
+      // Remove signOut spy and re-stub to reject with an error on second call.
+      signOutSpy.restore();
+      // Simulate second call fails.
+      const signOutStub = sinon.stub(MockAuth.prototype, 'signOut');
+      signOutStub.onCall(0).resolves();
+      signOutStub.onCall(1).rejects(expectedError);
+      signOutStub.onCall(2).resolves();
+      stubs.push(signOutStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+
+      // Simulate 2 tenants signed in and saved in storage.
+      const addTenantsList = [
+        authTenantsStorageManager.addTenant(tid1),
+        authTenantsStorageManager.addTenant(tid2),
+        authTenantsStorageManager.addTenant(tid3),
+      ];
+
+      return Promise.all(addTenantsList)
+        .then(() => {
+          return unifiedSignOutOperationHandler.start();
+        })
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          // Progress bar should be shown on initialization.
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Progress bar should be hidden after error is thrown.
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(getSessionInfoStub);
+          // Expected error should be thrown.
+          expect(error).to.equal(expectedError);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, unifiedSignOutConfig.redirectUrl]);
+          // completeSignOut should not be called.
+          expect(completeSignOutSpy).to.not.have.been.called;
+          // getSessionInfo should be called once.
+          expect(getSessionInfoStub).to.have.been.calledOnce.and.calledWith(
+              unifiedSignOutConfig.redirectUrl, unifiedSignOutConfig.state);
+          // signOut should have been called thrice.
+          expect(signOutStub).to.have.been.calledThrice
+            .and.calledAfter(getSessionInfoStub);
+          // No redirect should occur.
+          expect(setCurrentUrlStub).to.not.have.been.called;
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
+          // Confirm stored tenant ID is not cleared from storage.
           return authTenantsStorageManager.listTenants();
         })
         .then((tenantList: string[]) => {

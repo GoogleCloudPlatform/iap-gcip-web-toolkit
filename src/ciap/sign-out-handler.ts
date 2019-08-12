@@ -24,7 +24,7 @@ import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
  * Defines the sign-out operation handler.
  */
 export class SignOutOperationHandler extends BaseOperationHandler {
-
+  private originalUri?: string;
   /**
    * Initializes an sign-out operation handler. This will either sign out from a specified tenant
    * or all current tenants and then either redirect back or display a sign-out message.
@@ -78,6 +78,10 @@ export class SignOutOperationHandler extends BaseOperationHandler {
           // Redirect to original URI.
           setCurrentUrl(window, originalUrl);
         });
+      } else if (this.state && this.redirectUrl && this.originalUri) {
+        // Used to redirect to original URI when state and redirect URL are provided but
+        // no single tenant ID is specified in the URL query string.
+        setCurrentUrl(window, this.originalUri);
       } else {
         // For multi-tenant signout, do not redirect.
         this.hideProgressBar();
@@ -98,13 +102,14 @@ export class SignOutOperationHandler extends BaseOperationHandler {
         // Remove tenant ID from storage.
         return this.removeAuthTenant(this.tenantId);
       });
-    }
-    // Sign out from all previously authenticated tenants.
-    // Get all signed in tenants.
-    return this.listAuthTenants()
-      .then((tenantList: string[]) => {
+    } else if (this.state && this.redirectUrl) {
+      // When state and IAP redirect URL are provided, we can determine list of tenants
+      // associated with the current resource that needs to be signed out from.
+      return this.getSessionInformation().then((sessionInfoResponse) => {
         const signoutPromises: Array<Promise<void>> = [];
-        tenantList.forEach((tenantId: string) => {
+        // Save original URI. It will be redirected to later.
+        this.originalUri = sessionInfoResponse.originalUri;
+        sessionInfoResponse.tenantIds.forEach((tenantId: string) => {
           // Get corresponding auth instance.
           const auth = this.getAuth(tenantId);
           if (auth) {
@@ -116,8 +121,29 @@ export class SignOutOperationHandler extends BaseOperationHandler {
         return Promise.all(signoutPromises);
       })
       .then(() => {
-        // Clear all authenticated tenants. This will clear tenants that were not found.
-        return this.clearAuthTenants();
+        // Do nothing to resolve promise with void.
       });
+    } else {
+      // Sign out from all previously authenticated tenants.
+      // Get all signed in tenants.
+      return this.listAuthTenants()
+        .then((tenantList: string[]) => {
+          const signoutPromises: Array<Promise<void>> = [];
+          tenantList.forEach((tenantId: string) => {
+            // Get corresponding auth instance.
+            const auth = this.getAuth(tenantId);
+            if (auth) {
+              // Sign out the current user an remove its tenant ID from list of authenticated tenants.
+              signoutPromises.push(auth.signOut().then(() => this.removeAuthTenant(tenantId)));
+            }
+          });
+          // Sign out from all instances.
+          return Promise.all(signoutPromises);
+        })
+        .then(() => {
+          // Clear all authenticated tenants. This will clear tenants that were not found.
+          return this.clearAuthTenants();
+        });
+    }
   }
 }
