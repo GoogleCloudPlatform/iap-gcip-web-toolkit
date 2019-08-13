@@ -49,6 +49,7 @@ declare namespace ciap {
   class Authentication {
     constructor(handler: ciap.AuthenticationHandler);
     start(): void;
+    getOriginalURL(): Promise<string|null>;
   }
 }
 

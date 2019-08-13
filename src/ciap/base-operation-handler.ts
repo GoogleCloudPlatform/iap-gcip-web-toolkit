@@ -19,7 +19,7 @@ import { AuthenticationHandler } from './authentication-handler';
 import { Config } from './config';
 import { HttpClient } from '../utils/http-client';
 import { GCIPRequestHandler } from './gcip-request';
-import { IAPRequestHandler } from './iap-request';
+import { IAPRequestHandler, SessionInfoResponse } from './iap-request';
 import { runIfDefined, getCurrentUrl, addReadonlyGetter } from '../utils/index';
 import { AuthTenantsStorageManager } from './auth-tenants-storage';
 import { globalStorageManager } from '../storage/manager';
@@ -30,6 +30,7 @@ import { PromiseCache } from '../utils/promise-cache';
 export interface OperationHandler {
   type: string;
   start(): Promise<void>;
+  getOriginalURL(): Promise<string | null>;
 }
 
 /**
@@ -49,6 +50,7 @@ export enum CacheDuration {
   CheckAuthorizedDomains = 30 * 60 * 1000,
   ExchangeIdToken = 5 * 60 * 1000,
   GetOriginalUrl = 5 * 60 * 1000,
+  GetSessionInfo = 5 * 60 * 1000,
   SetCookie = 5 * 60 * 1000,
 }
 
@@ -60,7 +62,7 @@ export enum CacheDuration {
 export abstract class BaseOperationHandler implements OperationHandler {
   protected readonly gcipRequest: GCIPRequestHandler;
   protected readonly iapRequest: IAPRequestHandler;
-  protected readonly auth: FirebaseAuth;
+  protected readonly auth: FirebaseAuth | null;
   protected readonly redirectUrl: string;
   protected readonly tenantId: string;
   protected readonly state: string;
@@ -108,6 +110,24 @@ export abstract class BaseOperationHandler implements OperationHandler {
   /** @return {OperationType} The corresponding operation type. */
   public abstract get type(): OperationType;
 
+  /**
+   * @return A promise that resolves with the original URL that the user was trying to access
+   *     before being asked to authenticate.
+   */
+  public getOriginalURL(): Promise<string | null> {
+    if (this.state && this.redirectUrl) {
+      // originalUri may not always be available. For example, the signout from all project related
+      // sessions does not require the user to visit IAP first.
+      return this.getSessionInformation()
+        .then((sessionInfo: SessionInfoResponse) => {
+          return sessionInfo.originalUri;
+        });
+    } else {
+      // When no originalUri is available, resolve with null.
+      return Promise.resolve(null);
+    }
+  }
+
   /** @return {Promise<void>} A promise that resolves when the internal operation handler processing is completed. */
   protected abstract process(): Promise<void>;
 
@@ -151,6 +171,19 @@ export abstract class BaseOperationHandler implements OperationHandler {
         runIfDefined(this.handler.handleError, this.handler, [error]);
         throw error;
       });
+  }
+
+  /**
+   * @return A promise that resolves with the current session information. This is used to retrieve
+   *     the list of tenant IDs and the original URL associated with the current IAP resource being
+   *     accessed.
+   */
+  protected getSessionInformation(): Promise<SessionInfoResponse> {
+    return this.cache.cacheAndReturnResult<SessionInfoResponse>(
+        this.iapRequest.getSessionInfo,
+        this.iapRequest,
+        [this.redirectUrl, this.state],
+        CacheDuration.GetSessionInfo);
   }
 
   /**

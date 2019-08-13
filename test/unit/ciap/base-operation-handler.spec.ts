@@ -30,7 +30,9 @@ import {
 import * as storageManager from '../../../src/storage/manager';
 import * as authTenantsStorage from '../../../src/ciap/auth-tenants-storage';
 import { getCurrentUrl } from '../../../src/utils';
-import { CLIENT_ERROR_CODES, CIAPError, RECOVERABLE_ERROR_CODES } from '../../../src/utils/error';
+import {
+  CLIENT_ERROR_CODES, CIAPError, HttpCIAPError, RECOVERABLE_ERROR_CODES,
+} from '../../../src/utils/error';
 import { PromiseCache } from '../../../src/utils/promise-cache';
 
 /**
@@ -163,12 +165,17 @@ describe('BaseOperationHandler', () => {
   const stubs: sinon.SinonStub[] = [];
   let mockStorageManager: storageManager.StorageManager;
   let authTenantsStorageManager: authTenantsStorage.AuthTenantsStorageManager;
+  const originalUri = 'https://www.example.com/path/main';
   const projectId = 'PROJECT_ID';
   const apiKey = 'API_KEY';
   const tid = 'TENANT_ID';
   const state = 'STATE';
   const hl = 'en-US';
   const agentId = `_${projectId}`;
+  const sessionInfo = {
+    originalUri,
+    tenantIds: [tid],
+  };
   const currentUrl = getCurrentUrl(window);
   const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
   // Dummy FirebaseAuth instance.
@@ -177,6 +184,7 @@ describe('BaseOperationHandler', () => {
   tenant2Auth[tid] = auth;
   tenant2Auth._ = createMockAuth(apiKey, null);
   let checkAuthorizedDomainsAndGetProjectIdStub: sinon.SinonStub;
+  let getSessionInfoStub: sinon.SinonStub;
   let showProgressBarSpy: sinon.SinonSpy;
   let hideProgressBarSpy: sinon.SinonSpy;
   let cacheAndReturnResultSpy: sinon.SinonSpy;
@@ -187,6 +195,8 @@ describe('BaseOperationHandler', () => {
         GCIPRequestHandler.prototype,
         'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
     stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+    getSessionInfoStub = sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo').resolves(sessionInfo);
+    stubs.push(getSessionInfoStub);
     mockStorageManager = createMockStorageManager();
     // Stub globalStorageManager getter.
     stubs.push(
@@ -468,6 +478,88 @@ describe('BaseOperationHandler', () => {
             expect(startSpy.getCall(0).thisValue).to.equal(concreteInstance);
           });
       });
+    });
+  });
+
+  describe('getOriginalURL()', () => {
+    it('should resolve with expected underlying getSessionInformation() successful response', () => {
+      const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+      const config = new Config(createMockUrl('login', apiKey, null, redirectUri, state, hl));
+
+      const concreteInstance = new ConcreteOperationHandler(config, authenticationHandler);
+
+      return concreteInstance.getOriginalURL()
+        .then((actualOriginalUri) => {
+          expect(actualOriginalUri).to.equal(originalUri);
+          expect(getSessionInfoStub).to.have.been.calledOnce.and.calledWith(redirectUri, state);
+          // Expect result to be cached for 5 mins.
+          expect(cacheAndReturnResultSpy).to.be.calledOnce;
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[0].args[1].getSessionInfo);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(IAPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[2]).to.deep.equal([config.redirectUrl, config.state]);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.GetSessionInfo);
+          // Second call should return cached result.
+          return concreteInstance.getOriginalURL();
+        })
+        .then((actualOriginalUri) => {
+          expect(actualOriginalUri).to.equal(originalUri);
+          expect(getSessionInfoStub).to.have.been.calledOnce;
+        });
+    });
+
+    it('should resolve with null when no state is available', () => {
+      const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+      // Initialize config with null state.
+      const config = new Config(createMockUrl('signout', apiKey, tid, redirectUri, null, hl));
+
+      const concreteInstance = new ConcreteOperationHandler(config, authenticationHandler);
+
+      return concreteInstance.getOriginalURL()
+        .then((actualOriginalUri) => {
+          expect(actualOriginalUri).to.be.null;
+          expect(getSessionInfoStub).to.not.have.been.called;
+        });
+    });
+
+    it('should resolve with null when no redirectUrl is available', () => {
+      const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+      // Initialize config with null redirectUrl.
+      const config = new Config(createMockUrl('signout', apiKey, tid, null, state, hl));
+
+      const concreteInstance = new ConcreteOperationHandler(config, authenticationHandler);
+
+      return concreteInstance.getOriginalURL()
+        .then((actualOriginalUri) => {
+          expect(actualOriginalUri).to.be.null;
+          expect(getSessionInfoStub).to.not.have.been.called;
+        });
+    });
+
+    it('should reject with expected underlying getSessionInformation() error', () => {
+      const expectedError = new HttpCIAPError(504);
+      const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+      const config = new Config(createMockUrl('login', apiKey, null, redirectUri, state, hl));
+      getSessionInfoStub.onFirstCall().rejects(expectedError);
+      getSessionInfoStub.onSecondCall().resolves(sessionInfo);
+
+      const concreteInstance = new ConcreteOperationHandler(config, authenticationHandler);
+
+      return concreteInstance.getOriginalURL()
+        .then((actualOriginalUri) => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.equal(expectedError);
+          expect(getSessionInfoStub).to.have.been.calledOnce.and.calledWith(redirectUri, state);
+          return concreteInstance.getOriginalURL();
+        })
+        .then((actualOriginalUri) => {
+          expect(actualOriginalUri).to.equal(originalUri);
+          expect(getSessionInfoStub).to.have.been.calledTwice;
+          expect(getSessionInfoStub.getCalls()[1].args)
+            .to.deep.equal([config.redirectUrl, config.state]);
+        });
     });
   });
 });

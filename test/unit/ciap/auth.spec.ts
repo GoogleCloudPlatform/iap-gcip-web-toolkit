@@ -24,9 +24,11 @@ import {
 import * as utils from '../../../src/utils/index';
 import * as signIn from '../../../src/ciap/sign-in-handler';
 import * as signOut from '../../../src/ciap/sign-out-handler';
+import { HttpCIAPError } from '../../../src/utils/error';
 
 describe('Authentication', () => {
   const stubs: sinon.SinonStub[] = [];
+  const originalUri = 'https://www.example.com/path/main';
   const apiKey = 'API_KEY';
   const tid = 'TENANT_ID';
   const state = 'STATE';
@@ -40,6 +42,8 @@ describe('Authentication', () => {
   let signOutOperationHandlerSpy: sinon.SinonSpy;
   let startSignInOperationHandlerStub: sinon.SinonStub;
   let startSignOutOperationHandlerStub: sinon.SinonStub;
+  let getOriginalURLSignInOperationHandlerStub: sinon.SinonStub;
+  let getOriginalURLSignOutOperationHandlerStub: sinon.SinonStub;
   let onDomReadySpy: sinon.SinonSpy;
 
   beforeEach(() => {
@@ -50,6 +54,12 @@ describe('Authentication', () => {
     startSignOutOperationHandlerStub = sinon.stub(signOut.SignOutOperationHandler.prototype, 'start').resolves();
     stubs.push(startSignInOperationHandlerStub);
     stubs.push(startSignOutOperationHandlerStub);
+    getOriginalURLSignInOperationHandlerStub =
+      sinon.stub(signIn.SignInOperationHandler.prototype, 'getOriginalURL').resolves(originalUri);
+    getOriginalURLSignOutOperationHandlerStub =
+      sinon.stub(signOut.SignOutOperationHandler.prototype, 'getOriginalURL').resolves(originalUri);
+    stubs.push(getOriginalURLSignInOperationHandlerStub);
+    stubs.push(getOriginalURLSignOutOperationHandlerStub);
   });
 
   afterEach(() => {
@@ -221,6 +231,74 @@ describe('Authentication', () => {
           expect(startSignOutOperationHandlerStub).to.have.been.calledOnce;
           expect(handler.languageCode).to.be.undefined;
         })).to.be.fulfilled;
+    });
+  });
+
+  describe('getOriginalURL()', () => {
+    it('should resolve with expected originalUri for login mode', () => {
+      const currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, null);
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      stubs.push(stub);
+
+      const authenticationInstance = new Authentication(handler);
+      return authenticationInstance.getOriginalURL()
+        .then((actualOriginalUri) => {
+          expect(actualOriginalUri).to.equal(originalUri);
+          // Confirm signInOperationHandler.getOriginalURL called under the hood.
+          expect(getOriginalURLSignInOperationHandlerStub).to.have.been.calledOnce;
+        });
+    });
+
+    it('should reject with expected underlying error for login mode', () => {
+      const expectedError = new HttpCIAPError(504);
+      const currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, null);
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      stubs.push(stub);
+      getOriginalURLSignInOperationHandlerStub.rejects(expectedError);
+
+      const authenticationInstance = new Authentication(handler);
+      return authenticationInstance.getOriginalURL()
+        .then((actualOriginalUri) => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.equal(expectedError);
+          // Confirm signInOperationHandler.getOriginalURL called under the hood.
+          expect(getOriginalURLSignInOperationHandlerStub).to.have.been.calledOnce;
+        });
+    });
+
+    it('should resolve with expected originalUri for signout mode', () => {
+      const currentUrl = createMockUrl('signout', apiKey, tid, redirectUri, state, null);
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      stubs.push(stub);
+
+      const authenticationInstance = new Authentication(handler);
+      return authenticationInstance.getOriginalURL()
+        .then((actualOriginalUri) => {
+          expect(actualOriginalUri).to.equal(originalUri);
+          // Confirm signOutOperationHandler.getOriginalURL called under the hood.
+          expect(getOriginalURLSignOutOperationHandlerStub).to.have.been.calledOnce;
+        });
+    });
+
+    it('should reject with expected underlying error for signout mode', () => {
+      const expectedError = new HttpCIAPError(504);
+      const currentUrl = createMockUrl('signout', apiKey, tid, redirectUri, state, null);
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      stubs.push(stub);
+      getOriginalURLSignOutOperationHandlerStub.rejects(expectedError);
+
+      const authenticationInstance = new Authentication(handler);
+      return authenticationInstance.getOriginalURL()
+        .then((actualOriginalUri) => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.equal(expectedError);
+          // Confirm signOutOperationHandler.getOriginalURL called under the hood.
+          expect(getOriginalURLSignOutOperationHandlerStub).to.have.been.calledOnce;
+        });
     });
   });
 });

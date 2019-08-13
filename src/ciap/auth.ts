@@ -90,4 +90,12 @@ export class Authentication {
       throw this.fatalError;
     });
   }
+
+  /**
+   * @return A promise that resolves with the original URL that the user was trying to access
+   *     before being asked to authenticate.
+   */
+  public getOriginalURL(): Promise<string | null> {
+    return this.operationHandler.getOriginalURL();
+  }
 }
