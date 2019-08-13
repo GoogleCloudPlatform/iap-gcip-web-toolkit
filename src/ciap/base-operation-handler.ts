@@ -19,7 +19,7 @@ import { AuthenticationHandler } from './authentication-handler';
 import { Config } from './config';
 import { HttpClient } from '../utils/http-client';
 import { GCIPRequestHandler } from './gcip-request';
-import { IAPRequestHandler } from './iap-request';
+import { IAPRequestHandler, SessionInfoResponse } from './iap-request';
 import { runIfDefined, getCurrentUrl, addReadonlyGetter } from '../utils/index';
 import { AuthTenantsStorageManager } from './auth-tenants-storage';
 import { globalStorageManager } from '../storage/manager';
@@ -39,6 +39,7 @@ export interface OperationHandler {
 export enum OperationType {
   SignIn = 'SIGN_IN',
   SignOut = 'SIGN_OUT',
+  SelectAuthSession = 'SELECT_AUTH_SESSION',
 }
 
 /**
@@ -49,6 +50,7 @@ export enum CacheDuration {
   CheckAuthorizedDomains = 30 * 60 * 1000,
   ExchangeIdToken = 5 * 60 * 1000,
   GetOriginalUrl = 5 * 60 * 1000,
+  GetSessionInfo = 5 * 60 * 1000,
   SetCookie = 5 * 60 * 1000,
 }
 
@@ -66,6 +68,7 @@ export abstract class BaseOperationHandler implements OperationHandler {
   protected readonly state: string;
   protected readonly languageCode: string;
   protected readonly cache: PromiseCache;
+  protected projectId: string;
   private readonly realTenantId: string | null;
   private authTenantsStorageManager: AuthTenantsStorageManager;
   private readonly httpClient: HttpClient;
@@ -118,7 +121,9 @@ export abstract class BaseOperationHandler implements OperationHandler {
     // Validate URLs and get project ID.
     return this.validateAppAndGetProjectId()
       .then((projectId: string) => {
+        this.projectId = projectId;
         // Validate agent flow has matching project ID.
+        // This will not run when no tid is available (tenant has to be selected first).
         if (this.tenantId &&
             !this.realTenantId &&
             `_${projectId}` !== this.tenantId) {
@@ -151,6 +156,19 @@ export abstract class BaseOperationHandler implements OperationHandler {
         runIfDefined(this.handler.handleError, this.handler, [error]);
         throw error;
       });
+  }
+
+  /**
+   * @return A promise that resolves with the current session information. This is used to retrieve
+   *     the list of tenant IDs and the original URL associated with the current IAP resource being
+   *     accessed.
+   */
+  protected getSessionInformation(): Promise<SessionInfoResponse> {
+    return this.cache.cacheAndReturnResult<SessionInfoResponse>(
+        this.iapRequest.getSessionInfo,
+        this.iapRequest,
+        [this.redirectUrl, this.state],
+        CacheDuration.GetSessionInfo);
   }
 
   /**

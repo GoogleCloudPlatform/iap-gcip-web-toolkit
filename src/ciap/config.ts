@@ -24,6 +24,7 @@ export enum ConfigMode {
   Login = 'login',
   Reauth = 'reauth',
   Signout = 'signout',
+  SelectAuthSession = 'selectAuthSession',
   Unknown = 'unknown',
 }
 
@@ -72,6 +73,8 @@ export class Config {
         return ConfigMode.Reauth;
       case 'signout':
         return ConfigMode.Signout;
+      case 'selectAuthSession':
+        return ConfigMode.SelectAuthSession;
       default:
         return ConfigMode.Unknown;
     }
