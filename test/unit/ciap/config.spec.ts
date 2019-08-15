@@ -67,6 +67,16 @@ describe('Config', () => {
       expect(config.redirectUrl).to.equal(redirectUri);
     });
 
+    it('should initialize successfully with selectAuthSession config mode', () => {
+      const config = new Config(createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, hl));
+      expect(config.mode).to.equal(ConfigMode.SelectAuthSession);
+      expect(config.apiKey).to.equal(apiKey);
+      expect(config.tid).to.be.null;
+      expect(config.state).to.equal(state);
+      expect(config.hl).to.equal(hl);
+      expect(config.redirectUrl).to.equal(redirectUri);
+    });
+
     it('should initialize successfully with unknown config mode when invalid mode passed', () => {
       const config = new Config(createMockUrl('other'));
       expect(config.mode).to.equal(ConfigMode.Unknown);

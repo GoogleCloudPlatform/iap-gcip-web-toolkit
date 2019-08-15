@@ -1,0 +1,105 @@
+/*!
+ * Copyright 2019 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { AuthenticationHandler, ProviderMatch } from './authentication-handler';
+import { BaseOperationHandler, OperationType } from './base-operation-handler';
+import { Config, ConfigMode } from './config';
+import { setCurrentUrl, getCurrentUrl } from '../utils/index';
+import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
+import { SessionInfoResponse } from './iap-request';
+
+/**
+ * Defines the select auth session operation handler.
+ */
+export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
+  private tenantIds: string[];
+
+  /**
+   * Initializes a select auth session operation handler. This will present a UI to the end
+   * user to select a tenant out of a list of other tenants to sign in with.
+   *
+   * @param config The current operation configuration.
+   * @param handler The Authentication handler instance.
+   */
+  constructor(
+      config: Config,
+      handler: AuthenticationHandler) {
+    super(config, handler);
+    if (!this.redirectUrl || !this.state) {
+      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid request');
+    }
+  }
+
+  /**
+   * @return The corresponding operation type.
+   * @override
+   */
+  public get type(): OperationType {
+    return OperationType.SelectAuthSession;
+  }
+
+  /**
+   * Starts the select auth session operation handler processing. This will result in a
+   * UI being presented to the end user to pick a tenant from.
+   *
+   * @return A promise that resolves when the internal operation handler processing is completed.
+   * @override
+   */
+  protected process(): Promise<void> {
+    // This will resolve with the tenants associated with the current sign-in session.
+    return this.getSessionInformation()
+      .then((sessionInfo: SessionInfoResponse) => {
+        this.tenantIds = sessionInfo.tenantIds.concat();
+        // This should never happen.
+        if (this.tenantIds.length === 0) {
+            throw new CIAPError(CLIENT_ERROR_CODES.internal, 'No tenants configured on resource.');
+        }
+        this.hideProgressBar();
+        return typeof this.handler.selectProvider === 'function' ?
+            // Ask the user to select the desired tenant.
+            this.handler.selectProvider(this.tenantIds) :
+            // Select first option if no selectProvider is available.
+            // This makes it easier to upgrade without breaking apps.
+            Promise.resolve({tenantId: sessionInfo.tenantIds[0]});
+      })
+      .then((match: ProviderMatch) => {
+        // TODO: figure out a way to pass email and providerIds preference to sign in page.
+        // If null is returned as tenantId, project level flow is selected.
+        const selectedTenantId = match.tenantId || `_${this.projectId}`;
+        if (this.tenantIds.indexOf(selectedTenantId) === -1) {
+          // Selected tenant ID is not associated with the current resource.
+          throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Mismatching tenant ID');
+        }
+        return selectedTenantId;
+      })
+      .then((tenantId: string) => {
+        // Parse current URL. Update query string with API key, state, redirect URL and the select tenant ID.
+        const parsedUrl = new URL(getCurrentUrl(window));
+        const authUrl = `${parsedUrl.protocol}//${parsedUrl.host}${parsedUrl.pathname}`;
+        const key = encodeURIComponent(this.config.apiKey);
+        const state = encodeURIComponent(this.state);
+        const redirectUrl = encodeURIComponent(this.redirectUrl);
+        const tid = encodeURIComponent(tenantId);
+        const signInUrl =
+            `${authUrl}?mode=${ConfigMode.Login}&apiKey=${key}&tid=${tid}&state=${state}&redirectUrl=${redirectUrl}`;
+        // Redirect to sign in page.
+        // TODO: handle change dynamically instead of using inefficient redirecting.
+        // TODO: pass providerMatch to sign-in URL.
+        this.showProgressBar();
+        setCurrentUrl(window, signInUrl);
+      });
+  }
+}

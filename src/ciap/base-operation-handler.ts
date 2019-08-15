@@ -40,6 +40,7 @@ export interface OperationHandler {
 export enum OperationType {
   SignIn = 'SIGN_IN',
   SignOut = 'SIGN_OUT',
+  SelectAuthSession = 'SELECT_AUTH_SESSION',
 }
 
 /**
@@ -68,6 +69,7 @@ export abstract class BaseOperationHandler implements OperationHandler {
   protected readonly state: string;
   protected readonly languageCode: string;
   protected readonly cache: PromiseCache;
+  protected projectId: string;
   private readonly realTenantId: string | null;
   private authTenantsStorageManager: AuthTenantsStorageManager;
   private readonly httpClient: HttpClient;
@@ -138,7 +140,9 @@ export abstract class BaseOperationHandler implements OperationHandler {
     // Validate URLs and get project ID.
     return this.validateAppAndGetProjectId()
       .then((projectId: string) => {
+        this.projectId = projectId;
         // Validate agent flow has matching project ID.
+        // This will not run when no tid is available (tenant has to be selected first).
         if (this.tenantId &&
             !this.realTenantId &&
             `_${projectId}` !== this.tenantId) {

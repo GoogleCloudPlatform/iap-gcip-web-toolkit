@@ -26,6 +26,12 @@ declare namespace ciap {
     toJSON(): object;
   }
 
+  interface ProviderMatch {
+    email?: string;
+    tenantId: string | null;
+    providerIds?: string[];
+  }
+
   interface AuthenticationHandler {
     // Language code.
     languageCode?: string | null;
@@ -44,6 +50,9 @@ declare namespace ciap {
     showProgressBar?(): void;
     hideProgressBar?(): void;
     handleError?(error: Error | CIAPError): void;
+    selectProvider?(
+      tenantIds: string[],
+    ): Promise<ProviderMatch>;
   }
 
   class Authentication {

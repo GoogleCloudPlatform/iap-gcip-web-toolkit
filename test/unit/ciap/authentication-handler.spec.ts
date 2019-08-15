@@ -19,6 +19,9 @@ import { isAuthenticationHandler, AuthenticationHandler } from '../../../src/cia
 import { createMockAuth } from '../../resources/utils';
 
 describe('isAuthenticationHandler()', () => {
+  const providerMatch = {
+    tenantId: 'tenant-1',
+  };
   const apiKey = 'API_KEY';
   const auth = createMockAuth(apiKey);
   const nonFunctions = [null, NaN, 0, 1, '', 'a', true, false, {}, [], { a: 1 }];
@@ -33,6 +36,7 @@ describe('isAuthenticationHandler()', () => {
     delete handler.showProgressBar;
     delete handler.hideProgressBar;
     delete handler.processUser;
+    delete handler.selectProvider;
     expect(isAuthenticationHandler(handler)).to.be.true;
   });
 
@@ -42,6 +46,7 @@ describe('isAuthenticationHandler()', () => {
     handler.showProgressBar = () => {/** Null function. */};
     handler.hideProgressBar = () => {/** Null function. */};
     handler.processUser = (user) => Promise.resolve(user);
+    handler.selectProvider = (tenantIds) => Promise.resolve(providerMatch);
     expect(isAuthenticationHandler(handler)).to.be.true;
   });
 
@@ -82,7 +87,7 @@ describe('isAuthenticationHandler()', () => {
   nonFunctions.forEach((nonFunction) => {
     it('should return false when provided with an invalid showProgressBar: ' + JSON.stringify(nonFunction), () => {
       const handler = mockAuthenticationHandler;
-      handler.showProgressBar = 'invalid' as any;
+      handler.showProgressBar = nonFunction as any;
       expect(isAuthenticationHandler(handler)).to.be.false;
     });
   });
@@ -90,7 +95,7 @@ describe('isAuthenticationHandler()', () => {
   nonFunctions.forEach((nonFunction) => {
     it('should return false when provided with an invalid hideProgressBar: ' + JSON.stringify(nonFunction), () => {
       const handler = mockAuthenticationHandler;
-      handler.hideProgressBar = 'invalid' as any;
+      handler.hideProgressBar = nonFunction as any;
       expect(isAuthenticationHandler(handler)).to.be.false;
     });
   });
@@ -98,7 +103,15 @@ describe('isAuthenticationHandler()', () => {
   nonFunctions.forEach((nonFunction) => {
     it('should return false when provided with an invalid processUser: ' + JSON.stringify(nonFunction), () => {
       const handler = mockAuthenticationHandler;
-      handler.processUser = 'invalid' as any;
+      handler.processUser = nonFunction as any;
+      expect(isAuthenticationHandler(handler)).to.be.false;
+    });
+  });
+
+  nonFunctions.forEach((nonFunction) => {
+    it('should return false when provided with an invalid selectProvider: ' + JSON.stringify(nonFunction), () => {
+      const handler = mockAuthenticationHandler;
+      handler.selectProvider = nonFunction as any;
       expect(isAuthenticationHandler(handler)).to.be.false;
     });
   });
