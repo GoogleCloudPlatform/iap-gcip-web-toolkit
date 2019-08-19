@@ -22,6 +22,7 @@ import {
   createMockAuth, createMockAuthenticationHandler, createMockUrl,
 } from '../../resources/utils';
 import * as utils from '../../../src/utils/index';
+import * as selectAuthSession from '../../../src/ciap/select-auth-session-handler';
 import * as signIn from '../../../src/ciap/sign-in-handler';
 import * as signOut from '../../../src/ciap/sign-out-handler';
 import { HttpCIAPError } from '../../../src/utils/error';
@@ -33,39 +34,51 @@ describe('Authentication', () => {
   const tid = 'TENANT_ID';
   const state = 'STATE';
   const hl = 'en-US';
-  const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/tenantIds/${tid}:handleRedirect`;
+  const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
   const auth = createMockAuth(apiKey, tid);
   const tenant2Auth: {[key: string]: FirebaseAuth} = {};
   tenant2Auth[tid] = auth;
   const handler = createMockAuthenticationHandler(tenant2Auth);
   let signInOperationHandlerSpy: sinon.SinonSpy;
   let signOutOperationHandlerSpy: sinon.SinonSpy;
+  let selectAuthSessionOperationHandlerSpy: sinon.SinonSpy;
   let startSignInOperationHandlerStub: sinon.SinonStub;
   let startSignOutOperationHandlerStub: sinon.SinonStub;
+  let startSelectAuthSessionOperationHandlerStub: sinon.SinonStub;
   let getOriginalURLSignInOperationHandlerStub: sinon.SinonStub;
   let getOriginalURLSignOutOperationHandlerStub: sinon.SinonStub;
+  let getOriginalURLSelectAuthSessionOperationHandlerStub: sinon.SinonStub;
   let onDomReadySpy: sinon.SinonSpy;
 
   beforeEach(() => {
     signInOperationHandlerSpy = sinon.spy(signIn, 'SignInOperationHandler');
     signOutOperationHandlerSpy = sinon.spy(signOut, 'SignOutOperationHandler');
+    selectAuthSessionOperationHandlerSpy = sinon.spy(selectAuthSession, 'SelectAuthSessionOperationHandler');
     onDomReadySpy = sinon.spy(utils, 'onDomReady');
     startSignInOperationHandlerStub = sinon.stub(signIn.SignInOperationHandler.prototype, 'start').resolves();
     startSignOutOperationHandlerStub = sinon.stub(signOut.SignOutOperationHandler.prototype, 'start').resolves();
+    startSelectAuthSessionOperationHandlerStub = sinon.stub(
+        selectAuthSession.SelectAuthSessionOperationHandler.prototype, 'start').resolves();
     stubs.push(startSignInOperationHandlerStub);
     stubs.push(startSignOutOperationHandlerStub);
+    stubs.push(startSelectAuthSessionOperationHandlerStub);
     getOriginalURLSignInOperationHandlerStub =
       sinon.stub(signIn.SignInOperationHandler.prototype, 'getOriginalURL').resolves(originalUri);
     getOriginalURLSignOutOperationHandlerStub =
       sinon.stub(signOut.SignOutOperationHandler.prototype, 'getOriginalURL').resolves(originalUri);
+    getOriginalURLSelectAuthSessionOperationHandlerStub =
+      sinon.stub(selectAuthSession.SelectAuthSessionOperationHandler.prototype, 'getOriginalURL')
+        .resolves(originalUri);
     stubs.push(getOriginalURLSignInOperationHandlerStub);
     stubs.push(getOriginalURLSignOutOperationHandlerStub);
+    stubs.push(getOriginalURLSelectAuthSessionOperationHandlerStub);
   });
 
   afterEach(() => {
     stubs.forEach((s) => s.restore());
     signInOperationHandlerSpy.restore();
     signOutOperationHandlerSpy.restore();
+    selectAuthSessionOperationHandlerSpy.restore();
     onDomReadySpy.restore();
   });
 
@@ -93,6 +106,7 @@ describe('Authentication', () => {
       }).not.to.throw();
       expect(signInOperationHandlerSpy).to.have.been.calledOnce;
       expect(signOutOperationHandlerSpy).to.not.have.been.called;
+      expect(selectAuthSessionOperationHandlerSpy).to.not.have.been.called;
       expect(handler.languageCode).to.equal(hl);
     });
 
@@ -106,6 +120,7 @@ describe('Authentication', () => {
       }).not.to.throw();
       expect(signInOperationHandlerSpy).to.have.been.calledOnce;
       expect(signOutOperationHandlerSpy).to.not.have.been.called;
+      expect(selectAuthSessionOperationHandlerSpy).to.not.have.been.called;
       expect(handler.languageCode).to.equal(hl);
     });
 
@@ -119,6 +134,21 @@ describe('Authentication', () => {
       }).not.to.throw();
       expect(signInOperationHandlerSpy).to.not.have.been.called;
       expect(signOutOperationHandlerSpy).to.have.been.calledOnce;
+      expect(selectAuthSessionOperationHandlerSpy).to.not.have.been.called;
+      expect(handler.languageCode).to.equal(hl);
+    });
+
+    it('should not throw when initialized with a selectAuthSession mode AuthenticationHandler', () => {
+      const currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, hl);
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      stubs.push(stub);
+
+      expect(() => {
+        return new Authentication(handler);
+      }).not.to.throw();
+      expect(signInOperationHandlerSpy).to.not.have.been.called;
+      expect(signOutOperationHandlerSpy).to.not.have.been.called;
+      expect(selectAuthSessionOperationHandlerSpy).to.have.been.calledOnce;
       expect(handler.languageCode).to.equal(hl);
     });
   });
@@ -143,6 +173,7 @@ describe('Authentication', () => {
           expect(handler.getLastHandledError()).to.equal(error);
           expect(startSignInOperationHandlerStub).to.not.have.been.called;
           expect(startSignOutOperationHandlerStub).to.not.have.been.called;
+          expect(startSelectAuthSessionOperationHandlerStub).to.not.have.been.called;
         });
     });
 
@@ -164,6 +195,7 @@ describe('Authentication', () => {
           expect(handler.getLastHandledError()).to.equal(error);
           expect(startSignInOperationHandlerStub).to.not.have.been.called;
           expect(startSignOutOperationHandlerStub).to.not.have.been.called;
+          expect(startSelectAuthSessionOperationHandlerStub).to.not.have.been.called;
         });
     });
 
@@ -185,6 +217,29 @@ describe('Authentication', () => {
           expect(handler.getLastHandledError()).to.equal(error);
           expect(startSignInOperationHandlerStub).to.not.have.been.called;
           expect(startSignOutOperationHandlerStub).to.not.have.been.called;
+          expect(startSelectAuthSessionOperationHandlerStub).to.not.have.been.called;
+        });
+    });
+
+    it('should reject when initialized with invalid select auth session parameters', () => {
+      const currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, null, 'fr');
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      stubs.push(stub);
+
+      const authHandler =  new Authentication(handler);
+      return authHandler.start()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(onDomReadySpy).to.have.been.calledOnce;
+          expect(error).to.have.property('code', 'invalid-argument');
+          // Language code set despite error.
+          expect(handler.languageCode).to.equal('fr');
+          expect(handler.getLastHandledError()).to.equal(error);
+          expect(startSignInOperationHandlerStub).to.not.have.been.called;
+          expect(startSignOutOperationHandlerStub).to.not.have.been.called;
+          expect(startSelectAuthSessionOperationHandlerStub).to.not.have.been.called;
         });
     });
 
@@ -229,6 +284,22 @@ describe('Authentication', () => {
           expect(onDomReadySpy).to.have.been.calledOnce.and.calledBefore(startSignOutOperationHandlerStub);
           // Confirm signOutOperationHandler.start called under the hood.
           expect(startSignOutOperationHandlerStub).to.have.been.calledOnce;
+          expect(handler.languageCode).to.be.undefined;
+        })).to.be.fulfilled;
+    });
+
+    it('should eventually be fullfilled for selectAuthSession mode', () => {
+      const currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, null);
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      stubs.push(stub);
+
+      const authenticationInstance = new Authentication(handler);
+      expect(authenticationInstance.start()
+        .then(() => {
+          expect(onDomReadySpy).to.have.been.calledOnce
+            .and.calledBefore(startSelectAuthSessionOperationHandlerStub);
+          // Confirm selectAuthSessionOperationHandler.start called under the hood.
+          expect(startSelectAuthSessionOperationHandlerStub).to.have.been.calledOnce;
           expect(handler.languageCode).to.be.undefined;
         })).to.be.fulfilled;
     });
@@ -298,6 +369,39 @@ describe('Authentication', () => {
           expect(error).to.equal(expectedError);
           // Confirm signOutOperationHandler.getOriginalURL called under the hood.
           expect(getOriginalURLSignOutOperationHandlerStub).to.have.been.calledOnce;
+        });
+    });
+
+    it('should resolve with expected originalUri for selectAuthSession mode', () => {
+      const currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, null);
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      stubs.push(stub);
+
+      const authenticationInstance = new Authentication(handler);
+      return authenticationInstance.getOriginalURL()
+        .then((actualOriginalUri) => {
+          expect(actualOriginalUri).to.equal(originalUri);
+          // Confirm selectAuthSessionOperationHandler.getOriginalURL called under the hood.
+          expect(getOriginalURLSelectAuthSessionOperationHandlerStub).to.have.been.calledOnce;
+        });
+    });
+
+    it('should reject with expected underlying error for selectAuthSession mode', () => {
+      const expectedError = new HttpCIAPError(504);
+      const currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, null);
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      stubs.push(stub);
+      getOriginalURLSelectAuthSessionOperationHandlerStub.rejects(expectedError);
+
+      const authenticationInstance = new Authentication(handler);
+      return authenticationInstance.getOriginalURL()
+        .then((actualOriginalUri) => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.equal(expectedError);
+          // Confirm selectAuthSessionOperationHandler.getOriginalURL called under the hood.
+          expect(getOriginalURLSelectAuthSessionOperationHandlerStub).to.have.been.calledOnce;
         });
     });
   });

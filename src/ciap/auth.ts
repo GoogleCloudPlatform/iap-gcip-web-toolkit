@@ -15,6 +15,7 @@
  */
 
 import { OperationHandler } from './base-operation-handler';
+import { SelectAuthSessionOperationHandler } from './select-auth-session-handler';
 import { SignInOperationHandler } from './sign-in-handler';
 import { SignOutOperationHandler } from './sign-out-handler';
 import { Config, ConfigMode } from './config';
@@ -67,6 +68,9 @@ export class Authentication {
           break;
         case ConfigMode.Signout:
           this.operationHandler = new SignOutOperationHandler(config, handler);
+          break;
+        case ConfigMode.SelectAuthSession:
+          this.operationHandler = new SelectAuthSessionOperationHandler(config, handler);
           break;
         default:
           throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid mode');
