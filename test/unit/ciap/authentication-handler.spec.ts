@@ -46,7 +46,7 @@ describe('isAuthenticationHandler()', () => {
     handler.showProgressBar = () => {/** Null function. */};
     handler.hideProgressBar = () => {/** Null function. */};
     handler.processUser = (user) => Promise.resolve(user);
-    handler.selectProvider = (tenantIds) => Promise.resolve(providerMatch);
+    handler.selectProvider = (projectConfig, tenantIds) => Promise.resolve(providerMatch);
     expect(isAuthenticationHandler(handler)).to.be.true;
   });
 

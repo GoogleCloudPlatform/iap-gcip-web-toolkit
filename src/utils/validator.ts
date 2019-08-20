@@ -206,3 +206,20 @@ export function isURL(urlStr: any): boolean {
 export function isHttpsURL(urlStr: any): boolean {
   return isURL(urlStr) && new URL(urlStr).protocol === 'https:';
 }
+
+/**
+ * Validates that a string is localhost or a valid HTTPS URL.
+ * This is needed to facilitate testing. As localhost is always served locally, there is no
+ * risk of man in the middle attack.
+ *
+ * @param {any} urlStr The string to validate.
+ * @return {boolean} Whether the string is localhost/valid HTTPS URL or not.
+ */
+export function isLocalhostOrHttpsURL(urlStr: any): boolean {
+  if (isURL(urlStr)) {
+    const uri = new URL(urlStr);
+    return (uri.protocol === 'http:' && uri.hostname === 'localhost') ||
+        uri.protocol === 'https:';
+  }
+  return false;
+}

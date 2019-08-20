@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { isNonEmptyString, isHttpsURL, isArray } from '../utils/validator';
+import { isNonEmptyString, isLocalhostOrHttpsURL, isArray } from '../utils/validator';
 import { HttpResponse, HttpRequestConfig, HttpClient, LowLevelError } from '../utils/http-client';
 import { ApiRequester } from '../utils/api-requester';
 import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
@@ -93,7 +93,7 @@ export class IAPRequestHandler {
     url: '{iapRedirectServerUrl}',
   }).setRequestValidator((config: HttpRequestConfig) => {
     // Validate redirect server URL.
-    if (!isSafeUrl(config.url) || !isHttpsURL(config.url)) {
+    if (!isSafeUrl(config.url) || !isLocalhostOrHttpsURL(config.url)) {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid URL');
     }
     // Validate all data parameters.
@@ -124,7 +124,7 @@ export class IAPRequestHandler {
     url: '{targetUrl}',
   }).setRequestValidator((config: HttpRequestConfig) => {
     // Validate target URL.
-    if (!isSafeUrl(config.url) || !isHttpsURL(config.url)) {
+    if (!isSafeUrl(config.url) || !isLocalhostOrHttpsURL(config.url)) {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid URL');
     }
     // Validate redirect token.
@@ -142,7 +142,7 @@ export class IAPRequestHandler {
     url: '{iapRedirectServerUrl}',
   }).setRequestValidator((config: HttpRequestConfig) => {
     // Validate redirect server URL.
-    if (!isSafeUrl(config.url) || !isHttpsURL(config.url)) {
+    if (!isSafeUrl(config.url) || !isLocalhostOrHttpsURL(config.url)) {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid URL');
     }
     // Validate state parameter.

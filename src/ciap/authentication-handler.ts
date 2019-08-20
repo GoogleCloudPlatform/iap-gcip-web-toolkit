@@ -23,6 +23,11 @@ export interface ProviderMatch {
   providerIds?: string[];
 }
 
+export interface ProjectConfig {
+  projectId: string;
+  apiKey: string;
+}
+
 /**
  * The Authentication handler interface provided externally used to handle sign-in
  * and sign-out for various Auth tenants and other UI related functionality.
@@ -43,6 +48,7 @@ export interface AuthenticationHandler {
   processUser?(user: User): Promise<User>;
   handleError?(error: Error): void;
   selectProvider?(
+    projectConfig: ProjectConfig,
     tenantIds: string[],
   ): Promise<ProviderMatch>;
 }

@@ -18,7 +18,9 @@ import {
   FirebaseAuth, FirebaseApp, User, Unsubscribe, UserCredential,
 } from '../../src/ciap/firebase-auth';
 import { addReadonlyGetter, runIfDefined } from '../../src/utils/index';
-import { AuthenticationHandler, ProviderMatch } from '../../src/ciap/authentication-handler';
+import {
+  AuthenticationHandler, ProjectConfig, ProviderMatch,
+} from '../../src/ciap/authentication-handler';
 import { LowLevelError, HttpRequestConfig } from '../../src/utils/http-client';
 import { Factory } from '../../src/storage/storage';
 import { StorageManager } from '../../src/storage/manager';
@@ -385,10 +387,11 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
   /**
    * Selects `ProviderMatch` based on the list of tenant IDs provided.
    *
+   * @param projectConfig The project configuration associated with the tenants.
    * @param tenantIds The list of IDs of the tenants associated with the IAP resource.
    * @return A promise that resolves with the `ProviderMatch` based on the user selection.
    */
-  public selectProvider(tenantIds: string[]): Promise<ProviderMatch> {
+  public selectProvider(projectConfig: ProjectConfig, tenantIds: string[]): Promise<ProviderMatch> {
     if (this.selectedProviderMatch) {
       return Promise.resolve(this.selectedProviderMatch);
     }

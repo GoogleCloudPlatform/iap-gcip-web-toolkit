@@ -61,6 +61,12 @@ local build:
 ```javascript
 import * as ciap from '../../../dist/index.esm';
 ```
+You can also generate the files in the sample authui expected path
+`../../../builds/ciap/*` by running in the root folder:
+```bash
+npm run build-ciap
+```
+By doing so, no additional changes are needed to the above 2 scripts.
 
 Install the Firebase command line tool with `npm install -g firebase-tools` (See
 [docs](https://firebase.google.com/docs/cli/#setup)).

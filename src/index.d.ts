@@ -26,6 +26,11 @@ declare namespace ciap {
     toJSON(): object;
   }
 
+  interface ProjectConfig {
+    projectId: string;
+    apiKey: string;
+  }
+
   interface ProviderMatch {
     email?: string;
     tenantId: string | null;
@@ -51,6 +56,7 @@ declare namespace ciap {
     hideProgressBar?(): void;
     handleError?(error: Error | CIAPError): void;
     selectProvider?(
+      projectConfig: ProjectConfig,
       tenantIds: string[],
     ): Promise<ProviderMatch>;
   }

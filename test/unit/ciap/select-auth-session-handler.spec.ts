@@ -69,6 +69,10 @@ describe('SelectAuthSessionOperationHandler', () => {
       `&state=${encodeURIComponent(state)}&redirectUrl=${encodeURIComponent(redirectUri)}`;
   let startSpy: sinon.SinonSpy;
   let getCurrentUrlStub: sinon.SinonStub;
+  const projectConfig = {
+    projectId,
+    apiKey,
+  };
 
   beforeEach(() => {
     getCurrentUrlStub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
@@ -246,7 +250,7 @@ describe('SelectAuthSessionOperationHandler', () => {
             .and.calledWith(selectAuthSessionConfig.redirectUrl, selectAuthSessionConfig.state);
           // Confirm selectProvider is called.
           expect(selectProviderSpy).to.have.been.calledOnce
-            .and.calledWith([tid1, tid3])
+            .and.calledWith(projectConfig, [tid1, tid3])
             .and.calledAfter(getSessionInfoStub);
           // No redirect should occur.
           expect(setCurrentUrlStub).to.not.have.been.called;
@@ -310,7 +314,7 @@ describe('SelectAuthSessionOperationHandler', () => {
             .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
             .and.calledWith(selectAuthSessionConfig.redirectUrl, selectAuthSessionConfig.state);
           expect(selectProviderSpy).to.have.been.calledOnce
-            .and.calledWith(sessionInfoResponse.tenantIds)
+            .and.calledWith(projectConfig, sessionInfoResponse.tenantIds)
             .and.calledBefore(setCurrentUrlStub)
             .and.calledAfter(getSessionInfoStub);
           // Confirm redirect to expected sign-in URL.
@@ -478,7 +482,7 @@ describe('SelectAuthSessionOperationHandler', () => {
           expect(getSessionInfoStub.getCalls()[1].args)
             .to.deep.equal([selectAuthSessionConfig.redirectUrl, selectAuthSessionConfig.state]);
           expect(selectProviderSpy).to.have.been.calledOnce
-            .and.calledWith(sessionInfoResponse.tenantIds)
+            .and.calledWith(projectConfig, sessionInfoResponse.tenantIds)
             .and.calledBefore(setCurrentUrlStub)
             .and.calledAfter(getSessionInfoStub);
           // Confirm redirect to expected sign-in URL.

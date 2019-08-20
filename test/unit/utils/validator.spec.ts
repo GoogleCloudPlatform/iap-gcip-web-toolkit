@@ -22,6 +22,7 @@ import * as chaiAsPromised from 'chai-as-promised';
 import {
   isArray, isNonEmptyArray, isBoolean, isNumber, isString, isNonEmptyString,
   isNonNullObject, isObject, isAuthorizedDomain, isURL, isHttpsURL,
+  isLocalhostOrHttpsURL,
 } from '../../../src/utils/validator';
 
 
@@ -446,5 +447,64 @@ describe('isHttpsURL()', () => {
     expect(isHttpsURL('https://abc.com.')).to.be.false;
     expect(isHttpsURL('https://-abc.com')).to.be.false;
     expect(isHttpsURL('https://www._abc.com')).to.be.false;
+  });
+});
+
+describe('isLocalhostOrHttpsURL()', () => {
+  it('should return false with a null input', () => {
+    expect(isLocalhostOrHttpsURL(null)).to.be.false;
+  });
+
+  it('should return false with an undefined input', () => {
+    expect(isLocalhostOrHttpsURL(undefined)).to.be.false;
+  });
+
+  it('should return false with a non string', () => {
+    expect(isLocalhostOrHttpsURL(['https://www.google.com'])).to.be.false;
+  });
+
+  it('should return true with a localhost URL string', () => {
+    expect(isLocalhostOrHttpsURL('http://localhost')).to.be.true;
+    expect(isLocalhostOrHttpsURL('http://localhost:8080')).to.be.true;
+    expect(isLocalhostOrHttpsURL('http://localhost/path/name/index.php?a=1&b=2&c=3#abcd')).to.be.true;
+    expect(isLocalhostOrHttpsURL('http://localhost:5000/path/name/index.php?a=1&b=2&c=3#abcd')).to.be.true;
+  });
+
+  it('show return true with a valid HTTPS URL string', () => {
+    expect(isLocalhostOrHttpsURL('https://www.example.com:8080')).to.be.true;
+    expect(isLocalhostOrHttpsURL('https://www.example.com')).to.be.true;
+    expect(isLocalhostOrHttpsURL('https://www.example.com:8080/path/name/index.php?a=1&b=2&c=3#abcd'))
+      .to.be.true;
+    expect(isLocalhostOrHttpsURL('https://www.example.com:8080/path/name/index.php?a=1&b=2&c=3#abcd'))
+      .to.be.true;
+    expect(isLocalhostOrHttpsURL('https://localhost/path/name/index.php?a=1&b=2&c=3#abcd')).to.be.true;
+    expect(isLocalhostOrHttpsURL('https://127.0.0.1/path/name/index.php?a=1&b=2&c=3#abcd')).to.be.true;
+    expect(isLocalhostOrHttpsURL('https://a--b.c-c.co-uk/')).to.be.true;
+    expect(isLocalhostOrHttpsURL('https://storage.googleapis.com/example-bucket/cat%20pic.jpeg?GoogleAccessId=e@' +
+      'example-project.iam.gserviceaccount.com&Expires=1458238630&Signature=VVUgfqviDCov%2B%2BKn' +
+      'mVOkwBR2olSbId51kSibuQeiH8ucGFyOfAVbH5J%2B5V0gDYIioO2dDGH9Fsj6YdwxWv65HE71VEOEsVPuS8CVb%2' +
+      'BVeeIzmEe8z7X7o1d%2BcWbPEo4exILQbj3ROM3T2OrkNBU9sbHq0mLbDMhiiQZ3xCaiCQdsrMEdYVvAFggPuPq%2' +
+      'FEQyQZmyJK3ty%2Bmr7kAFW16I9pD11jfBSD1XXjKTJzgd%2FMGSde4Va4J1RtHoX7r5i7YR7Mvf%2Fb17zlAuGlz' +
+      'VUf%2FzmhLPqtfKinVrcqdlmamMcmLoW8eLG%2B1yYW%2F7tlS2hvqSfCW8eMUUjiHiSWgZLEVIG4Lw%3D%3D'))
+      .to.be.true;
+  });
+
+  it('should return false with a valid HTTP non-localhost URL', () => {
+    expect(isLocalhostOrHttpsURL('http://www.google.com')).to.be.false;
+    expect(isLocalhostOrHttpsURL('http://127.0.0.1')).to.be.false;
+  });
+
+  it('should return false with an invalid URL string', () => {
+    expect(isLocalhostOrHttpsURL('localhost')).to.be.false;
+    expect(isLocalhostOrHttpsURL('ftp://www.example.com:8080/path/name/file.png')).to.be.false;
+    expect(isLocalhostOrHttpsURL('example.com')).to.be.false;
+    expect(isLocalhostOrHttpsURL('')).to.be.false;
+    expect(isLocalhostOrHttpsURL('5356364326')).to.be.false;
+    expect(isLocalhostOrHttpsURL('https://www.exam[].com')).to.be.false;
+    expect(isLocalhostOrHttpsURL('https://`a--b.com')).to.be.false;
+    expect(isLocalhostOrHttpsURL('https://.com')).to.be.false;
+    expect(isLocalhostOrHttpsURL('https://abc.com.')).to.be.false;
+    expect(isLocalhostOrHttpsURL('https://-abc.com')).to.be.false;
+    expect(isLocalhostOrHttpsURL('https://www._abc.com')).to.be.false;
   });
 });

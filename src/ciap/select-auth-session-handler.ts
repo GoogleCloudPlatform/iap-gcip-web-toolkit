@@ -62,6 +62,10 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
     // This will resolve with the tenants associated with the current sign-in session.
     return this.getSessionInformation()
       .then((sessionInfo: SessionInfoResponse) => {
+        const projectConfig = {
+          projectId: this.projectId,
+          apiKey: this.config.apiKey,
+        };
         this.tenantIds = sessionInfo.tenantIds.concat();
         // This should never happen.
         if (this.tenantIds.length === 0) {
@@ -70,7 +74,7 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
         this.hideProgressBar();
         return typeof this.handler.selectProvider === 'function' ?
             // Ask the user to select the desired tenant.
-            this.handler.selectProvider(this.tenantIds) :
+            this.handler.selectProvider(projectConfig, this.tenantIds) :
             // Select first option if no selectProvider is available.
             // This makes it easier to upgrade without breaking apps.
             Promise.resolve({tenantId: sessionInfo.tenantIds[0]});

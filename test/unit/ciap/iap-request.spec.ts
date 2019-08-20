@@ -75,16 +75,16 @@ describe('IAPRequestHandler', () => {
   const httpClient = new HttpClient();
   const apiKey = 'API_KEY';
   const stubs: sinon.SinonStub[] = [];
-  let isHttpsUrlSpy: sinon.SinonSpy;
+  let isLocalhostOrHttpsUrlSpy: sinon.SinonSpy;
   let isSafeUrlSpy: sinon.SinonSpy;
 
   beforeEach(() => {
-    isHttpsUrlSpy = sinon.spy(validator, 'isHttpsURL');
+    isLocalhostOrHttpsUrlSpy = sinon.spy(validator, 'isLocalhostOrHttpsURL');
     isSafeUrlSpy = sinon.spy(utils, 'isSafeUrl');
   });
 
   afterEach(() => {
-    isHttpsUrlSpy.restore();
+    isLocalhostOrHttpsUrlSpy.restore();
     isSafeUrlSpy.restore();
     stubs.forEach((s) => s.restore());
   });
@@ -171,7 +171,7 @@ describe('IAPRequestHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
-          expect(isHttpsUrlSpy).to.have.been.calledOnce
+          expect(isLocalhostOrHttpsUrlSpy).to.have.been.calledOnce
             .and.calledWith(invalidUrl)
             .and.returned(false);
           expect(error).to.have.property('message', 'Invalid URL');
@@ -459,7 +459,7 @@ describe('IAPRequestHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
-          expect(isHttpsUrlSpy).to.have.been.calledOnce
+          expect(isLocalhostOrHttpsUrlSpy).to.have.been.calledOnce
             .and.calledWith(invalidUrl)
             .and.returned(false);
           expect(error).to.have.property('message', 'Invalid URL');
@@ -634,7 +634,7 @@ describe('IAPRequestHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
-          expect(isHttpsUrlSpy).to.have.been.calledOnce
+          expect(isLocalhostOrHttpsUrlSpy).to.have.been.calledOnce
             .and.calledWith(invalidUrl)
             .and.returned(false);
           expect(error).to.have.property('message', 'Invalid URL');
@@ -828,7 +828,7 @@ describe('IAPRequestHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
-          expect(isHttpsUrlSpy).to.have.been.calledOnce
+          expect(isLocalhostOrHttpsUrlSpy).to.have.been.calledOnce
             .and.calledWith(invalidUrl)
             .and.returned(false);
           expect(error).to.have.property('message', 'Invalid URL');
