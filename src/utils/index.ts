@@ -225,3 +225,40 @@ export function sanitizeUrl(url: string): string {
 export function isSafeUrl(url: string): boolean {
   return SAFE_URL_PATTERN.test(url);
 }
+
+/**
+ * @param win Optional window instance to check for history support.
+ * @return Whether the history API is supported in the current browser.
+ */
+export function isHistorySupported(win: Window = window): boolean {
+  return !!(win.history && win.history.pushState);
+}
+
+/**
+ * @param win Optional window instance to check for CustomEvent support.
+ * @return Whether CustomEvent is supported in the current browser.
+ */
+export function isCustomEventSupported(win: Window = window): boolean {
+  return win.hasOwnProperty('CustomEvent');
+}
+
+/**
+ * @param win Optional window instance to check for history and CustomEvent support.
+ * @return Whether history API is supported along with CustomEvent in the current browser.
+ */
+export function isHistoryAndCustomEventSupported(win: Window = window): boolean {
+  return isHistorySupported(win) && isCustomEventSupported(win);
+}
+
+/**
+ * Calls the history pushState API with the specified parameters.
+ * @param win The Window instance on which the operation will run.
+ * @param data The new history data.
+ * @param title The new document title.
+ * @param url The new URL to push.
+ */
+export function pushHistoryState(win: Window, data: any, title: string, url?: string) {
+  if (isHistorySupported(win)) {
+    win.history.pushState(data, title, url);
+  }
+}

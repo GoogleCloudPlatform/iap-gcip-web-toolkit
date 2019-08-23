@@ -137,44 +137,67 @@ export abstract class BaseOperationHandler implements OperationHandler {
   public start(): Promise<void> {
     // Show progress bar. This should be hidden in process, unless an error is thrown.
     this.showProgressBar();
-    // Validate URLs and get project ID.
-    return this.validateAppAndGetProjectId()
-      .then((projectId: string) => {
-        this.projectId = projectId;
-        // Validate agent flow has matching project ID.
-        // This will not run when no tid is available (tenant has to be selected first).
-        if (this.tenantId &&
-            !this.realTenantId &&
-            `_${projectId}` !== this.tenantId) {
-          throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Mismatching project numbers');
-        }
-        // Initialize auth tenants storage manager if not yet initialized. Use project ID as identifier as this is more
-        // unique than API key.
-        if (!this.authTenantsStorageManager) {
-          this.authTenantsStorageManager = new AuthTenantsStorageManager(globalStorageManager, projectId);
-        }
-        return this.process();
-      })
-      .catch((error) => {
+    return new Promise<void>((resolve, reject) => {
+      const cleanup = () => {
+        window.removeEventListener('popstate', historyEventHandler, true);
+      };
+      const historyEventHandler = (event) => {
+        // On popstate events, hide progress bar, remove event listener and resolve promise.
+        // This will be detected by parent Auth instance which will initialize a new OperationHandler to
+        // handle the new state.
         this.hideProgressBar();
-        // Allow retrial if the error is recoverable.
-        if (isRecoverableError(error)) {
-          // Inject retry on the error. This allows the handler to recover without any reference to the
-          // CIAPAuthentication instance.
-          // By passing the retry function in the error, it also provides access to it for developers
-          // catching the error in the catch block of the start() call.
-          addReadonlyGetter(error, 'retry', () => {
-            return this.start();
-          });
-        }
-        // While the developer can catch the error, the handler may also need to handle it. For example FirebaseUI
-        // handler can catch the error and take the appropriate action or show an error message to the user.
-        // FirebaseUI also comes with the benefit of error localization.
-        // Since the error is still thrown after, the developer can still override FirebaseUI handling if
-        // they want to do so.
-        runIfDefined(this.handler.handleError, this.handler, [error]);
-        throw error;
-      });
+        cleanup();
+        // Provide enough time for nextAuth instance to be initialized by resolving asynchronously.
+        Promise.resolve().then(resolve);
+      };
+      // Listen to popstate events.
+      window.addEventListener('popstate', historyEventHandler, true);
+      // Validate URLs and get project ID.
+      return this.validateAppAndGetProjectId()
+        .then((projectId: string) => {
+          this.projectId = projectId;
+          // Validate agent flow has matching project ID.
+          // This will not run when no tid is available (tenant has to be selected first).
+          if (this.tenantId &&
+              !this.realTenantId &&
+              `_${projectId}` !== this.tenantId) {
+            throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Mismatching project numbers');
+          }
+          // Initialize auth tenants storage manager if not yet initialized. Use project ID as identifier as
+          // this is more unique than API key.
+          if (!this.authTenantsStorageManager) {
+            this.authTenantsStorageManager = new AuthTenantsStorageManager(globalStorageManager, projectId);
+          }
+          return this.process();
+        })
+        .then(() => {
+          // On resolution, remove popstate event listener.
+          cleanup();
+          resolve();
+        })
+        .catch((error) => {
+          // On error, remove popstate event listener.
+          cleanup();
+          this.hideProgressBar();
+          // Allow retrial if the error is recoverable.
+          if (isRecoverableError(error)) {
+            // Inject retry on the error. This allows the handler to recover without any reference to the
+            // CIAPAuthentication instance.
+            // By passing the retry function in the error, it also provides access to it for developers
+            // catching the error in the catch block of the start() call.
+            addReadonlyGetter(error, 'retry', () => {
+              return this.start();
+            });
+          }
+          // While the developer can catch the error, the handler may also need to handle it. For example FirebaseUI
+          // handler can catch the error and take the appropriate action or show an error message to the user.
+          // FirebaseUI also comes with the benefit of error localization.
+          // Since the error is still thrown after, the developer can still override FirebaseUI handling if
+          // they want to do so.
+          runIfDefined(this.handler.handleError, this.handler, [error]);
+          reject(error);
+        });
+    });
   }
 
   /**

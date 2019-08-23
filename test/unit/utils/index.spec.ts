@@ -20,7 +20,8 @@ import {
   addReadonlyGetter, removeUndefinedFields, formatString,
   formSubmitWithRedirect, getCurrentUrl, setCurrentUrl, runIfDefined,
   generateRandomAlphaNumericString, mapObject, onDomReady, sanitizeUrl,
-  isSafeUrl,
+  isSafeUrl, isHistorySupported, isHistoryAndCustomEventSupported,
+  pushHistoryState, isCustomEventSupported,
 } from '../../../src/utils/index';
 
 interface Obj {
@@ -409,5 +410,76 @@ describe('isSafeUrl()', () => {
     unsafeUrls.forEach((url) => {
       expect(isSafeUrl(url)).to.be.false;
     });
+  });
+});
+
+describe('isHistorySupported', () => {
+  it('should return true when history is supported', () => {
+    expect(isHistorySupported({history: {pushState: () => {/** Empty. */}}} as any)).to.be.true;
+  });
+
+  it('should return false when history is not supported', () => {
+    expect(isHistorySupported({history: {/** Empty. */}} as any)).to.be.false;
+    expect(isHistorySupported({} as any)).to.be.false;
+  });
+});
+
+describe('isCustomEventSupported', () => {
+  it('should return true when CustomEvent is supported', () => {
+    expect(isCustomEventSupported({CustomEvent: () => {/** Empty. */}} as any)).to.be.true;
+  });
+
+  it('should return false when CustomEvent is not supported', () => {
+    expect(isCustomEventSupported({} as any)).to.be.false;
+  });
+});
+
+describe('isHistoryAndCustomEventSupported', () => {
+  it('should return true when history and CustomEvent are supported', () => {
+    const win: any = {
+      CustomEvent: () => {/** Empty. */},
+      history: {
+        pushState: () => {/** Empty. */},
+      },
+    };
+    expect(isHistoryAndCustomEventSupported(win)).to.be.true;
+  });
+
+  it('should return false when history is not supported', () => {
+    const win: any = {
+      CustomEvent: () => {/** Empty. */},
+      history: {},
+    };
+    expect(isHistoryAndCustomEventSupported(win)).to.be.false;
+  });
+
+  it('should return false when CustomEvent is not supported', () => {
+    const win: any = {
+      history: {
+        pushState: () => {/** Empty. */},
+      },
+    };
+    expect(isHistoryAndCustomEventSupported(win)).to.be.false;
+  });
+});
+
+describe('pushHistoryState', () => {
+  const data = {a: 1, b: 2};
+  const title = 'title';
+  const url = 'https://www.example.com/path?a=1#b=2';
+
+  it('should not throw when history is not supported', () => {
+    expect(() => pushHistoryState({} as any, data, title, url)).not.to.throw();
+  });
+
+  it('should call underlying pushState with expected parameters', () => {
+    const win: any = {
+      history: {
+        pushState: sinon.spy(),
+      },
+    };
+
+    pushHistoryState(win, data, title, url);
+    expect(win.history.pushState).to.have.been.calledOnce.and.calledWith(data, title, url);
   });
 });

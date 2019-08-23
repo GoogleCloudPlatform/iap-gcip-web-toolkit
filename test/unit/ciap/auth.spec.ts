@@ -32,12 +32,14 @@ describe('Authentication', () => {
   const originalUri = 'https://www.example.com/path/main';
   const apiKey = 'API_KEY';
   const tid = 'TENANT_ID';
+  const tid2 = 'TENANT_ID2';
   const state = 'STATE';
   const hl = 'en-US';
   const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
   const auth = createMockAuth(apiKey, tid);
   const tenant2Auth: {[key: string]: FirebaseAuth} = {};
   tenant2Auth[tid] = auth;
+  tenant2Auth[tid2] = createMockAuth(apiKey, tid2);
   const handler = createMockAuthenticationHandler(tenant2Auth);
   let signInOperationHandlerSpy: sinon.SinonSpy;
   let signOutOperationHandlerSpy: sinon.SinonSpy;
@@ -249,13 +251,15 @@ describe('Authentication', () => {
       stubs.push(stub);
 
       const authenticationInstance = new Authentication(handler);
-      expect(authenticationInstance.start()
+      const startRef = authenticationInstance.start();
+      expect(startRef
         .then(() => {
           expect(onDomReadySpy).to.have.been.calledOnce.and.calledBefore(startSignInOperationHandlerStub);
           // Confirm signInOperationHandler.start called under the hood.
           expect(startSignInOperationHandlerStub).to.have.been.calledOnce;
           expect(handler.languageCode).to.equal('ru');
         })).to.be.fulfilled;
+      return startRef;
     });
 
     it('should eventually be fullfilled for re-auth mode', () => {
@@ -264,13 +268,15 @@ describe('Authentication', () => {
       stubs.push(stub);
 
       const authenticationInstance = new Authentication(handler);
-      expect(authenticationInstance.start()
+      const startRef = authenticationInstance.start();
+      expect(startRef
         .then(() => {
           expect(onDomReadySpy).to.have.been.calledOnce.and.calledBefore(startSignInOperationHandlerStub);
           // Confirm signInOperationHandler.start called under the hood.
           expect(startSignInOperationHandlerStub).to.have.been.calledOnce;
           expect(handler.languageCode).to.equal('it');
         })).to.be.fulfilled;
+      return startRef;
     });
 
     it('should eventually be fullfilled for signout mode', () => {
@@ -279,13 +285,15 @@ describe('Authentication', () => {
       stubs.push(stub);
 
       const authenticationInstance = new Authentication(handler);
-      expect(authenticationInstance.start()
+      const startRef = authenticationInstance.start();
+      expect(startRef
         .then(() => {
           expect(onDomReadySpy).to.have.been.calledOnce.and.calledBefore(startSignOutOperationHandlerStub);
           // Confirm signOutOperationHandler.start called under the hood.
           expect(startSignOutOperationHandlerStub).to.have.been.calledOnce;
           expect(handler.languageCode).to.be.undefined;
         })).to.be.fulfilled;
+      return startRef;
     });
 
     it('should eventually be fullfilled for selectAuthSession mode', () => {
@@ -294,7 +302,8 @@ describe('Authentication', () => {
       stubs.push(stub);
 
       const authenticationInstance = new Authentication(handler);
-      expect(authenticationInstance.start()
+      const startRef = authenticationInstance.start();
+      expect(startRef
         .then(() => {
           expect(onDomReadySpy).to.have.been.calledOnce
             .and.calledBefore(startSelectAuthSessionOperationHandlerStub);
@@ -302,6 +311,269 @@ describe('Authentication', () => {
           expect(startSelectAuthSessionOperationHandlerStub).to.have.been.calledOnce;
           expect(handler.languageCode).to.be.undefined;
         })).to.be.fulfilled;
+      return startRef;
+    });
+
+    it('should detect pushstate custom events', () => {
+      let currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, null);
+      const expectedData = {
+        a: 1, b: 2, c: 3,
+      };
+      startSelectAuthSessionOperationHandlerStub.callsFake(() => {
+        // Simulate user selects tenant which redirects to login page.
+        currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, null);
+        const event = new CustomEvent('pushstate', {
+          bubbles: true,
+          detail: {
+            data: expectedData,
+          },
+        });
+        window.dispatchEvent(event);
+        return Promise.resolve();
+      });
+      startSignInOperationHandlerStub.callsFake(() => {
+        // Simulate user completes sign-in.
+        return Promise.resolve();
+      });
+      const getCurrentUrlStub = sinon.stub(utils, 'getCurrentUrl');
+      getCurrentUrlStub.callsFake(() => {
+        return currentUrl;
+      });
+      stubs.push(getCurrentUrlStub);
+
+      const authenticationInstance = new Authentication(handler);
+      return authenticationInstance.start()
+        .then(() => {
+          expect(selectAuthSessionOperationHandlerSpy).to.have.been.calledOnce
+            .and.calledBefore(signInOperationHandlerSpy);
+          expect(signInOperationHandlerSpy).to.have.been.calledOnce;
+          expect(startSelectAuthSessionOperationHandlerStub).to.have.been.calledOnce
+            .and.calledBefore(startSignInOperationHandlerStub);
+          expect(startSignInOperationHandlerStub).to.have.been.calledOnce;
+        });
+    });
+
+    it('should detect popstate events', () => {
+      let currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, null);
+      const expectedData = {
+        a: 1, b: 2, c: 3,
+      };
+      startSignInOperationHandlerStub.callsFake(() => {
+        // Simulate user clicks back on login page which can result in a redirect to hypothetical
+        // previous page to select the tenant.
+        currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, null);
+        const event = new CustomEvent('popstate', {
+          bubbles: true,
+          detail: {
+            data: expectedData,
+          },
+        });
+        window.dispatchEvent(event);
+        return Promise.resolve();
+      });
+      startSelectAuthSessionOperationHandlerStub.callsFake(() => {
+        // This normally redirects back to sign in page but for testing we will ignore that.
+        return Promise.resolve();
+      });
+      const getCurrentUrlStub = sinon.stub(utils, 'getCurrentUrl');
+      getCurrentUrlStub.callsFake(() => {
+        return currentUrl;
+      });
+      stubs.push(getCurrentUrlStub);
+
+      const authenticationInstance = new Authentication(handler);
+      return authenticationInstance.start()
+        .then(() => {
+          expect(signInOperationHandlerSpy).to.have.been.calledOnce
+            .and.calledBefore(selectAuthSessionOperationHandlerSpy);
+          expect(selectAuthSessionOperationHandlerSpy).to.have.been.calledOnce;
+          expect(startSignInOperationHandlerStub).to.have.been.calledOnce
+            .and.calledBefore(startSelectAuthSessionOperationHandlerStub);
+          expect(startSelectAuthSessionOperationHandlerStub).to.have.been.calledOnce;
+        });
+    });
+
+    it('should detect successive pushstate and popstate events', () => {
+      let currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, null);
+      const expectedData = {
+        a: 1, b: 2, c: 3,
+      };
+      const callOrder: string[] = [];
+      startSelectAuthSessionOperationHandlerStub.onCall(0).callsFake(() => {
+        callOrder.push('select0');
+        // Simulate first pushState to login page after user selects the tenant.
+        currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, null);
+        const event = new CustomEvent('pushstate', {
+          bubbles: true,
+          detail: {
+            data: expectedData,
+          },
+        });
+        window.dispatchEvent(event);
+        return Promise.resolve();
+      });
+      startSignInOperationHandlerStub.onCall(0).callsFake(() => {
+        callOrder.push('login0');
+        // Simulate user clicks back from login page to change the selected tenant.
+        currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, null);
+        const event = new CustomEvent('popstate', {
+          bubbles: true,
+          detail: {
+            data: expectedData,
+          },
+        });
+        window.dispatchEvent(event);
+        return Promise.resolve();
+      });
+      startSelectAuthSessionOperationHandlerStub.onCall(1).callsFake(() => {
+        callOrder.push('select1');
+        // Simulate user selects a different tenant to sign in with.
+        currentUrl = createMockUrl('login', apiKey, tid2, redirectUri, state, null);
+        const event = new CustomEvent('pushstate', {
+          bubbles: true,
+          detail: {
+            data: expectedData,
+          },
+        });
+        window.dispatchEvent(event);
+        return Promise.resolve();
+      });
+      startSignInOperationHandlerStub.onCall(1).callsFake(() => {
+        callOrder.push('login1');
+        // Simulate user completes sign in with second tenant.
+        return Promise.resolve();
+      });
+      const getCurrentUrlStub = sinon.stub(utils, 'getCurrentUrl');
+      getCurrentUrlStub.callsFake(() => {
+        return currentUrl;
+      });
+      stubs.push(getCurrentUrlStub);
+
+      const authenticationInstance = new Authentication(handler);
+      return authenticationInstance.start()
+        .then(() => {
+          expect(callOrder).to.deep.equal(['select0', 'login0', 'select1', 'login1']);
+          expect(selectAuthSessionOperationHandlerSpy).to.have.been.calledTwice;
+          expect(signInOperationHandlerSpy).to.have.been.calledTwice;
+          expect(startSelectAuthSessionOperationHandlerStub).to.have.been.calledTwice;
+          expect(startSignInOperationHandlerStub).to.have.been.calledTwice;
+        });
+    });
+
+    it('should funnel underlying next Auth error after history event', () => {
+      const expectedError = new HttpCIAPError(504);
+      let currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, null);
+      const expectedData = {
+        a: 1, b: 2, c: 3,
+      };
+      startSelectAuthSessionOperationHandlerStub.callsFake(() => {
+        currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, null);
+        const event = new CustomEvent('pushstate', {
+          bubbles: true,
+          detail: {
+            data: expectedData,
+          },
+        });
+        window.dispatchEvent(event);
+        return Promise.resolve();
+      });
+      // Simulate login page rejects.
+      startSignInOperationHandlerStub.rejects(expectedError);
+      const getCurrentUrlStub = sinon.stub(utils, 'getCurrentUrl');
+      getCurrentUrlStub.callsFake(() => {
+        return currentUrl;
+      });
+      stubs.push(getCurrentUrlStub);
+
+      const authenticationInstance = new Authentication(handler);
+      return authenticationInstance.start()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.equal(expectedError);
+          expect(selectAuthSessionOperationHandlerSpy).to.have.been.calledOnce
+            .and.calledBefore(signInOperationHandlerSpy);
+          expect(signInOperationHandlerSpy).to.have.been.calledOnce;
+          expect(startSelectAuthSessionOperationHandlerStub).to.have.been.calledOnce
+            .and.calledBefore(startSignInOperationHandlerStub);
+          expect(startSignInOperationHandlerStub).to.have.been.calledOnce;
+        });
+    });
+
+    it('should catch invalid config errors thrown in next Auth after history event', () => {
+      let currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, null);
+      const expectedData = {
+        a: 1, b: 2, c: 3,
+      };
+      startSelectAuthSessionOperationHandlerStub.callsFake(() => {
+        // This should not happen. Simulate incorrect config.
+        currentUrl = createMockUrl('login', apiKey, null, redirectUri, state, null);
+        const event = new CustomEvent('pushstate', {
+          bubbles: true,
+          detail: {
+            data: expectedData,
+          },
+        });
+        window.dispatchEvent(event);
+        return Promise.resolve();
+      });
+      const getCurrentUrlStub = sinon.stub(utils, 'getCurrentUrl');
+      getCurrentUrlStub.callsFake(() => {
+        return currentUrl;
+      });
+      stubs.push(getCurrentUrlStub);
+
+      const authenticationInstance = new Authentication(handler);
+      return authenticationInstance.start()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error.code).to.equal('invalid-argument');
+          expect(error.message).to.equal('Invalid request');
+          expect(selectAuthSessionOperationHandlerSpy).to.have.been.calledOnce
+            .and.calledBefore(signInOperationHandlerSpy);
+          expect(signInOperationHandlerSpy).to.have.been.calledOnce;
+          expect(startSelectAuthSessionOperationHandlerStub).to.have.been.calledOnce;
+          expect(startSignInOperationHandlerStub).to.not.have.been.called;
+        });
+    });
+
+    it('should catch fatal errors thrown in next Auth after history event', () => {
+      let currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, null);
+      const expectedData = {
+        a: 1, b: 2, c: 3,
+      };
+      startSelectAuthSessionOperationHandlerStub.callsFake(() => {
+        // This should not happen. Simulate incorrect mode.
+        currentUrl = createMockUrl('unknown', apiKey, null, redirectUri, state, null);
+        const event = new CustomEvent('pushstate', {
+          bubbles: true,
+          detail: {
+            data: expectedData,
+          },
+        });
+        window.dispatchEvent(event);
+        return Promise.resolve();
+      });
+      const getCurrentUrlStub = sinon.stub(utils, 'getCurrentUrl');
+      getCurrentUrlStub.callsFake(() => {
+        return currentUrl;
+      });
+      stubs.push(getCurrentUrlStub);
+
+      const authenticationInstance = new Authentication(handler);
+      return authenticationInstance.start()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error.code).to.equal('invalid-argument');
+          expect(error.message).to.equal('Invalid mode');
+          expect(selectAuthSessionOperationHandlerSpy).to.have.been.calledOnce;
+          expect(startSelectAuthSessionOperationHandlerStub).to.have.been.calledOnce;
+        });
     });
   });
 

@@ -21,7 +21,7 @@ import { SelectAuthSessionOperationHandler } from '../../../src/ciap/select-auth
 import { OperationType, CacheDuration } from '../../../src/ciap/base-operation-handler';
 import {
   createMockUrl, createMockAuth, createMockAuthenticationHandler, MockAuth,
-  createMockUser, MockAuthenticationHandler, createMockStorageManager,
+  createMockUser, MockAuthenticationHandler,
 } from '../../resources/utils';
 import * as utils from '../../../src/utils/index';
 import { FirebaseAuth } from '../../../src/ciap/firebase-auth';
@@ -32,6 +32,7 @@ import { PromiseCache } from '../../../src/utils/promise-cache';
 import { AuthenticationHandler } from '../../../src/ciap/authentication-handler';
 
 describe('SelectAuthSessionOperationHandler', () => {
+  let pushstateCallbacks: sinon.SinonSpy[] = [];
   const stubs: sinon.SinonStub[] = [];
   const originalUri = 'https://project-id.appspot.com/path/file';
   const projectId = 'PROJECT_ID';
@@ -73,10 +74,14 @@ describe('SelectAuthSessionOperationHandler', () => {
     projectId,
     apiKey,
   };
+  let isHistoryAndCustomEventSupportedStub: sinon.SinonStub;
 
   beforeEach(() => {
     getCurrentUrlStub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
     stubs.push(getCurrentUrlStub);
+    // Simulate history API is not supported as the default case.
+    isHistoryAndCustomEventSupportedStub = sinon.stub(utils, 'isHistoryAndCustomEventSupported').returns(false);
+    stubs.push(isHistoryAndCustomEventSupportedStub);
     // Listen to selectProvider, showProgressBar and hideProgressBar.
     showProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'showProgressBar');
     hideProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'hideProgressBar');
@@ -97,6 +102,10 @@ describe('SelectAuthSessionOperationHandler', () => {
   });
 
   afterEach(() => {
+    pushstateCallbacks.forEach((callback) => {
+      window.removeEventListener('pushstate', callback);
+    });
+    pushstateCallbacks = [];
     stubs.forEach((s) => s.restore());
     showProgressBarSpy.restore();
     hideProgressBarSpy.restore();
@@ -262,7 +271,7 @@ describe('SelectAuthSessionOperationHandler', () => {
         });
     });
 
-    it('should redirect to the expected sign-in URL on successful selection', () => {
+    it('should redirect to the expected sign-in URL on successful selection for old browsers', () => {
       const expectedSignInUrl = `https://auth.example.com:8080/signin` +
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
           `&tid=${encodeURIComponent(selectedProviderMatch.tenantId)}` +
@@ -321,6 +330,93 @@ describe('SelectAuthSessionOperationHandler', () => {
           expect(setCurrentUrlStub)
             .to.have.been.calledOnce.and.calledAfter(getSessionInfoStub)
             .and.calledWith(window, expectedSignInUrl);
+          // Call again. Cached results should be used. This is not a realistic scenario and only used
+          // to illustrate expected caching behavior.
+          return operationHandler.start();
+        })
+        .then(() => {
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.be.calledOnce;
+          expect(getSessionInfoStub).to.be.calledOnce;
+        });
+    });
+
+    it('should pushState to the expected sign-in URL on successful selection for modern browsers', () => {
+      const pushstateCallback = sinon.spy();
+      const expectedData = {
+        state: 'signIn',
+        providerMatch: selectedProviderMatch,
+      };
+      const expectedSignInUrl = `https://auth.example.com:8080/signin` +
+          `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
+          `&tid=${encodeURIComponent(selectedProviderMatch.tenantId)}` +
+          `&state=${encodeURIComponent(state)}` +
+          `&redirectUrl=${encodeURIComponent(redirectUri)}`;
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          GCIPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo').resolves(sessionInfoResponse);
+      stubs.push(getSessionInfoStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+      // Simulate history API supported.
+      isHistoryAndCustomEventSupportedStub.returns(true);
+      const pushHistoryStateStub = sinon.stub(utils, 'pushHistoryState');
+      stubs.push(pushHistoryStateStub);
+      window.addEventListener('pushstate', pushstateCallback);
+      // Keep track of callback so it can be removed after each test.
+      pushstateCallbacks.push(pushstateCallback);
+
+      return operationHandler.start()
+        .then(() => {
+          // Expect checkAuthorizedDomainsAndGetProjectId result to be cached for 30 mins.
+          expect(cacheAndReturnResultSpy).to.be.calledTwice;
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
+            .to.deep.equal([[currentUrl, selectAuthSessionConfig.redirectUrl]]);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
+          // Expect getSessionInfo result to be cached for 5 mins.
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[1].args[1].getSessionInfo);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[1]).to.be.instanceof(IAPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[2])
+            .to.deep.equal([selectAuthSessionConfig.redirectUrl, selectAuthSessionConfig.state]);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[3]).to.equal(CacheDuration.GetSessionInfo);
+          // Progress bar should be shown on initialization only.
+          expect(showProgressBarSpy).to.have.been.calledOnce;
+          expect(showProgressBarSpy).to.have.been.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrl, selectAuthSessionConfig.redirectUrl]);
+          // Progress bar should be hidden after sessionInfoResponse is returned and before selectProvider.
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(getSessionInfoStub)
+            .and.calledBefore(selectProviderSpy);
+          // Confirm getSessionInfoStub called.
+          expect(getSessionInfoStub)
+            .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
+            .and.calledWith(selectAuthSessionConfig.redirectUrl, selectAuthSessionConfig.state);
+          expect(selectProviderSpy).to.have.been.calledOnce
+            .and.calledWith(projectConfig, sessionInfoResponse.tenantIds)
+            .and.calledBefore(pushHistoryStateStub)
+            .and.calledAfter(getSessionInfoStub);
+          // No URL redirect. history.pushState should be used instead.
+          expect(setCurrentUrlStub).to.not.be.called;
+          expect(isHistoryAndCustomEventSupportedStub).to.have.been.calledWith(window);
+          // Confirm pushState to expected sign-in URL.
+          expect(pushHistoryStateStub)
+            .to.have.been.calledOnce.and.calledAfter(getSessionInfoStub)
+            .and.calledWith(window, expectedData, window.document.title, expectedSignInUrl);
+          // Confirm pushstate custom event triggered.
+          expect(pushstateCallback).to.be.calledOnce.and.calledAfter(pushHistoryStateStub);
+          const customEvent = pushstateCallback.getCalls()[0].args[0];
+          expect(customEvent.detail.data).to.deep.equal(expectedData);
           // Call again. Cached results should be used. This is not a realistic scenario and only used
           // to illustrate expected caching behavior.
           return operationHandler.start();

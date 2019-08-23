@@ -162,6 +162,7 @@ class ConcreteOperationHandler extends BaseOperationHandler {
 }
 
 describe('BaseOperationHandler', () => {
+  let popstateCallbacks: sinon.SinonSpy[] = [];
   const stubs: sinon.SinonStub[] = [];
   let mockStorageManager: storageManager.StorageManager;
   let authTenantsStorageManager: authTenantsStorage.AuthTenantsStorageManager;
@@ -218,6 +219,10 @@ describe('BaseOperationHandler', () => {
   });
 
   afterEach(() => {
+    popstateCallbacks.forEach((callback) => {
+      window.removeEventListener('popstate', callback);
+    });
+    popstateCallbacks = [];
     stubs.forEach((s) => s.restore());
     showProgressBarSpy.restore();
     hideProgressBarSpy.restore();
@@ -411,6 +416,45 @@ describe('BaseOperationHandler', () => {
           // No additional call. Cached result should be used.
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce;
         });
+    });
+
+    it('should immediately resolve on popstate event', () => {
+      const popstateCallback = sinon.spy();
+      const processorStub = sinon.stub().callsFake(() => {
+        // Simulate this promise never resolves.
+        return new Promise((resolve) => {/** Never resolve. */});
+      });
+      const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+      const config = new Config(createMockUrl('login', apiKey, agentId, redirectUri, state, hl));
+      window.addEventListener('popstate', popstateCallback);
+      // Keep track of callback so it can be removed after each test.
+      popstateCallbacks.push(popstateCallback);
+
+      const concreteInstance =
+          new ConcreteOperationHandler(config, authenticationHandler, processorStub);
+
+      const startRef = concreteInstance.start();
+      // Simulate popstate event. This should force the promise to immediately resolve.
+      const event = new CustomEvent('popstate', {
+        bubbles: true,
+      });
+      window.dispatchEvent(event);
+      // Even though process never resolves, this should still resolve due to popstate event.
+      return startRef.then(() => {
+        expect(popstateCallback).to.have.been.calledOnce;
+        expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
+          .and.calledWith([currentUrl, config.redirectUrl])
+          .and.calledBefore(processorStub);
+        expect(showProgressBarSpy).to.have.been.calledOnce
+          .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+        expect(processorStub).to.have.been.calledOnce;
+        // Progress bar should be hidden after popstate event.
+        expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledAfter(popstateCallback);
+        // Dispatch event again to confirm handler removed.
+        window.dispatchEvent(event);
+        // Progress bar should not be hidden again.
+        expect(hideProgressBarSpy).to.have.been.calledOnce;
+      });
     });
 
     it('should reject on OperationHandler.process() rejection', () => {

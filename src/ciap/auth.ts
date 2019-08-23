@@ -85,13 +85,36 @@ export class Authentication {
    * @return {Promise<void>} A promise that resolves when underlying operation handler is rendered.
    */
   public start(): Promise<void> {
+    let nextAuth: Authentication;
+    const historyEventHandler = (event) => {
+      nextAuth = new Authentication(this.handler);
+    };
+    const cleanup = () => {
+      window.removeEventListener('popstate', historyEventHandler, true);
+      window.removeEventListener('pushstate', historyEventHandler, true);
+    };
     // Wait for DOM to be ready.
     return onDomReady(window.document).then(() => {
+      // Listen to any history events.
+      window.addEventListener('popstate', historyEventHandler, true);
+      window.addEventListener('pushstate', historyEventHandler, true);
       if (typeof this.fatalError === 'undefined') {
-        return this.operationHandler.start();
+        return this.operationHandler.start().then(() => {
+          // On resolution, clean up existing history event listeners.
+          cleanup();
+          // Start next Auth if available.
+          if (nextAuth) {
+            return nextAuth.start();
+          }
+        });
+      } else {
+        runIfDefined(this.handler.handleError, this.handler, [this.fatalError]);
+        throw this.fatalError;
       }
-      runIfDefined(this.handler.handleError, this.handler, [this.fatalError]);
-      throw this.fatalError;
+    })
+    .catch((error) => {
+      cleanup();
+      throw error;
     });
   }
 

@@ -17,7 +17,9 @@
 import { AuthenticationHandler, ProviderMatch } from './authentication-handler';
 import { BaseOperationHandler, OperationType } from './base-operation-handler';
 import { Config, ConfigMode } from './config';
-import { setCurrentUrl, getCurrentUrl } from '../utils/index';
+import {
+  setCurrentUrl, getCurrentUrl, isHistoryAndCustomEventSupported, pushHistoryState,
+} from '../utils/index';
 import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 import { SessionInfoResponse } from './iap-request';
 
@@ -59,6 +61,7 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
    * @override
    */
   protected process(): Promise<void> {
+    let providerMatch: ProviderMatch;
     // This will resolve with the tenants associated with the current sign-in session.
     return this.getSessionInformation()
       .then((sessionInfo: SessionInfoResponse) => {
@@ -81,6 +84,7 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
       })
       .then((match: ProviderMatch) => {
         // TODO: figure out a way to pass email and providerIds preference to sign in page.
+        providerMatch = match;
         // If null is returned as tenantId, project level flow is selected.
         const selectedTenantId = match.tenantId || `_${this.projectId}`;
         if (this.tenantIds.indexOf(selectedTenantId) === -1) {
@@ -100,10 +104,35 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
         const signInUrl =
             `${authUrl}?mode=${ConfigMode.Login}&apiKey=${key}&tid=${tid}&state=${state}&redirectUrl=${redirectUrl}`;
         // Redirect to sign in page.
-        // TODO: handle change dynamically instead of using inefficient redirecting.
         // TODO: pass providerMatch to sign-in URL.
-        this.showProgressBar();
-        setCurrentUrl(window, signInUrl);
+        if (isHistoryAndCustomEventSupported(window)) {
+          const data = {
+            state: 'signIn',
+            providerMatch,
+          };
+          pushHistoryState(
+            window,
+            data,
+            // Keep the same title.
+            window.document.title,
+            // Update URL to sign-in URL.
+            signInUrl,
+          );
+          // Only popstate is supported natively. Create custom pushstate event to
+          // notify Authentication instance of this change.
+          const event = new CustomEvent('pushstate', {
+            bubbles: true,
+            detail: {
+              data,
+            },
+          });
+          window.dispatchEvent(event);
+          return Promise.resolve();
+        } else {
+          // Old browser that does not support history API.
+          this.showProgressBar();
+          setCurrentUrl(window, signInUrl);
+        }
       });
   }
 }
