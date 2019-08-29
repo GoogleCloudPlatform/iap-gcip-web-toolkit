@@ -136,7 +136,9 @@ export class SignInOperationHandler extends BaseOperationHandler {
     return Promise.resolve()
       .then(() => {
         this.hideProgressBar();
-        return this.handler.startSignIn(this.auth)
+        // Pass the ProviderMatch, if available, to startSignIn as it will help determine the best IdP
+        // to sign in the current user.
+        return this.handler.startSignIn(this.auth, this.config.providerMatch || undefined)
           .then((result: UserCredential) => {
             // On successful sign-in, get ID token and complete sign-in.
             this.showProgressBar();

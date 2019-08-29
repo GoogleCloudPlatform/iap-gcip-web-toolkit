@@ -83,7 +83,6 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
             Promise.resolve({tenantId: sessionInfo.tenantIds[0]});
       })
       .then((match: ProviderMatch) => {
-        // TODO: figure out a way to pass email and providerIds preference to sign in page.
         providerMatch = match;
         // If null is returned as tenantId, project level flow is selected.
         const selectedTenantId = match.tenantId || `_${this.projectId}`;
@@ -104,7 +103,6 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
         const signInUrl =
             `${authUrl}?mode=${ConfigMode.Login}&apiKey=${key}&tid=${tid}&state=${state}&redirectUrl=${redirectUrl}`;
         // Redirect to sign in page.
-        // TODO: pass providerMatch to sign-in URL.
         if (isHistoryAndCustomEventSupported(window)) {
           const data = {
             state: 'signIn',
@@ -130,8 +128,11 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
           return Promise.resolve();
         } else {
           // Old browser that does not support history API.
+          // ProviderMatch needs to be passed via hash.
+          const hash = providerMatch.email || providerMatch.providerIds ?
+            `#hint=${providerMatch.email};${(providerMatch.providerIds || []).join(',')}` : '';
           this.showProgressBar();
-          setCurrentUrl(window, signInUrl);
+          setCurrentUrl(window, `${signInUrl}${hash}`);
         }
       });
   }

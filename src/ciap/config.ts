@@ -15,6 +15,11 @@
  */
 
 import { sanitizeUrl } from '../utils/index';
+import { isEmail, isArray, isNonEmptyString, isProviderId, isString } from '../utils/validator';
+import { ProviderMatch } from './authentication-handler';
+
+/** The REGEX used to retrieve the ProviderMatch from the URL hash. */
+const PROVIDER_MATCH_REGEXP = /#hint=([^;]*);(.*)$/;
 
 /**
  * Enum for the configuration mode.
@@ -39,15 +44,17 @@ export class Config {
   public readonly redirectUrl: string | null;
   public readonly state: string | null;
   public readonly hl: string | null;
+  public readonly providerMatch: ProviderMatch | null;
   private readonly parsedUrl: URL;
 
   /**
    * Initializes the authentication configuration using the URL provided.
    *
-   * @param {string} url The configuration URL.
+   * @param url The configuration URL.
+   * @param historyState The optional current history.state.
    * @constructor
    */
-  constructor(url: string) {
+  constructor(url: string, historyState?: any) {
     this.parsedUrl = new URL(url);
     this.mode = this.getMode(this.parsedUrl.searchParams.get('mode') || '');
     this.apiKey = this.parsedUrl.searchParams.get('apiKey') || null;
@@ -59,11 +66,74 @@ export class Config {
     }
     this.state = this.parsedUrl.searchParams.get('state') || null;
     this.hl = this.parsedUrl.searchParams.get('hl') || null;
+
+    this.providerMatch = this.getProviderMatch(this.parsedUrl.hash, historyState);
   }
 
   /**
-   * @param {string} mode The operation mode.
-   * @return {ConfigMode} The corresponding operation ConfigMode enum.
+   * Returns the configuration ProviderMatch if available.
+   * @param hash The current URL hash fragment.
+   * @param historyState The current history.state if available.
+   * @return The configuration ProviderMatch if available.
+   */
+  private getProviderMatch(hash: string, historyState?: any): ProviderMatch | null {
+    let providerMatch: ProviderMatch | null = null;
+    // Older browsers that do not support history API will use hash to pass ProviderMatch.
+    // history.state should have higher priority over hash.
+    if (!this.tid) {
+      providerMatch = null;
+    } else if (historyState) {
+      // Populate from history.state.
+      providerMatch = !!historyState && historyState.state === 'signIn' ?
+          historyState.providerMatch : null;
+    } else if (hash) {
+      // Populate from hash.
+      const matches = PROVIDER_MATCH_REGEXP.exec(hash);
+      if (matches.length > 1) {
+        providerMatch = {
+          email: matches[1].trim(),
+          providerIds: (matches[2] || '').split(','),
+          tenantId: this.tid,
+        };
+      }
+    }
+
+    // Validate providerMatch.
+    if (providerMatch) {
+      let trimmedProviderId: string;
+      const providerIds: string[] = [];
+      // Validate email.
+      if (!isEmail(providerMatch.email)) {
+        delete providerMatch.email;
+      }
+      // Validate providerIds.
+      if (!isArray(providerMatch.providerIds)) {
+        providerMatch.providerIds = [];
+      } else {
+        // Trim providerId strings.
+        providerMatch.providerIds.forEach((providerId) => {
+          if (isString(providerId)) {
+            trimmedProviderId = providerId.trim();
+            if (isProviderId(trimmedProviderId)) {
+              providerIds.push(trimmedProviderId);
+            }
+          }
+          providerMatch.providerIds = providerIds;
+        });
+      }
+      // Validate tenantId.
+      // When tid is set to top level project ID, set to null.
+      const realTenantId = this.tid && this.tid.charAt(0) === '_' ? null : this.tid;
+      if (providerMatch.tenantId !== realTenantId) {
+        providerMatch = null;
+      }
+    }
+    return providerMatch;
+  }
+
+  /**
+   * @param mode The operation mode.
+   * @return The corresponding operation ConfigMode enum.
    */
   private getMode(mode: string): ConfigMode {
     switch (mode) {

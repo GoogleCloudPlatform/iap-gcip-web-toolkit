@@ -26,6 +26,7 @@ import * as selectAuthSession from '../../../src/ciap/select-auth-session-handle
 import * as signIn from '../../../src/ciap/sign-in-handler';
 import * as signOut from '../../../src/ciap/sign-out-handler';
 import { HttpCIAPError } from '../../../src/utils/error';
+import { Config } from '../../../src/ciap/config';
 
 describe('Authentication', () => {
   const stubs: sinon.SinonStub[] = [];
@@ -38,6 +39,15 @@ describe('Authentication', () => {
   const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
   const auth = createMockAuth(apiKey, tid);
   const tenant2Auth: {[key: string]: FirebaseAuth} = {};
+  const selectedProviderMatch = {
+    email: 'user@example.com',
+    tenantId: tid,
+    providerIds: ['saml.my-provider', 'oidc.provider'],
+  };
+  const historyState = {
+    state: 'signIn',
+    providerMatch: selectedProviderMatch,
+  };
   tenant2Auth[tid] = auth;
   tenant2Auth[tid2] = createMockAuth(apiKey, tid2);
   const handler = createMockAuthenticationHandler(tenant2Auth);
@@ -107,6 +117,25 @@ describe('Authentication', () => {
         return new Authentication(handler);
       }).not.to.throw();
       expect(signInOperationHandlerSpy).to.have.been.calledOnce;
+      expect(signOutOperationHandlerSpy).to.not.have.been.called;
+      expect(selectAuthSessionOperationHandlerSpy).to.not.have.been.called;
+      expect(handler.languageCode).to.equal(hl);
+    });
+
+    it('should initialize config with historyState if available', () => {
+      const currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, hl);
+      const getCurrentUrlStub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      stubs.push(getCurrentUrlStub);
+      const getHistoryStateStub = sinon.stub(utils, 'getHistoryState').returns(historyState);
+      stubs.push(getHistoryStateStub);
+      const expectedConfig = new Config(currentUrl, historyState);
+
+      expect(() => {
+        return new Authentication(handler);
+      }).not.to.throw();
+      expect(getHistoryStateStub).to.have.been.calledOnce.and.calledWith(window);
+      expect(signInOperationHandlerSpy).to.have.been.calledOnce
+        .and.calledWith(expectedConfig, handler);
       expect(signOutOperationHandlerSpy).to.not.have.been.called;
       expect(selectAuthSessionOperationHandlerSpy).to.not.have.been.called;
       expect(handler.languageCode).to.equal(hl);

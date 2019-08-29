@@ -22,7 +22,7 @@ import * as chaiAsPromised from 'chai-as-promised';
 import {
   isArray, isNonEmptyArray, isBoolean, isNumber, isString, isNonEmptyString,
   isNonNullObject, isObject, isAuthorizedDomain, isURL, isHttpsURL,
-  isLocalhostOrHttpsURL,
+  isLocalhostOrHttpsURL, isEmail, isProviderId,
 } from '../../../src/utils/validator';
 
 
@@ -506,5 +506,66 @@ describe('isLocalhostOrHttpsURL()', () => {
     expect(isLocalhostOrHttpsURL('https://abc.com.')).to.be.false;
     expect(isLocalhostOrHttpsURL('https://-abc.com')).to.be.false;
     expect(isLocalhostOrHttpsURL('https://www._abc.com')).to.be.false;
+  });
+});
+
+describe('isEmail()', () => {
+
+  it('should return false with a null input', () => {
+    expect(isEmail(null)).to.be.false;
+  });
+
+  it('should return false with an undefined input', () => {
+    expect(isEmail(undefined)).to.be.false;
+  });
+
+  it('should return false with a non string', () => {
+    expect(isEmail({email: 'user@example.com'})).to.be.false;
+  });
+
+  it('show return true with a valid email string', () => {
+    expect(isEmail('abc12345@abc.b-a.bla2235535.co.uk')).to.be.true;
+    expect(isEmail('abc@com')).to.be.true;
+    expect(isEmail('abc@bla.')).to.be.true;
+  });
+
+  it('should return false with an invalid email string', () => {
+    expect(isEmail('abc.com')).to.be.false;
+    expect(isEmail('@bla.com')).to.be.false;
+    expect(isEmail('a@')).to.be.false;
+  });
+});
+
+describe('isProviderId()', () => {
+  const nonStrings = [undefined, null, NaN, 0, 1, true, false, [], ['a'], {}, { a: 1 }, _.noop];
+  nonStrings.forEach((nonString) => {
+    it('should return false given a non-string argument: ' + JSON.stringify(nonString), () => {
+      expect(isProviderId(nonString as any)).to.be.false;
+    });
+  });
+
+  it('should return false given an empty string', () => {
+    expect(isProviderId('')).to.be.false;
+  });
+
+  const invalidProviderIdStrings = [
+    '@provider.com', 'p .com', '!provider.com', 'p?rovider', 'p:rovider',
+    'pro,vider.com', '{provider', ';provider',
+  ];
+  invalidProviderIdStrings.forEach((invalidProviderIdString) => {
+    it('should return false given strings with invalid chars: ' + JSON.stringify(invalidProviderIdString), () => {
+      expect(isProviderId(invalidProviderIdString)).to.be.false;
+    });
+  });
+
+  it('should return true with valid provider ID strings', () => {
+    expect(isProviderId('abc.com')).to.be.true;
+    expect(isProviderId('google.com')).to.be.true;
+    expect(isProviderId('password')).to.be.true;
+    expect(isProviderId('saml.idp')).to.be.true;
+    expect(isProviderId('oidc.idp')).to.be.true;
+    expect(isProviderId('oidc.my-provider')).to.be.true;
+    expect(isProviderId('oidc.123')).to.be.true;
+    expect(isProviderId('oidc.ABC12_3d')).to.be.true;
   });
 });

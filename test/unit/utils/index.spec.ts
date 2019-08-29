@@ -21,7 +21,7 @@ import {
   formSubmitWithRedirect, getCurrentUrl, setCurrentUrl, runIfDefined,
   generateRandomAlphaNumericString, mapObject, onDomReady, sanitizeUrl,
   isSafeUrl, isHistorySupported, isHistoryAndCustomEventSupported,
-  pushHistoryState, isCustomEventSupported,
+  pushHistoryState, isCustomEventSupported, getHistoryState,
 } from '../../../src/utils/index';
 
 interface Obj {
@@ -481,5 +481,24 @@ describe('pushHistoryState', () => {
 
     pushHistoryState(win, data, title, url);
     expect(win.history.pushState).to.have.been.calledOnce.and.calledWith(data, title, url);
+  });
+});
+
+describe('getHistoryState', () => {
+  const data = {a: 1, b: 2};
+
+  it('should return null when history is not supported', () => {
+    expect(getHistoryState({} as any)).be.null;
+  });
+
+  it('should return history.state when history is supported', () => {
+    const win: any = {
+      history: {
+        pushState: () => {/** Empty. */},
+        state: data,
+      },
+    };
+
+    expect(getHistoryState(win)).to.equal(data);
   });
 });

@@ -51,8 +51,10 @@ describe('SelectAuthSessionOperationHandler', () => {
   const selectedProviderMatch = {
     email: 'user@example.com',
     tenantId: tid2,
-    providerIds: ['saml.my-provider'],
+    providerIds: ['saml.my-provider', 'oidc.provider'],
   };
+  const selectedProviderMatchHash =
+      `#hint=${selectedProviderMatch.email};${(selectedProviderMatch.providerIds || []).join(',')}`;
   const selectAuthSessionConfig = new Config(createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, hl));
   let auth1: MockAuth;
   let auth2: MockAuth;
@@ -271,12 +273,13 @@ describe('SelectAuthSessionOperationHandler', () => {
         });
     });
 
-    it('should redirect to the expected sign-in URL on successful selection for old browsers', () => {
+    it('should redirect to the expected sign-in URL with hash on successful selection for old browsers', () => {
       const expectedSignInUrl = `https://auth.example.com:8080/signin` +
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
           `&tid=${encodeURIComponent(selectedProviderMatch.tenantId)}` +
           `&state=${encodeURIComponent(state)}` +
-          `&redirectUrl=${encodeURIComponent(redirectUri)}`;
+          `&redirectUrl=${encodeURIComponent(redirectUri)}` +
+          `${selectedProviderMatchHash}`;
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,
@@ -518,7 +521,8 @@ describe('SelectAuthSessionOperationHandler', () => {
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
           `&tid=${encodeURIComponent(selectedProviderMatch.tenantId)}` +
           `&state=${encodeURIComponent(state)}` +
-          `&redirectUrl=${encodeURIComponent(redirectUri)}`;
+          `&redirectUrl=${encodeURIComponent(redirectUri)}` +
+          `${selectedProviderMatchHash}`;
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,

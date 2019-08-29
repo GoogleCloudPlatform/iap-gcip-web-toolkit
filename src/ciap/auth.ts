@@ -20,7 +20,7 @@ import { SignInOperationHandler } from './sign-in-handler';
 import { SignOutOperationHandler } from './sign-out-handler';
 import { Config, ConfigMode } from './config';
 import { AuthenticationHandler, isAuthenticationHandler } from './authentication-handler';
-import { getCurrentUrl, onDomReady, runIfDefined } from '../utils/index';
+import { getCurrentUrl, onDomReady, runIfDefined, getHistoryState } from '../utils/index';
 import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 
 /**
@@ -50,7 +50,7 @@ export class Authentication {
     // the error.
     try {
       // Determine the current operation mode.
-      const config = new Config(getCurrentUrl(window));
+      const config = new Config(getCurrentUrl(window), getHistoryState(window));
       try {
         // Set language code on initialization.
         // This may be needed for various UI related contexts:

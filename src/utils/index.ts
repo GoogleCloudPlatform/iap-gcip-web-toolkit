@@ -262,3 +262,14 @@ export function pushHistoryState(win: Window, data: any, title: string, url?: st
     win.history.pushState(data, title, url);
   }
 }
+
+/**
+ * @param win The Window instance on which the operation will run.
+ * @return The current history state if available.
+ */
+export function getHistoryState(win: Window = window): any {
+  if (isHistorySupported(win)) {
+    return win.history.state;
+  }
+  return null;
+}

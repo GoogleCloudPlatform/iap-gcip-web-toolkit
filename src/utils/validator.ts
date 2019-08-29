@@ -223,3 +223,33 @@ export function isLocalhostOrHttpsURL(urlStr: any): boolean {
   }
   return false;
 }
+
+/**
+ * Validates that a string is a valid email.
+ *
+ * @param email The string to validate.
+ * @return Whether the string is valid email or not.
+ */
+export function isEmail(email: any): boolean {
+  if (typeof email !== 'string') {
+    return false;
+  }
+  // There must at least one character before the @ symbol and another after.
+  const re = /^[^@]+@[^@]+$/;
+  return re.test(email);
+}
+
+/**
+ * Validates that a string is a valid provider ID.
+ *
+ * @param providerId The string to validate.
+ * @return Whether the string is valid provider ID or not.
+ */
+export function isProviderId(providerId: any): boolean {
+  if (typeof providerId !== 'string') {
+    return false;
+  }
+  // This check is quite lax. It may be tightened in the future.
+  const re = /^[a-zA-Z0-9\-\_\.]+$/;
+  return isNonEmptyString(providerId) && re.test(providerId);
+}
