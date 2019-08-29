@@ -66,7 +66,40 @@ class CustomUiHandler {
     });
   }
 
-  startSignIn(auth, locale) {
+  selectProvider(projectConfig, tenantIds) {
+    const topLevelProject = `_${projectConfig.projectId}`;
+    const tenants = [];
+    let charCode = 'A'.charCodeAt(0);
+    tenantIds.forEach((tenantId) => {
+      tenants.push({
+        tenantId: tenantId || topLevelProject,
+        tenantDisplayName: `Company ${String.fromCharCode(charCode)}`,
+      });
+      charCode++;
+    });
+    return new Promise((resolve, reject) => {
+      this.container.innerHTML = templates.selectProvider({
+        tenants,
+      });
+      tenantIds.forEach((tenantId) => {
+        $(`#sign-in-${tenantId}`).on('click', (e) => {
+          $('#error').hide();
+          e.preventDefault();
+          let selectedTenantId = $(e.target).data('tenant-id').toString();
+          if (selectedTenantId === topLevelProject) {
+            selectedTenantId = null;
+          }
+          resolve({
+            tenantId: selectedTenantId,
+            providerIds: [],
+          });
+          return false;
+        });
+      });
+    });
+  }
+
+  startSignIn(auth, providerMatch) {
     return new Promise((resolve, reject) => {
       this.container.innerHTML = templates.signIn({
         tenantId: auth.tenantId,

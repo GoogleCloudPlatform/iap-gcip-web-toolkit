@@ -69,7 +69,7 @@ describe('SelectAuthSessionOperationHandler', () => {
   let cacheAndReturnResultSpy: sinon.SinonSpy;
   const currentUrl = 'https://auth.example.com:8080/signin' +
       `?mode=selectAuthSession&apiKey=${encodeURIComponent(apiKey)}` +
-      `&state=${encodeURIComponent(state)}&redirectUrl=${encodeURIComponent(redirectUri)}`;
+      `&state=${encodeURIComponent(state)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
   let startSpy: sinon.SinonSpy;
   let getCurrentUrlStub: sinon.SinonStub;
   const projectConfig = {
@@ -278,8 +278,7 @@ describe('SelectAuthSessionOperationHandler', () => {
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
           `&tid=${encodeURIComponent(selectedProviderMatch.tenantId)}` +
           `&state=${encodeURIComponent(state)}` +
-          `&redirectUrl=${encodeURIComponent(redirectUri)}` +
-          `${selectedProviderMatchHash}`;
+          `&redirect_uri=${encodeURIComponent(redirectUri)}`;
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,
@@ -353,7 +352,7 @@ describe('SelectAuthSessionOperationHandler', () => {
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
           `&tid=${encodeURIComponent(selectedProviderMatch.tenantId)}` +
           `&state=${encodeURIComponent(state)}` +
-          `&redirectUrl=${encodeURIComponent(redirectUri)}`;
+          `&redirect_uri=${encodeURIComponent(redirectUri)}`;
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,
@@ -435,7 +434,7 @@ describe('SelectAuthSessionOperationHandler', () => {
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
           `&tid=${encodeURIComponent(sessionInfoResponse.tenantIds[0])}` +
           `&state=${encodeURIComponent(state)}` +
-          `&redirectUrl=${encodeURIComponent(redirectUri)}`;
+          `&redirect_uri=${encodeURIComponent(redirectUri)}`;
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,
@@ -480,7 +479,7 @@ describe('SelectAuthSessionOperationHandler', () => {
           // _<project-id> tid selected.
           `&tid=${encodeURIComponent(parentProjectId)}` +
           `&state=${encodeURIComponent(state)}` +
-          `&redirectUrl=${encodeURIComponent(redirectUri)}`;
+          `&redirect_uri=${encodeURIComponent(redirectUri)}`;
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,
@@ -521,8 +520,7 @@ describe('SelectAuthSessionOperationHandler', () => {
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
           `&tid=${encodeURIComponent(selectedProviderMatch.tenantId)}` +
           `&state=${encodeURIComponent(state)}` +
-          `&redirectUrl=${encodeURIComponent(redirectUri)}` +
-          `${selectedProviderMatchHash}`;
+          `&redirect_uri=${encodeURIComponent(redirectUri)}`;
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,

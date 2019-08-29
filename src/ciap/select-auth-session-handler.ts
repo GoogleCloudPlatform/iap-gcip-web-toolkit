@@ -101,7 +101,7 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
         const redirectUrl = encodeURIComponent(this.redirectUrl);
         const tid = encodeURIComponent(tenantId);
         const signInUrl =
-            `${authUrl}?mode=${ConfigMode.Login}&apiKey=${key}&tid=${tid}&state=${state}&redirectUrl=${redirectUrl}`;
+            `${authUrl}?mode=${ConfigMode.Login}&apiKey=${key}&tid=${tid}&state=${state}&redirect_uri=${redirectUrl}`;
         // Redirect to sign in page.
         if (isHistoryAndCustomEventSupported(window)) {
           const data = {

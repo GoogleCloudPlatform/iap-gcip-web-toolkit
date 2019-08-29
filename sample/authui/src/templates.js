@@ -14,6 +14,27 @@
 
 import * as HandleBars from '../node_modules/handlebars/dist/handlebars';
 
+export const selectProvider = HandleBars.compile(`
+  <div class="card">
+    <div class="card-header">
+      IAP/GCIP Sample App
+    </div>
+    <div class="card-body">
+      <h5 class="card-title">Select Company</h5>
+      <form id="enter-email-form">
+        <div class="padded-div">
+          {{#each tenants}}
+            <button id="sign-in-{{tenantId}}" data-tenant-id="{{tenantId}}" type="button" class="btn btn-primary btn-block">
+              Sign in with {{tenantDisplayName}}
+            </button>
+          {{/each}}
+        </div>
+        <div id="error"></div>
+      </form>
+    </div>
+  </div>
+`);
+
 export const signIn = HandleBars.compile(`
   <div class="card">
     <div class="card-header">
