@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import {BasePage} from './base-page';
 import {SignInPage} from './sign-in-page';
 import {FirebaseUiPage} from './firebaseui-page';
+import {WebElement} from 'selenium-webdriver';
 
 /**
  * The main page where the web driver test will be run from.
@@ -32,6 +32,8 @@ export class MainPage extends SignInPage {
   private readonly searchSignInButtonClass = 'password-sign-in';
   /** The class name of the switch to FirebaseUI button element. */
   private readonly searchSwitchToFirebaseUiButtonClass = 'switch-to-firebaseui';
+  /** The class name of the sign in with tenant button elements. */
+  private readonly searchSelectTenantButtonClass = 'sign-in-with-tenant-btn';
 
   /**
    * Initializes a main page instance for running web driver tests.
@@ -44,6 +46,31 @@ export class MainPage extends SignInPage {
   /** @return A promise that resolves after redirecting to the initial main page URL. */
   start(): Promise<void> {
     return this.visit(this.initialUrl);
+  }
+
+  /**
+   * Selects the tenant corresponding to the index provided from the list of visible tenants.
+   * @param index The index of the tenant to select from the list of buttons presented.
+   * @return A promise that resolves with the tenant ID of the selected tenant button.
+   */
+  selectTenant(index: number): Promise<string | null> {
+    let selectedTenantId: string;
+    let selectedElement: WebElement;
+    return this.findElementsByClassName(this.searchSelectTenantButtonClass)
+      .then((elements) => {
+        selectedElement = elements[index];
+        // Get selected tenant ID.
+        return selectedElement.getAttribute('data-tenant-id');
+      })
+      .then((tenantId) => {
+        selectedTenantId = tenantId && tenantId.charAt(0) === '_' ? null: tenantId;
+        selectedElement.click();
+        // Wait for email input field to appear before resolving with select tenant ID.
+        return this.findById(this.searchEmailInputId);
+      })
+      .then(() => {
+        return selectedTenantId;
+      });
   }
 
   /**

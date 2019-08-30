@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import {BasePage} from './base-page';
 import {SignInPage} from './sign-in-page';
 
 /**
@@ -32,6 +31,15 @@ export class FirebaseUiPage extends SignInPage {
   private readonly searchPasswordInputClass = 'firebaseui-id-password';
   /** The class name of the password sign-in button element. */
   private readonly searchSignInButtonClass = 'firebaseui-id-submit';
+
+  /**
+   * Selects the tenant corresponding to the index provided from the list of visible tenants.
+   * @param index The index of the tenant to select from the list of buttons presented.
+   * @return A promise that resolves with the tenant ID of the selected tenant button.
+   */
+  selectTenant(index: number): Promise<string | null> {
+    return Promise.resolve(null);
+  }
 
   /**
    * Starts email sign-in.

@@ -32,6 +32,7 @@ const SAML_PROVIDER_ID = 'saml.okta-cicp-app';
 
 class CustomUiHandler {
   constructor(element, config) {
+    this.progressBarTimer = null;
     this.config = config;
     this.container = document.querySelector(element);
   }
@@ -191,10 +192,16 @@ class CustomUiHandler {
   }
 
   showProgressBar() {
-    this.container.innerHTML = templates.showProgressBar({});
+    // Show progress bar only if it takes longer than a certain delay.
+    // This prevents flicker effects when a transition is quick and a spinner
+    // is shown in between.
+    this.progressBarTimer = setTimeout(() => {
+      this.container.innerHTML = templates.showProgressBar({});
+    }, 1000);
   }
 
   hideProgressBar() {
+    clearTimeout(this.progressBarTimer);
     this.container.innerHTML = templates.hideProgressBar({});
   }
 }

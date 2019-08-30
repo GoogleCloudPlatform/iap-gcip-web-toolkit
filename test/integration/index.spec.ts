@@ -476,6 +476,115 @@ describe('GCIP/IAP sign-in automated testing', () => {
         });
     });
   });
+
+  describe('Using IAP resource configured with 3P Auth multi-tenant level IdPs', () => {
+    let tenantId: string;
+    const uids = [];
+    const serviceAccount = require('../resources/key_multi_tenant.json');
+    const projectId = serviceAccount.project_id;
+    const appUrl = `https://${projectId}.appspot.com`;
+    const credential = admin.credential.cert(serviceAccount);
+    const signInUrl = `https://${projectId}.firebaseapp.com`;
+    const app = admin.initializeApp({
+      credential,
+    }, 'multi-tenant-level');
+    const mainPage = new MainPage(appUrl);
+
+    before(() => {
+      return deployAuthUi(credential, projectId);
+    });
+
+    after(() => {
+      // Delete all temporary users.
+      return cleanup(app, uids, tenantId).then(() => {
+        // Delete Admin instance.
+        return app.delete();
+      }).then(() => {
+        return mainPage.quit();
+      });
+    });
+
+    it('should handle sign-in and sign-out successfully for custom UI', () => {
+      let appPage: AppPage;
+      let currentUid: string;
+      const email = `user_${generateRandomString(20).toLowerCase()}@example.com`;
+      const password = generateRandomString(10);
+
+      // Visit the GAE app.
+      // The application has to be configured with IAP already.
+      // In addition, the GAE app has to have been deployed already.
+      return mainPage.start()
+        .then(() => {
+          return mainPage.getCurrentUrl();
+        })
+        .then((currentUrl) => {
+          // Should be redirected to tenant selection page.
+          const url = new URL(currentUrl);
+          expect(url.protocol + '//' + url.hostname).to.equal(signInUrl);
+          const queryParams = url.searchParams;
+          expect(queryParams.get('mode')).to.equal('selectAuthSession');
+          // Select the second visible tenant.
+          return mainPage.selectTenant(1);
+        })
+        .then((selectedTenantId) => {
+          tenantId = selectedTenantId;
+          return mainPage.getCurrentUrl();
+        })
+        .then((currentUrl) => {
+          // Should be redirected to sign-in page for that tenant.
+          const url = new URL(currentUrl);
+          expect(url.protocol + '//' + url.hostname).to.equal(signInUrl);
+          // Confirm tenant ID and create user for that tenant.
+          const queryParams = url.searchParams;
+          expect(queryParams.get('mode')).to.equal('login');
+          expect(queryParams.get('tid')).to.equal(tenantId);
+          expect(tenantId).to.not.be.undefined;
+          // Create a temporary user.
+          return createUserWithEmailAndPassword(app, email, password, tenantId);
+        })
+        .then((uid) => {
+          uids.push(uid);
+          currentUid = uid;
+          // Start sign in with email.
+          return mainPage.startSignInWithEmail();
+        })
+        .then(() => {
+          return mainPage.inputEmailAndSubmit(email);
+        })
+        .then(() => {
+          return mainPage.inputPasswordAndSignIn(password);
+        })
+        .then(() => {
+          return mainPage.getAppPage();
+        })
+        .then((page) => {
+          appPage = page;
+          return appPage.getSignInResult();
+        })
+        .then((results) => {
+          // Confirm user signed and IAP token issued with gcip claims.
+          expect(results.gcip).to.not.be.undefined;
+          expect(results.gcip.firebase).to.not.be.undefined;
+          expect(results.gcip.firebase.identities).to.not.be.undefined;
+          expect(results.gcip.firebase.identities.email).to.not.be.undefined;
+          expect(results.gcip.email).to.equal(email);
+          expect(results.gcip.firebase.identities.email[0]).to.equal(email);
+          expect(results.gcip.firebase.sign_in_provider).to.equal('password');
+          expect(results.gcip.firebase.tenant).to.equal(tenantId);
+          expect(results.email).to.equal(
+              `securetoken.google.com/${projectId}/${tenantId}:${email}`);
+          expect(results.sub).to.equal(
+              `securetoken.google.com/${projectId}/${tenantId}:${currentUid}`);
+          expect(results.iss).to.equal('https://cloud.google.com/iap');
+          return appPage.getCurrentUrl();
+        })
+        .then((currentUrl) => {
+          // Original URL should be redirected to.
+          expect(currentUrl).to.equal(`${appUrl}/resource`);
+          return appPage.clickSignOutAndWaitForRedirect(signInUrl);
+        });
+    });
+  });
 });
 
 /**

@@ -16,15 +16,19 @@ import * as HandleBars from '../node_modules/handlebars/dist/handlebars';
 
 export const selectProvider = HandleBars.compile(`
   <div class="card">
-    <div class="card-header">
+    <div class="card-header sign-in-header">
       IAP/GCIP Sample App
     </div>
     <div class="card-body">
       <h5 class="card-title">Select Company</h5>
-      <form id="enter-email-form">
+      <form id="select-tenant-form">
         <div class="padded-div">
           {{#each tenants}}
-            <button id="sign-in-{{tenantId}}" data-tenant-id="{{tenantId}}" type="button" class="btn btn-primary btn-block">
+            <button
+                id="sign-in-{{tenantId}}"
+                data-tenant-id="{{tenantId}}"
+                type="button"
+                class="sign-in-with-tenant-btn btn btn-primary btn-block">
               Sign in with {{tenantDisplayName}}
             </button>
           {{/each}}
@@ -37,7 +41,7 @@ export const selectProvider = HandleBars.compile(`
 
 export const signIn = HandleBars.compile(`
   <div class="card">
-    <div class="card-header">
+    <div class="card-header sign-in-header">
       IAP/GCIP Sample App
     </div>
     <div class="card-body">
@@ -65,7 +69,7 @@ export const signIn = HandleBars.compile(`
 
 export const signInWithEmail = HandleBars.compile(`
   <div class="card">
-    <div class="card-header">
+    <div class="card-header sign-in-header">
       IAP/GCIP Sample App
     </div>
     <div class="card-body">
@@ -85,7 +89,7 @@ export const signInWithEmail = HandleBars.compile(`
 
 export const signUpWithEmail = HandleBars.compile(`
   <div class="card">
-    <div class="card-header">
+    <div class="card-header sign-in-header">
       IAP/GCIP Sample App
     </div>
     <div class="card-body">

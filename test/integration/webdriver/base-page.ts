@@ -129,6 +129,21 @@ export class BasePage {
   }
 
   /**
+   * Waits for the elements identified by className to be found.
+   * @param className The class name of the elements to look for.
+   * @return A promise that resolves with the list of WebElements to look for.
+   */
+  protected findElementsByClassName(className: string): Promise<WebElement[]> {
+    return this.driver.wait(
+        until.elementLocated(By.className(className)),
+        DELAY,
+        `Locating elements with className ${className}`)
+        .then(() => {
+          return this.driver.findElements(By.className(className));
+        });
+  }
+
+  /**
    * Waits for the page to navigate to a URL containing the specified
    * substring.
    * @param substrUrl The substring of the URL to wait for.

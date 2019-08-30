@@ -26,6 +26,13 @@ const APP_PAGE_URL_REGEX = /\.appspot\.com/;
 export abstract class SignInPage extends BasePage {
 
   /**
+   * Selects the tenant corresponding to the index provided from the list of visible tenants.
+   * @param index The index of the tenant to select from the list of buttons presented.
+   * @return A promise that resolves with the tenant ID of the selected tenant button.
+   */
+  abstract selectTenant(index: number): Promise<string | null>;
+
+  /**
    * Starts email sign-in.
    * @return A promise that resolves after starting email sign-in
    */
