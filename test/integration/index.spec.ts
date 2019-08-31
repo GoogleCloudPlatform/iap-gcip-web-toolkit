@@ -523,6 +523,12 @@ describe('GCIP/IAP sign-in automated testing', () => {
           expect(url.protocol + '//' + url.hostname).to.equal(signInUrl);
           const queryParams = url.searchParams;
           expect(queryParams.get('mode')).to.equal('selectAuthSession');
+          // Get the original URL.
+          return mainPage.getOriginalUrl();
+        })
+        .then((originalUrl) => {
+          // Confirm original URL is the expected app URL that was originally visited.
+          expect(originalUrl).to.equal(`${appUrl}/`);
           // Select the second visible tenant.
           return mainPage.selectTenant(1);
         })

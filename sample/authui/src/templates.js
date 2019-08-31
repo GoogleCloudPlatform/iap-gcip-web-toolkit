@@ -142,11 +142,42 @@ export const hideProgressBar = HandleBars.compile(`
 `);
 
 export const showNavbar = HandleBars.compile(`
-  <nav class="navbar navbar-default navbar-fixed-top">
+  <nav class="navbar navbar-expand-lg">
     <ul class="navbar-nav ml-auto">
+      <li class="nav-item">
+        <a class="nav-link get-original-url" href="javascript:void(0)">
+          Original URL
+        </a>
+      </li>
       <li class="nav-item">
         <a class="nav-link switch-to-firebaseui" href="{{link}}">Switch to FirebaseUI</a>
       </li>
     </ul>
   </nav>
+  <!-- Modal -->
+  <div class="modal" id="originalUrlModal" tabindex="-1"
+       role="dialog" aria-labelledby="original-url-modal-label"
+       aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="original-url-modal-label">Original URL</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="close-original-url-modal btn btn-secondary"
+                  data-dismiss="modal">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+`);
+
+export const showOriginalUrl = HandleBars.compile(`
+  <div class="original-url">{{originalUrl}}</div>
 `);
