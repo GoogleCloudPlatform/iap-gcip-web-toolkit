@@ -22,6 +22,7 @@ import {
 } from '../utils/index';
 import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 import { SessionInfoResponse } from './iap-request';
+import { SharedSettings } from './shared-settings';
 
 /**
  * Defines the select auth session operation handler.
@@ -35,11 +36,13 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
    *
    * @param config The current operation configuration.
    * @param handler The Authentication handler instance.
+   * @param sharedSettings The shared settings to use for caching RPC requests.
    */
   constructor(
       config: Config,
-      handler: AuthenticationHandler) {
-    super(config, handler);
+      handler: AuthenticationHandler,
+      sharedSettings?: SharedSettings) {
+    super(config, handler, sharedSettings);
     if (!this.redirectUrl || !this.state) {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid request');
     }

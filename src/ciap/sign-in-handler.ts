@@ -21,6 +21,7 @@ import { RedirectServerResponse } from './iap-request';
 import { UserCredential, User } from './firebase-auth';
 import { setCurrentUrl } from '../utils/index';
 import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
+import { SharedSettings } from './shared-settings';
 
 /**
  * Defines the sign-in operation handler.
@@ -31,27 +32,26 @@ export class SignInOperationHandler extends BaseOperationHandler {
    * UI for the specified tenant ID or get an ID token for a user already signed in with
    * that specific tenant.
    *
-   * @param {Config} config The current operation configuration.
-   * @param {AuthenticationHandler} handler The Authentication handler instance.
-   * @param {boolean=} forceReauth Whether to force re-authentication or not. When this is true,
+   * @param config The current operation configuration.
+   * @param handler The Authentication handler instance.
+   * @param sharedSettings The shared settings to use for caching RPC requests.
+   * @param forceReauth Whether to force re-authentication or not. When this is true,
    *     even if a user is already signed in, they will still be required to re-authenticate via
    *     the sign-in UI.
-   * @constructor
-   * @extends {BaseOperationHandler}
-   * @implements {OperationHandler}
    */
   constructor(
       config: Config,
       handler: AuthenticationHandler,
+      sharedSettings?: SharedSettings,
       private readonly forceReauth: boolean = false) {
-    super(config, handler);
+    super(config, handler, sharedSettings);
     if (!this.auth || !this.redirectUrl || !this.state) {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid request');
     }
   }
 
   /**
-   * @return {OperationType} The corresponding operation type.
+   * @return The corresponding operation type.
    * @override
    */
   public get type(): OperationType {
@@ -63,7 +63,7 @@ export class SignInOperationHandler extends BaseOperationHandler {
    * the ID token being retrieved for an already signed in user that does not require
    * re-authentication.
    *
-   * @return {Promise<void>} A promise that resolves when the internal operation handler processing is completed.
+   * @return A promise that resolves when the internal operation handler processing is completed.
    * @override
    */
   protected process(): Promise<void> {
@@ -82,8 +82,7 @@ export class SignInOperationHandler extends BaseOperationHandler {
   }
 
   /**
-   * @return {Promise<User|null>} A promise that resolves with the signed in user if
-   *     available or null otherwise.
+   * @return A promise that resolves with the signed in user if available or null otherwise.
    */
   private getUser(): Promise<User | null> {
     return new Promise((resolve, reject) => {
@@ -103,8 +102,8 @@ export class SignInOperationHandler extends BaseOperationHandler {
   /**
    * Handles additional processing on the user if needed by the developer.
    *
-   * @param {User} user The user to process.
-   * @return {Promise<User>} The processed user.
+   * @param user The user to process.
+   * @return The processed user.
    */
   private processUser(user: User): Promise<User> {
     let resolveProcessedUser: Promise<User> = Promise.resolve(user);
@@ -130,7 +129,7 @@ export class SignInOperationHandler extends BaseOperationHandler {
   /**
    * Starts sign-in UI flow when no ID token is available.
    *
-   * @return {Promise<void>} A promise that resolves when sign-in UI is successfully started.
+   * @return A promise that resolves when sign-in UI is successfully started.
    */
   private startSignIn(): Promise<void> {
     return Promise.resolve()
@@ -154,8 +153,8 @@ export class SignInOperationHandler extends BaseOperationHandler {
   /**
    * Completes sign-in using the provided user.
    *
-   * @param {User} user The current signed in user.
-   * @return {Promise<void>} A promise that resolves on sign-in completion and redirect back to
+   * @param user The current signed in user.
+   * @return A promise that resolves on sign-in completion and redirect back to
    *    original URI.
    */
   private finishSignIn(user: User): Promise<void> {

@@ -27,6 +27,7 @@ import * as signIn from '../../../src/ciap/sign-in-handler';
 import * as signOut from '../../../src/ciap/sign-out-handler';
 import { HttpCIAPError } from '../../../src/utils/error';
 import { Config } from '../../../src/ciap/config';
+import { SharedSettings } from '../../../src/ciap/shared-settings';
 
 describe('Authentication', () => {
   const stubs: sinon.SinonStub[] = [];
@@ -61,8 +62,10 @@ describe('Authentication', () => {
   let getOriginalURLSignOutOperationHandlerStub: sinon.SinonStub;
   let getOriginalURLSelectAuthSessionOperationHandlerStub: sinon.SinonStub;
   let onDomReadySpy: sinon.SinonSpy;
+  let sharedSettings: SharedSettings;
 
   beforeEach(() => {
+    sharedSettings = new SharedSettings(apiKey);
     signInOperationHandlerSpy = sinon.spy(signIn, 'SignInOperationHandler');
     signOutOperationHandlerSpy = sinon.spy(signOut, 'SignOutOperationHandler');
     selectAuthSessionOperationHandlerSpy = sinon.spy(selectAuthSession, 'SelectAuthSessionOperationHandler');
@@ -110,16 +113,47 @@ describe('Authentication', () => {
 
     it('should not throw when initialized with a login mode AuthenticationHandler', () => {
       const currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, hl);
+      const expectedConfig = new Config(currentUrl);
       const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
       stubs.push(stub);
 
       expect(() => {
         return new Authentication(handler);
       }).not.to.throw();
-      expect(signInOperationHandlerSpy).to.have.been.calledOnce;
+      expect(signInOperationHandlerSpy).to.have.been.calledOnce
+        .and.calledWith(expectedConfig, handler, sharedSettings);
       expect(signOutOperationHandlerSpy).to.not.have.been.called;
       expect(selectAuthSessionOperationHandlerSpy).to.not.have.been.called;
       expect(handler.languageCode).to.equal(hl);
+    });
+
+    it('should use same SharedSettings reference for a login mode AuthenticationHandler', () => {
+      const currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, hl);
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      const sharedSettingsRef = new SharedSettings(apiKey);
+      stubs.push(stub);
+
+      expect(() => {
+        return new Authentication(handler, sharedSettingsRef);
+      }).not.to.throw();
+      expect(signInOperationHandlerSpy).to.have.been.calledOnce;
+      // Should pass the exact same reference for SharedSettings.
+      expect(signInOperationHandlerSpy.getCall(0).args[2]).to.equal(sharedSettingsRef);
+    });
+
+    it('should not use same SharedSettings reference on API key mismatch', () => {
+      const currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, hl);
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      const sharedSettingsRef = new SharedSettings('MISMATCHING_API_KEY');
+      stubs.push(stub);
+
+      expect(() => {
+        return new Authentication(handler, sharedSettingsRef);
+      }).not.to.throw();
+      expect(signInOperationHandlerSpy).to.have.been.calledOnce;
+      // Should initialize a new SharedSettings instance.
+      expect(signInOperationHandlerSpy.getCall(0).args[2]).to.not.equal(sharedSettingsRef);
+      expect(signInOperationHandlerSpy.getCall(0).args[2]).to.deep.equal(sharedSettings);
     });
 
     it('should initialize config with historyState if available', () => {
@@ -135,7 +169,7 @@ describe('Authentication', () => {
       }).not.to.throw();
       expect(getHistoryStateStub).to.have.been.calledOnce.and.calledWith(window);
       expect(signInOperationHandlerSpy).to.have.been.calledOnce
-        .and.calledWith(expectedConfig, handler);
+        .and.calledWith(expectedConfig, handler, sharedSettings);
       expect(signOutOperationHandlerSpy).to.not.have.been.called;
       expect(selectAuthSessionOperationHandlerSpy).to.not.have.been.called;
       expect(handler.languageCode).to.equal(hl);
@@ -143,20 +177,37 @@ describe('Authentication', () => {
 
     it('should not throw when initialized with a reauth mode AuthenticationHandler', () => {
       const currentUrl = createMockUrl('reauth', apiKey, tid, redirectUri, state, hl);
+      const expectedConfig = new Config(currentUrl);
       const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
       stubs.push(stub);
 
       expect(() => {
         return new Authentication(handler);
       }).not.to.throw();
-      expect(signInOperationHandlerSpy).to.have.been.calledOnce;
+      expect(signInOperationHandlerSpy).to.have.been.calledOnce
+        .and.calledWith(expectedConfig, handler, sharedSettings, true);
       expect(signOutOperationHandlerSpy).to.not.have.been.called;
       expect(selectAuthSessionOperationHandlerSpy).to.not.have.been.called;
       expect(handler.languageCode).to.equal(hl);
+    });
+
+    it('should use same SharedSettings reference for a reauth mode AuthenticationHandler', () => {
+      const currentUrl = createMockUrl('reauth', apiKey, tid, redirectUri, state, hl);
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      const sharedSettingsRef = new SharedSettings(apiKey);
+      stubs.push(stub);
+
+      expect(() => {
+        return new Authentication(handler, sharedSettingsRef);
+      }).not.to.throw();
+      expect(signInOperationHandlerSpy).to.have.been.calledOnce;
+      // Should pass the exact same reference for SharedSettings.
+      expect(signInOperationHandlerSpy.getCall(0).args[2]).to.equal(sharedSettingsRef);
     });
 
     it('should not throw when initialized with a signout mode AuthenticationHandler', () => {
       const currentUrl = createMockUrl('signout', apiKey, tid, redirectUri, state, hl);
+      const expectedConfig = new Config(currentUrl);
       const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
       stubs.push(stub);
 
@@ -164,13 +215,29 @@ describe('Authentication', () => {
         return new Authentication(handler);
       }).not.to.throw();
       expect(signInOperationHandlerSpy).to.not.have.been.called;
-      expect(signOutOperationHandlerSpy).to.have.been.calledOnce;
+      expect(signOutOperationHandlerSpy).to.have.been.calledOnce
+        .and.calledWith(expectedConfig, handler, sharedSettings);
       expect(selectAuthSessionOperationHandlerSpy).to.not.have.been.called;
       expect(handler.languageCode).to.equal(hl);
     });
 
+    it('should use same SharedSettings reference for a signout mode AuthenticationHandler', () => {
+      const currentUrl = createMockUrl('signout', apiKey, tid, redirectUri, state, hl);
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      const sharedSettingsRef = new SharedSettings(apiKey);
+      stubs.push(stub);
+
+      expect(() => {
+        return new Authentication(handler, sharedSettingsRef);
+      }).not.to.throw();
+      expect(signOutOperationHandlerSpy).to.have.been.calledOnce;
+      // Should pass the exact same reference for SharedSettings.
+      expect(signOutOperationHandlerSpy.getCall(0).args[2]).to.equal(sharedSettingsRef);
+    });
+
     it('should not throw when initialized with a selectAuthSession mode AuthenticationHandler', () => {
       const currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, hl);
+      const expectedConfig = new Config(currentUrl);
       const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
       stubs.push(stub);
 
@@ -179,8 +246,23 @@ describe('Authentication', () => {
       }).not.to.throw();
       expect(signInOperationHandlerSpy).to.not.have.been.called;
       expect(signOutOperationHandlerSpy).to.not.have.been.called;
-      expect(selectAuthSessionOperationHandlerSpy).to.have.been.calledOnce;
+      expect(selectAuthSessionOperationHandlerSpy).to.have.been.calledOnce
+        .and.calledWith(expectedConfig, handler, sharedSettings);
       expect(handler.languageCode).to.equal(hl);
+    });
+
+    it('should use same SharedSettings reference for a selectAuthSession mode AuthenticationHandler', () => {
+      const currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, hl);
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      const sharedSettingsRef = new SharedSettings(apiKey);
+      stubs.push(stub);
+
+      expect(() => {
+        return new Authentication(handler, sharedSettingsRef);
+      }).not.to.throw();
+      expect(selectAuthSessionOperationHandlerSpy).to.have.been.calledOnce;
+      // Should pass the exact same reference for SharedSettings.
+      expect(selectAuthSessionOperationHandlerSpy.getCall(0).args[2]).to.equal(sharedSettingsRef);
     });
   });
 
@@ -345,6 +427,8 @@ describe('Authentication', () => {
 
     it('should detect pushstate custom events', () => {
       let currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, null);
+      const selectAuthSessionConfig = new Config(currentUrl);
+      const signInConfig = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, null));
       const expectedData = {
         a: 1, b: 2, c: 3,
       };
@@ -374,8 +458,10 @@ describe('Authentication', () => {
       return authenticationInstance.start()
         .then(() => {
           expect(selectAuthSessionOperationHandlerSpy).to.have.been.calledOnce
+            .and.calledWith(selectAuthSessionConfig, handler, sharedSettings)
             .and.calledBefore(signInOperationHandlerSpy);
-          expect(signInOperationHandlerSpy).to.have.been.calledOnce;
+          expect(signInOperationHandlerSpy).to.have.been.calledOnce
+            .and.calledWith(signInConfig, handler, sharedSettings);
           expect(startSelectAuthSessionOperationHandlerStub).to.have.been.calledOnce
             .and.calledBefore(startSignInOperationHandlerStub);
           expect(startSignInOperationHandlerStub).to.have.been.calledOnce;
@@ -384,6 +470,9 @@ describe('Authentication', () => {
 
     it('should detect popstate events', () => {
       let currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, null);
+      const signInConfig = new Config(currentUrl);
+      const selectAuthSessionConfig =
+          new Config(createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, null));
       const expectedData = {
         a: 1, b: 2, c: 3,
       };
@@ -414,8 +503,55 @@ describe('Authentication', () => {
       return authenticationInstance.start()
         .then(() => {
           expect(signInOperationHandlerSpy).to.have.been.calledOnce
+            .and.calledWith(signInConfig, handler, sharedSettings)
             .and.calledBefore(selectAuthSessionOperationHandlerSpy);
+          expect(selectAuthSessionOperationHandlerSpy).to.have.been.calledOnce
+            .and.calledWith(selectAuthSessionConfig, handler, sharedSettings);
+          expect(startSignInOperationHandlerStub).to.have.been.calledOnce
+            .and.calledBefore(startSelectAuthSessionOperationHandlerStub);
+          expect(startSelectAuthSessionOperationHandlerStub).to.have.been.calledOnce;
+        });
+    });
+
+    it('should detect popstate events and use same SharedSettings reference for all OperationHandlers', () => {
+      const sharedSettingsRef = new SharedSettings(apiKey);
+      let currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, null);
+      const expectedData = {
+        a: 1, b: 2, c: 3,
+      };
+      startSignInOperationHandlerStub.callsFake(() => {
+        // Simulate user clicks back on login page which can result in a redirect to hypothetical
+        // previous page to select the tenant.
+        currentUrl = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, null);
+        const event = new CustomEvent('popstate', {
+          bubbles: true,
+          detail: {
+            data: expectedData,
+          },
+        });
+        window.dispatchEvent(event);
+        return Promise.resolve();
+      });
+      startSelectAuthSessionOperationHandlerStub.callsFake(() => {
+        // This normally redirects back to sign in page but for testing we will ignore that.
+        return Promise.resolve();
+      });
+      const getCurrentUrlStub = sinon.stub(utils, 'getCurrentUrl');
+      getCurrentUrlStub.callsFake(() => {
+        return currentUrl;
+      });
+      stubs.push(getCurrentUrlStub);
+
+      const authenticationInstance = new Authentication(handler, sharedSettingsRef);
+      return authenticationInstance.start()
+        .then(() => {
+          expect(signInOperationHandlerSpy).to.have.been.calledOnce
+            .and.calledBefore(selectAuthSessionOperationHandlerSpy);
+          // Same reference passed.
+          expect(signInOperationHandlerSpy.getCall(0).args[2]).to.equal(sharedSettingsRef);
           expect(selectAuthSessionOperationHandlerSpy).to.have.been.calledOnce;
+          // Same reference passed.
+          expect(selectAuthSessionOperationHandlerSpy.getCall(0).args[2]).to.equal(sharedSettingsRef);
           expect(startSignInOperationHandlerStub).to.have.been.calledOnce
             .and.calledBefore(startSelectAuthSessionOperationHandlerStub);
           expect(startSelectAuthSessionOperationHandlerStub).to.have.been.calledOnce;

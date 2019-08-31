@@ -21,7 +21,7 @@ import { SelectAuthSessionOperationHandler } from '../../../src/ciap/select-auth
 import { OperationType, CacheDuration } from '../../../src/ciap/base-operation-handler';
 import {
   createMockUrl, createMockAuth, createMockAuthenticationHandler, MockAuth,
-  createMockUser, MockAuthenticationHandler,
+  MockAuthenticationHandler,
 } from '../../resources/utils';
 import * as utils from '../../../src/utils/index';
 import { FirebaseAuth } from '../../../src/ciap/firebase-auth';
@@ -30,8 +30,10 @@ import { IAPRequestHandler } from '../../../src/ciap/iap-request';
 import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../../../src/utils/error';
 import { PromiseCache } from '../../../src/utils/promise-cache';
 import { AuthenticationHandler } from '../../../src/ciap/authentication-handler';
+import { SharedSettings } from '../../../src/ciap/shared-settings';
 
 describe('SelectAuthSessionOperationHandler', () => {
+  let sharedSettings: SharedSettings;
   let pushstateCallbacks: sinon.SinonSpy[] = [];
   const stubs: sinon.SinonStub[] = [];
   const originalUri = 'https://project-id.appspot.com/path/file';
@@ -70,6 +72,7 @@ describe('SelectAuthSessionOperationHandler', () => {
   const currentUrl = 'https://auth.example.com:8080/signin' +
       `?mode=selectAuthSession&apiKey=${encodeURIComponent(apiKey)}` +
       `&state=${encodeURIComponent(state)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+  const currentUrlOrigin = 'https://auth.example.com:8080';
   let startSpy: sinon.SinonSpy;
   let getCurrentUrlStub: sinon.SinonStub;
   const projectConfig = {
@@ -79,6 +82,7 @@ describe('SelectAuthSessionOperationHandler', () => {
   let isHistoryAndCustomEventSupportedStub: sinon.SinonStub;
 
   beforeEach(() => {
+    sharedSettings = new SharedSettings(apiKey);
     getCurrentUrlStub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
     stubs.push(getCurrentUrlStub);
     // Simulate history API is not supported as the default case.
@@ -168,7 +172,7 @@ describe('SelectAuthSessionOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, selectAuthSessionConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
           // Expected error should be thrown.
           expect(error).to.equal(unauthorizedDomainError);
           // Confirm selectProvider not called.
@@ -211,7 +215,7 @@ describe('SelectAuthSessionOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, selectAuthSessionConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
           // Confirm selectProvider not called.
           expect(selectProviderSpy).to.not.have.been.called;
           // Confirm getSessionInfoStub called.
@@ -254,7 +258,7 @@ describe('SelectAuthSessionOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, selectAuthSessionConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
           // Confirm getSessionInfoStub called.
           expect(getSessionInfoStub)
             .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
@@ -273,12 +277,61 @@ describe('SelectAuthSessionOperationHandler', () => {
         });
     });
 
+    it('should use expected SharedSettings reference', () => {
+      const expectedSignInUrl = `https://auth.example.com:8080/signin` +
+          `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
+          `&tid=${encodeURIComponent(selectedProviderMatch.tenantId)}` +
+          `&state=${encodeURIComponent(state)}` +
+          `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+          `${selectedProviderMatchHash}`;
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          GCIPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo').resolves(sessionInfoResponse);
+      stubs.push(getSessionInfoStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+
+      operationHandler = new SelectAuthSessionOperationHandler(
+          selectAuthSessionConfig, authenticationHandler, sharedSettings);
+      return operationHandler.start()
+        .then(() => {
+          // Confirm SharedSettings cache used.
+          expect(cacheAndReturnResultSpy.getCall(0).thisValue)
+            .to.equal(sharedSettings.cache);
+          // Confirm SharedSettings gcipRequest used.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub.getCall(0).thisValue)
+            .to.equal(sharedSettings.gcipRequest);
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
+          // Confirm SharedSettings iapRequest used.
+          expect(getSessionInfoStub.getCall(0).thisValue).to.equal(sharedSettings.iapRequest);
+          expect(getSessionInfoStub)
+            .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
+            .and.calledWith(selectAuthSessionConfig.redirectUrl, selectAuthSessionConfig.state);
+          expect(selectProviderSpy).to.have.been.calledOnce
+            .and.calledWith(projectConfig, sessionInfoResponse.tenantIds)
+            .and.calledBefore(setCurrentUrlStub)
+            .and.calledAfter(getSessionInfoStub);
+          // Confirm redirect to expected sign-in URL.
+          expect(setCurrentUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(getSessionInfoStub)
+            .and.calledWith(window, expectedSignInUrl);
+        });
+    });
+
     it('should redirect to the expected sign-in URL with hash on successful selection for old browsers', () => {
       const expectedSignInUrl = `https://auth.example.com:8080/signin` +
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
           `&tid=${encodeURIComponent(selectedProviderMatch.tenantId)}` +
           `&state=${encodeURIComponent(state)}` +
-          `&redirect_uri=${encodeURIComponent(redirectUri)}`;
+          `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+          `${selectedProviderMatchHash}`;
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,
@@ -300,7 +353,7 @@ describe('SelectAuthSessionOperationHandler', () => {
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
-            .to.deep.equal([[currentUrl, selectAuthSessionConfig.redirectUrl]]);
+            .to.deep.equal([[currentUrlOrigin, selectAuthSessionConfig.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
           // Expect getSessionInfo result to be cached for 5 mins.
           expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
@@ -315,7 +368,7 @@ describe('SelectAuthSessionOperationHandler', () => {
           expect(showProgressBarSpy).to.have.been.calledAfter(selectProviderSpy);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, selectAuthSessionConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
           // Progress bar should be hidden after sessionInfoResponse is returned and before selectProvider.
           expect(hideProgressBarSpy).to.have.been.calledOnce
             .and.calledAfter(getSessionInfoStub)
@@ -381,7 +434,7 @@ describe('SelectAuthSessionOperationHandler', () => {
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
-            .to.deep.equal([[currentUrl, selectAuthSessionConfig.redirectUrl]]);
+            .to.deep.equal([[currentUrlOrigin, selectAuthSessionConfig.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
           // Expect getSessionInfo result to be cached for 5 mins.
           expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
@@ -395,7 +448,7 @@ describe('SelectAuthSessionOperationHandler', () => {
           expect(showProgressBarSpy).to.have.been.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, selectAuthSessionConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
           // Progress bar should be hidden after sessionInfoResponse is returned and before selectProvider.
           expect(hideProgressBarSpy).to.have.been.calledOnce
             .and.calledAfter(getSessionInfoStub)
@@ -461,7 +514,7 @@ describe('SelectAuthSessionOperationHandler', () => {
         .then(() => {
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, selectAuthSessionConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
           // Confirm getSessionInfoStub called.
           expect(getSessionInfoStub)
             .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
@@ -501,7 +554,7 @@ describe('SelectAuthSessionOperationHandler', () => {
         .then(() => {
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, selectAuthSessionConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
           // Confirm getSessionInfoStub called.
           expect(getSessionInfoStub)
             .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
@@ -520,7 +573,8 @@ describe('SelectAuthSessionOperationHandler', () => {
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
           `&tid=${encodeURIComponent(selectedProviderMatch.tenantId)}` +
           `&state=${encodeURIComponent(state)}` +
-          `&redirect_uri=${encodeURIComponent(redirectUri)}`;
+          `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+          `${selectedProviderMatchHash}`;
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,
@@ -548,7 +602,7 @@ describe('SelectAuthSessionOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, selectAuthSessionConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
           // Progress bar should be hidden after error is thrown.
           expect(hideProgressBarSpy).to.have.been.calledOnce
             .and.calledAfter(getSessionInfoStub);

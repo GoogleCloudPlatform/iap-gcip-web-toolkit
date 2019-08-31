@@ -22,6 +22,7 @@ import { Config, ConfigMode } from './config';
 import { AuthenticationHandler, isAuthenticationHandler } from './authentication-handler';
 import { getCurrentUrl, onDomReady, runIfDefined, getHistoryState } from '../utils/index';
 import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
+import { SharedSettings } from './shared-settings';
 
 /**
  * Defines the main utility used to handle all incoming sign-in, re-auth and sign-out operation
@@ -32,15 +33,17 @@ import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 export class Authentication {
   private readonly operationHandler: OperationHandler;
   private readonly fatalError: CIAPError;
+  private readonly sharedSettings: SharedSettings;
 
   /**
    * Initializes the Authentication instance used to handle a sign-in, sign-out or re-auth operation.
    *
-   * @param {AuthenticationHandler} handler The externally provided AuthenticationHandler used to
+   * @param handler The externally provided AuthenticationHandler used to
    *     interact with the GCIP/Firebase Auth instance and display sign-in or sign-out related UI.
+   * @param sharedSettings The shared settings to use for caching RPC requests.
    * @constructor
    */
-  constructor(private readonly handler: AuthenticationHandler) {
+  constructor(private readonly handler: AuthenticationHandler, sharedSettings?: SharedSettings) {
     // This is a developer error and should be thrown synchronously.
     if (!isAuthenticationHandler(handler)) {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid AuthenticationHandler');
@@ -51,6 +54,9 @@ export class Authentication {
     try {
       // Determine the current operation mode.
       const config = new Config(getCurrentUrl(window), getHistoryState(window));
+      // Shared settings API key must match current config.
+      this.sharedSettings = sharedSettings && sharedSettings.apiKey === config.apiKey ?
+          sharedSettings : new SharedSettings(config.apiKey);
       try {
         // Set language code on initialization.
         // This may be needed for various UI related contexts:
@@ -61,16 +67,16 @@ export class Authentication {
       }
       switch (config.mode) {
         case ConfigMode.Login:
-          this.operationHandler = new SignInOperationHandler(config, handler);
+          this.operationHandler = new SignInOperationHandler(config, handler, this.sharedSettings);
           break;
         case ConfigMode.Reauth:
-          this.operationHandler = new SignInOperationHandler(config, handler, true);
+          this.operationHandler = new SignInOperationHandler(config, handler, this.sharedSettings, true);
           break;
         case ConfigMode.Signout:
-          this.operationHandler = new SignOutOperationHandler(config, handler);
+          this.operationHandler = new SignOutOperationHandler(config, handler, this.sharedSettings);
           break;
         case ConfigMode.SelectAuthSession:
-          this.operationHandler = new SelectAuthSessionOperationHandler(config, handler);
+          this.operationHandler = new SelectAuthSessionOperationHandler(config, handler, this.sharedSettings);
           break;
         default:
           throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid mode');
@@ -82,12 +88,13 @@ export class Authentication {
   }
 
   /**
-   * @return {Promise<void>} A promise that resolves when underlying operation handler is rendered.
+   * @return A promise that resolves when underlying operation handler is rendered.
    */
   public start(): Promise<void> {
     let nextAuth: Authentication;
     const historyEventHandler = (event) => {
-      nextAuth = new Authentication(this.handler);
+      // Reuse same shared settings.
+      nextAuth = new Authentication(this.handler, this.sharedSettings);
     };
     const cleanup = () => {
       window.removeEventListener('popstate', historyEventHandler, true);

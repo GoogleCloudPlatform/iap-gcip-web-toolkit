@@ -31,8 +31,10 @@ import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../../../src/utils
 import * as storageManager from '../../../src/storage/manager';
 import * as authTenantsStorage from '../../../src/ciap/auth-tenants-storage';
 import { PromiseCache } from '../../../src/utils/promise-cache';
+import { SharedSettings } from '../../../src/ciap/shared-settings';
 
 describe('SignOutOperationHandler', () => {
+  let sharedSettings: SharedSettings;
   const stubs: sinon.SinonStub[] = [];
   const projectId = 'PROJECT_ID';
   const apiKey = 'API_KEY';
@@ -66,10 +68,11 @@ describe('SignOutOperationHandler', () => {
   let signOutSpy: sinon.SinonSpy;
   let mockStorageManager: storageManager.StorageManager;
   let authTenantsStorageManager: authTenantsStorage.AuthTenantsStorageManager;
-  const currentUrl = utils.getCurrentUrl(window);
+  const currentUrlOrigin = new URL(utils.getCurrentUrl(window)).origin;
   let startSpy: sinon.SinonSpy;
 
   beforeEach(() => {
+    sharedSettings = new SharedSettings(apiKey);
     mockStorageManager = createMockStorageManager();
     // Stub globalStorageManager getter.
     stubs.push(
@@ -177,7 +180,7 @@ describe('SignOutOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, singleSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, singleSignOutConfig.redirectUrl]);
           // Expected error should be thrown.
           expect(error).to.equal(unauthorizedDomainError);
           // Confirm completeSignOut not called.
@@ -227,7 +230,7 @@ describe('SignOutOperationHandler', () => {
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
-            .to.deep.equal([[currentUrl, singleSignOutConfig.redirectUrl]]);
+            .to.deep.equal([[currentUrlOrigin, singleSignOutConfig.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
           // Expect getOriginalUrlForSignOut result to be cached for 5 mins.
           expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
@@ -242,7 +245,7 @@ describe('SignOutOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, singleSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, singleSignOutConfig.redirectUrl]);
           // Progress bar should not be hidden.
           expect(hideProgressBarSpy).to.not.have.been.called;
           // Confirm completeSignOut is not called.
@@ -303,7 +306,7 @@ describe('SignOutOperationHandler', () => {
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
-            .to.deep.equal([[currentUrl, agentConfig.redirectUrl]]);
+            .to.deep.equal([[currentUrlOrigin, agentConfig.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
           // Expect getOriginalUrlForSignOut result to be cached for 5 mins.
           expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
@@ -318,7 +321,7 @@ describe('SignOutOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, agentConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, agentConfig.redirectUrl]);
           // Progress bar should not be hidden.
           expect(hideProgressBarSpy).to.not.have.been.called;
           // Confirm completeSignOut is not called.
@@ -384,7 +387,7 @@ describe('SignOutOperationHandler', () => {
             .and.calledAfter(showProgressBarSpy);
           // Confirm current URL is checked.
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
-            .and.calledWith([currentUrl])
+            .and.calledWith([currentUrlOrigin])
             .and.calledBefore(signOutSpy);
           // Confirm getOriginalUrlForSignOutStub not called due to missing redirect URL.
           expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
@@ -434,7 +437,7 @@ describe('SignOutOperationHandler', () => {
             .and.calledAfter(showProgressBarSpy);
           // Confirm current URL is checked.
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
-            .and.calledWith([currentUrl])
+            .and.calledWith([currentUrlOrigin])
             .and.calledBefore(signOutSpy);
           // Confirm getOriginalUrlForSignOutStub not called due to missing redirect URL.
           expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
@@ -485,7 +488,7 @@ describe('SignOutOperationHandler', () => {
           expect(error).to.equal(expectedError);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, singleSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, singleSignOutConfig.redirectUrl]);
           // completeSignOut should not be called.
           expect(completeSignOutSpy).to.not.have.been.called;
           // signOut should not be called.
@@ -539,7 +542,7 @@ describe('SignOutOperationHandler', () => {
           expect(error).to.equal(expectedError);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, singleSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, singleSignOutConfig.redirectUrl]);
           // completeSignOut should not be called.
           expect(completeSignOutSpy).to.not.have.been.called;
           // signOut should have been called once.
@@ -594,7 +597,7 @@ describe('SignOutOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, singleSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, singleSignOutConfig.redirectUrl]);
           // Confirm completeSignOut is not called.
           expect(completeSignOutSpy).to.not.have.been.called;
           // Confirm signOut is called after confirming redirect URL authorization.
@@ -678,7 +681,7 @@ describe('SignOutOperationHandler', () => {
           expect(completeSignOutSpy).to.have.been.calledOnce.and.calledAfter(hideProgressBarSpy);
           // Confirm current URL is checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
-            .and.calledWith([currentUrl])
+            .and.calledWith([currentUrlOrigin])
             .and.calledBefore(signOutSpy);
           // Confirm getOriginalUrlForSignOutStub not called.
           expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
@@ -737,7 +740,7 @@ describe('SignOutOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
           // Confirm signOut is called after confirming redirect URL authorization.
           expect(signOutSpy).to.have.been.calledThrice
             .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -802,7 +805,7 @@ describe('SignOutOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, singleSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, singleSignOutConfig.redirectUrl]);
           // Expected error should be thrown.
           expect(error).to.equal(unauthorizedDomainError);
           // No signout should occur.
@@ -870,7 +873,7 @@ describe('SignOutOperationHandler', () => {
           expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(signOutStub);
           // Confirm current URL checked as no redirect URL is available.
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
-            .and.calledWith([currentUrl]);
+            .and.calledWith([currentUrlOrigin]);
           // Confirm signOut is called after showing progress bar.
           expect(signOutStub).to.have.been.calledThrice.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
           // Expected error should be thrown.
@@ -917,7 +920,7 @@ describe('SignOutOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, unifiedSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, unifiedSignOutConfig.redirectUrl]);
           // Expected error should be thrown.
           expect(error).to.equal(unauthorizedDomainError);
           // Confirm completeSignOut not called.
@@ -984,7 +987,7 @@ describe('SignOutOperationHandler', () => {
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
-            .to.deep.equal([[currentUrl, unifiedSignOutConfig.redirectUrl]]);
+            .to.deep.equal([[currentUrlOrigin, unifiedSignOutConfig.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
           // Expect getSessionInfo result to be cached for 5 mins.
           expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
@@ -999,7 +1002,7 @@ describe('SignOutOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, unifiedSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, unifiedSignOutConfig.redirectUrl]);
           // Progress bar should not be hidden.
           expect(hideProgressBarSpy).to.not.have.been.called;
           // Confirm completeSignOut is not called.
@@ -1034,6 +1037,75 @@ describe('SignOutOperationHandler', () => {
         .then(() => {
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.be.calledOnce;
           expect(getSessionInfoStub).to.be.calledOnce;
+        });
+    });
+
+    it('should use expected SharedSettings reference', () => {
+      const sessionInfo = {
+        originalUri,
+        // Users from each of these tenants will be signed out at the end of the flow.
+        tenantIds: [tid1, tid2, agentId],
+      };
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          GCIPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo').resolves(sessionInfo);
+      stubs.push(getSessionInfoStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+
+      // Simulate 3 tenant and one top level project users signed in and saved in storage.
+      const addTenantsList = [
+        authTenantsStorageManager.addTenant(tid1),
+        authTenantsStorageManager.addTenant(tid2),
+        authTenantsStorageManager.addTenant(agentId),
+        authTenantsStorageManager.addTenant(tid3),
+      ];
+
+      unifiedSignOutOperationHandler = new SignOutOperationHandler(
+          unifiedSignOutConfig, authenticationHandler, sharedSettings);
+
+      return Promise.all(addTenantsList)
+        .then(() => {
+          // Users should be signed in initially.
+          expect(auth1.currentUser.uid).to.equal('UID1');
+          expect(auth2.currentUser.uid).to.equal('UID2');
+          expect(auth3.currentUser.uid).to.equal('UID3');
+          expect(agentAuth.currentUser.uid).to.equal('UID_AGENT');
+          return unifiedSignOutOperationHandler.start();
+        })
+        .then(() => {
+          // Confirm SharedSettings cache used.
+          expect(cacheAndReturnResultSpy.getCall(0).thisValue)
+            .to.equal(sharedSettings.cache);
+          // Confirm SharedSettings gcipRequest used.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub.getCall(0).thisValue)
+            .to.equal(sharedSettings.gcipRequest);
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, unifiedSignOutConfig.redirectUrl]);
+          // Confirm signOut is called after confirming redirect URL authorization.
+          expect(signOutSpy).to.have.been.calledThrice
+            .and.calledAfter(getSessionInfoStub);
+
+          // Confirm SharedSettings iapRequest used.
+          expect(getSessionInfoStub.getCall(0).thisValue).to.equal(sharedSettings.iapRequest);
+          expect(getSessionInfoStub)
+            .to.have.been.calledOnce.and.calledBefore(signOutSpy)
+            .and.calledWith(unifiedSignOutConfig.redirectUrl, unifiedSignOutConfig.state);
+          // Confirm redirect to originalUri.
+          expect(setCurrentUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(signOutSpy)
+            .and.calledWith(window, originalUri);
+          // Users should be signed out except for 4th tenant.
+          expect(auth1.currentUser).to.be.null;
+          expect(auth2.currentUser).to.be.null;
+          expect(agentAuth.currentUser).to.be.null;
+          expect(auth3.currentUser.uid).to.equal('UID3');
         });
     });
 
@@ -1085,7 +1157,7 @@ describe('SignOutOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, unifiedSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, unifiedSignOutConfig.redirectUrl]);
           // Confirm completeSignOut is not called.
           expect(completeSignOutSpy).to.not.have.been.called;
           // Confirm signOut is not called yet.
@@ -1190,7 +1262,7 @@ describe('SignOutOperationHandler', () => {
           expect(error).to.equal(expectedError);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, unifiedSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, unifiedSignOutConfig.redirectUrl]);
           // completeSignOut should not be called.
           expect(completeSignOutSpy).to.not.have.been.called;
           // getSessionInfo should be called once.

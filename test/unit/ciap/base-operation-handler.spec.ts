@@ -34,6 +34,7 @@ import {
   CLIENT_ERROR_CODES, CIAPError, HttpCIAPError, RECOVERABLE_ERROR_CODES,
 } from '../../../src/utils/error';
 import { PromiseCache } from '../../../src/utils/promise-cache';
+import { SharedSettings } from '../../../src/ciap/shared-settings';
 
 /**
  * Concrete subclass of the abstract BaseOperationHandler class used to
@@ -48,8 +49,9 @@ class ConcreteOperationHandler extends BaseOperationHandler {
   constructor(
       config: Config,
       handler: MockAuthenticationHandler,
+      sharedSettings?: SharedSettings,
       private readonly processor: (() => Promise<void>) = (() => Promise.resolve())) {
-    super(config, handler);
+    super(config, handler, sharedSettings);
   }
 
   /**
@@ -162,6 +164,7 @@ class ConcreteOperationHandler extends BaseOperationHandler {
 }
 
 describe('BaseOperationHandler', () => {
+  let sharedSettings: SharedSettings;
   let popstateCallbacks: sinon.SinonSpy[] = [];
   const stubs: sinon.SinonStub[] = [];
   let mockStorageManager: storageManager.StorageManager;
@@ -177,7 +180,7 @@ describe('BaseOperationHandler', () => {
     originalUri,
     tenantIds: [tid],
   };
-  const currentUrl = getCurrentUrl(window);
+  const currentUrlOrigin = new URL(getCurrentUrl(window)).origin;
   const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
   // Dummy FirebaseAuth instance.
   const auth = createMockAuth(apiKey, tid);
@@ -192,6 +195,7 @@ describe('BaseOperationHandler', () => {
   let startSpy: sinon.SinonSpy;
 
   beforeEach(() => {
+    sharedSettings = new SharedSettings(apiKey);
     checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
         GCIPRequestHandler.prototype,
         'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
@@ -289,12 +293,12 @@ describe('BaseOperationHandler', () => {
       const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
 
       const concreteInstance =
-          new ConcreteOperationHandler(config, authenticationHandler, processorStub);
+          new ConcreteOperationHandler(config, authenticationHandler, undefined, processorStub);
 
       return concreteInstance.start()
         .then(() => {
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
-            .and.calledWith([currentUrl, config.redirectUrl])
+            .and.calledWith([currentUrlOrigin, config.redirectUrl])
             .and.calledBefore(processorStub);
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -306,7 +310,8 @@ describe('BaseOperationHandler', () => {
           expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
-          expect(cacheAndReturnResultSpy.getCalls()[0].args[2]).to.deep.equal([[currentUrl, config.redirectUrl]]);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
+            .to.deep.equal([[currentUrlOrigin, config.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
           // Second call should return cached result.
           return concreteInstance.start();
@@ -314,6 +319,32 @@ describe('BaseOperationHandler', () => {
         .then(() => {
           // No additional call. Cached result should be used.
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce;
+        });
+    });
+
+    it('should use expected SharedSettings reference for caching and making GCIP requests', () => {
+      const processorStub = sinon.stub().resolves();
+      const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+      const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
+
+      const concreteInstance =
+          new ConcreteOperationHandler(config, authenticationHandler, sharedSettings, processorStub);
+
+      return concreteInstance.start()
+        .then(() => {
+          // Confirm SharedSettings cache used.
+          expect(cacheAndReturnResultSpy.getCall(0).thisValue)
+            .to.equal(sharedSettings.cache);
+          // Confirm SharedSettings gcipRequest used.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub.getCall(0).thisValue)
+            .to.equal(sharedSettings.gcipRequest);
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
+            .and.calledWith([currentUrlOrigin, config.redirectUrl])
+            .and.calledBefore(processorStub);
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          expect(processorStub).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
         });
     });
 
@@ -331,7 +362,7 @@ describe('BaseOperationHandler', () => {
       const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
 
       const concreteInstance =
-          new ConcreteOperationHandler(config, authenticationHandler, processorStub);
+          new ConcreteOperationHandler(config, authenticationHandler, undefined, processorStub);
 
       return concreteInstance.start()
         .then(() => {
@@ -340,7 +371,7 @@ describe('BaseOperationHandler', () => {
         .catch((error) => {
           expect(error).to.equal(unauthorizedDomainError);
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
-            .and.calledWith([currentUrl, config.redirectUrl]);
+            .and.calledWith([currentUrlOrigin, config.redirectUrl]);
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           expect(hideProgressBarSpy).to.have.been.calledOnce
@@ -353,7 +384,7 @@ describe('BaseOperationHandler', () => {
         .then(() => {
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledTwice;
           expect(checkAuthorizedDomainsAndGetProjectIdStub.getCalls()[1].args)
-            .to.deep.equal([[currentUrl, config.redirectUrl]]);
+            .to.deep.equal([[currentUrlOrigin, config.redirectUrl]]);
         });
     });
 
@@ -364,7 +395,7 @@ describe('BaseOperationHandler', () => {
       const config = new Config(createMockUrl('login', apiKey, mismatchAgentId, redirectUri, state, hl));
 
       const concreteInstance =
-          new ConcreteOperationHandler(config, authenticationHandler, processorStub);
+          new ConcreteOperationHandler(config, authenticationHandler, undefined, processorStub);
 
       return concreteInstance.start()
         .then(() => {
@@ -374,7 +405,7 @@ describe('BaseOperationHandler', () => {
           expect(error).to.have.property('message', 'Mismatching project numbers');
           expect(error).to.have.property('code', 'invalid-argument');
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
-            .and.calledWith([currentUrl, config.redirectUrl]);
+            .and.calledWith([currentUrlOrigin, config.redirectUrl]);
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           expect(hideProgressBarSpy).to.have.been.calledOnce
@@ -390,12 +421,12 @@ describe('BaseOperationHandler', () => {
       const config = new Config(createMockUrl('login', apiKey, agentId, redirectUri, state, hl));
 
       const concreteInstance =
-          new ConcreteOperationHandler(config, authenticationHandler, processorStub);
+          new ConcreteOperationHandler(config, authenticationHandler, undefined, processorStub);
 
       return concreteInstance.start()
         .then(() => {
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
-            .and.calledWith([currentUrl, config.redirectUrl])
+            .and.calledWith([currentUrlOrigin, config.redirectUrl])
             .and.calledBefore(processorStub);
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -407,7 +438,8 @@ describe('BaseOperationHandler', () => {
           expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
-          expect(cacheAndReturnResultSpy.getCalls()[0].args[2]).to.deep.equal([[currentUrl, config.redirectUrl]]);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
+            .to.deep.equal([[currentUrlOrigin, config.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
           // Second call should return cached result.
           return concreteInstance.start();
@@ -431,7 +463,7 @@ describe('BaseOperationHandler', () => {
       popstateCallbacks.push(popstateCallback);
 
       const concreteInstance =
-          new ConcreteOperationHandler(config, authenticationHandler, processorStub);
+          new ConcreteOperationHandler(config, authenticationHandler, undefined, processorStub);
 
       const startRef = concreteInstance.start();
       // Simulate popstate event. This should force the promise to immediately resolve.
@@ -443,7 +475,7 @@ describe('BaseOperationHandler', () => {
       return startRef.then(() => {
         expect(popstateCallback).to.have.been.calledOnce;
         expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
-          .and.calledWith([currentUrl, config.redirectUrl])
+          .and.calledWith([currentUrlOrigin, config.redirectUrl])
           .and.calledBefore(processorStub);
         expect(showProgressBarSpy).to.have.been.calledOnce
           .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -464,7 +496,7 @@ describe('BaseOperationHandler', () => {
       const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
 
       const concreteInstance =
-          new ConcreteOperationHandler(config, authenticationHandler, processorStub);
+          new ConcreteOperationHandler(config, authenticationHandler, undefined, processorStub);
 
       return concreteInstance.start()
         .then(() => {
@@ -473,7 +505,7 @@ describe('BaseOperationHandler', () => {
         .catch((error) => {
           expect(error).to.equal(expectedError);
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
-            .and.calledWith([currentUrl, config.redirectUrl]);
+            .and.calledWith([currentUrlOrigin, config.redirectUrl]);
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           expect(hideProgressBarSpy).to.have.been.calledOnce
@@ -497,7 +529,7 @@ describe('BaseOperationHandler', () => {
         const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
 
         const concreteInstance =
-            new ConcreteOperationHandler(config, authenticationHandler, processorStub);
+            new ConcreteOperationHandler(config, authenticationHandler, undefined, processorStub);
 
         return concreteInstance.start()
           .then(() => {
@@ -506,7 +538,7 @@ describe('BaseOperationHandler', () => {
           .catch((error) => {
             expect(error).to.equal(expectedError);
             expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
-              .and.calledWith([currentUrl, config.redirectUrl]);
+              .and.calledWith([currentUrlOrigin, config.redirectUrl]);
             expect(showProgressBarSpy).to.have.been.calledOnce
               .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
             expect(hideProgressBarSpy).to.have.been.calledOnce
@@ -549,6 +581,24 @@ describe('BaseOperationHandler', () => {
         .then((actualOriginalUri) => {
           expect(actualOriginalUri).to.equal(originalUri);
           expect(getSessionInfoStub).to.have.been.calledOnce;
+        });
+    });
+
+    it('should use expected SharedSettings reference for caching and making IAP requests', () => {
+      const authenticationHandler: MockAuthenticationHandler = createMockAuthenticationHandler(tenant2Auth);
+      const config = new Config(createMockUrl('login', apiKey, null, redirectUri, state, hl));
+
+      const concreteInstance = new ConcreteOperationHandler(config, authenticationHandler, sharedSettings);
+
+      return concreteInstance.getOriginalURL()
+        .then((actualOriginalUri) => {
+          expect(actualOriginalUri).to.equal(originalUri);
+          // Confirm SharedSettings cache used.
+          expect(cacheAndReturnResultSpy.getCall(0).thisValue)
+            .to.equal(sharedSettings.cache);
+          // Confirm SharedSettings iapRequest used.
+          expect(getSessionInfoStub.getCall(0).thisValue).to.equal(sharedSettings.iapRequest);
+          expect(getSessionInfoStub).to.have.been.calledOnce.and.calledWith(redirectUri, state);
         });
     });
 

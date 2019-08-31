@@ -31,8 +31,10 @@ import { HttpCIAPError, CLIENT_ERROR_CODES, CIAPError } from '../../../src/utils
 import * as storageManager from '../../../src/storage/manager';
 import * as authTenantsStorage from '../../../src/ciap/auth-tenants-storage';
 import { PromiseCache } from '../../../src/utils/promise-cache';
+import { SharedSettings } from '../../../src/ciap/shared-settings';
 
 describe('SignInOperationHandler', () => {
+  let sharedSettings: SharedSettings;
   const stubs: sinon.SinonStub[] = [];
   const projectId = 'PROJECT_ID';
   const apiKey = 'API_KEY';
@@ -72,11 +74,12 @@ describe('SignInOperationHandler', () => {
   let hideProgressBarSpy: sinon.SinonSpy;
   let mockStorageManager: storageManager.StorageManager;
   let authTenantsStorageManager: authTenantsStorage.AuthTenantsStorageManager;
-  const currentUrl = utils.getCurrentUrl(window);
+  const currentUrlOrigin = new URL(utils.getCurrentUrl(window)).origin;
   let cacheAndReturnResultSpy: sinon.SinonSpy;
   let startSpy: sinon.SinonSpy;
 
   beforeEach(() => {
+    sharedSettings = new SharedSettings(apiKey);
     mockStorageManager = createMockStorageManager();
     // Stub globalStorageManager getter.
     stubs.push(
@@ -170,7 +173,7 @@ describe('SignInOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
           // Expected error should be thrown.
           expect(error).to.equal(unauthorizedDomainError);
           expect(startSignInSpy).to.not.have.been.called;
@@ -202,7 +205,7 @@ describe('SignInOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
           // Expected error should be thrown.
           expect(error).to.equal(unauthorizedDomainError);
           expect(startSignInSpy).to.not.have.been.called;
@@ -236,7 +239,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(setCurrentUrlStub);
 
       const reauthConfig = new Config(createMockUrl('reauth', apiKey, tid, redirectUri, state, hl));
-      operationHandler = new SignInOperationHandler(reauthConfig, authenticationHandler, true);
+      operationHandler = new SignInOperationHandler(reauthConfig, authenticationHandler, undefined, true);
 
       return operationHandler.start()
         .then(() => {
@@ -245,7 +248,7 @@ describe('SignInOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
             // Progress bar should be hidden before startSignIn.
           expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledBefore(startSignInSpy);
           // startSignIn should be called even though a user is already signed in, since
@@ -299,7 +302,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(setCurrentUrlStub);
 
       const reauthConfig = new Config(createMockUrl('reauth', apiKey, tid, redirectUri, state, hl));
-      operationHandler = new SignInOperationHandler(reauthConfig, authenticationHandler, true);
+      operationHandler = new SignInOperationHandler(reauthConfig, authenticationHandler, undefined, true);
 
       return operationHandler.start()
         .then(() => {
@@ -308,7 +311,7 @@ describe('SignInOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
             // Progress bar should be hidden before startSignIn.
           expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledBefore(startSignInSpy);
           // startSignIn should be called even though a user is already signed in, since
@@ -372,7 +375,7 @@ describe('SignInOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, configWithProviderMatch.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, configWithProviderMatch.redirectUrl]);
           // Progress bar should be hidden before startSignIn.
           expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledBefore(startSignInSpy);
           // startSignIn should be called even though a user is already signed in, since
@@ -444,7 +447,7 @@ describe('SignInOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, agentConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, agentConfig.redirectUrl]);
           // Progress bar should be hidden before startSignIn.
           expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledBefore(startSignInSpy);
           // startSignIn should be called even though a user is already signed in, since
@@ -513,7 +516,7 @@ describe('SignInOperationHandler', () => {
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
-            .to.deep.equal([[currentUrl, config.redirectUrl]]);
+            .to.deep.equal([[currentUrlOrigin, config.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
           // Expect getOriginalUrlForSignOut result to be cached for 5 mins.
           expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
@@ -536,7 +539,7 @@ describe('SignInOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
           // Progress bar should be hidden before user is asked to sign-in.
           expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledBefore(startSignInSpy);
           // Confirm startSignIn is called.
@@ -615,7 +618,7 @@ describe('SignInOperationHandler', () => {
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
-            .to.deep.equal([[currentUrl, agentConfig.redirectUrl]]);
+            .to.deep.equal([[currentUrlOrigin, agentConfig.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
           // Expect getOriginalUrlForSignOut result to be cached for 5 mins.
           expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
@@ -638,7 +641,7 @@ describe('SignInOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, agentConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, agentConfig.redirectUrl]);
           // Progress bar should be hidden before user is asked to sign-in.
           expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledBefore(startSignInSpy);
           // Confirm startSignIn is called.
@@ -723,7 +726,7 @@ describe('SignInOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
           // Progress bar should be hidden before user is asked to sign-in.
           expect(hideProgressBarSpy).to.have.been.calledTwice.and.calledBefore(startSignInSpy);
           // Confirm startSignIn is called.
@@ -792,7 +795,7 @@ describe('SignInOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
           // Confirm startSignIn is not called.
           expect(startSignInSpy).to.not.have.been.called;
           // processUser should be called once afterwards.
@@ -847,7 +850,7 @@ describe('SignInOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
           // Since ID token is available, startSignIn should not be called.
           expect(startSignInSpy).to.not.have.been.called;
           // User should be processed before calling exchangeIdTokenAndGetOriginalAndTargetUrl.
@@ -936,7 +939,7 @@ describe('SignInOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
           // User should be processed before calling exchangeIdTokenAndGetOriginalAndTargetUrl.
           expect(processUserSpy).to.have.been.calledTwice
             .and.calledWith(disabledUser)
@@ -1033,7 +1036,7 @@ describe('SignInOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
           // User should be processed before calling exchangeIdTokenAndGetOriginalAndTargetUrl.
           expect(processUserSpy).to.have.been.calledTwice
             .and.calledWith(expiredUser)
@@ -1101,7 +1104,7 @@ describe('SignInOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, agentConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, agentConfig.redirectUrl]);
           // Since ID token is available, startSignIn should not be called.
           expect(startSignInSpy).to.not.have.been.called;
           // User should be processed before calling exchangeIdTokenAndGetOriginalAndTargetUrl.
@@ -1113,6 +1116,72 @@ describe('SignInOperationHandler', () => {
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
             .and.calledWith(agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentId, agentConfig.state);
+          expect(setCookieAtTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
+          expect(setCurrentUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(setCookieAtTargetUrlStub)
+            .and.calledWith(window, redirectServerResp.originalUri);
+          // Confirm expected agent ID remains after success.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.have.same.members([agentId]);
+        });
+    });
+
+    it('should use expected SharedSettings reference', () => {
+      // Set agent user.
+      agentAuth.setCurrentMockUser(createMockUser('UID_AGENT', 'ID_TOKEN_AGENT', null));
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          GCIPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock ID token exchange endpoint.
+      const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
+            .resolves(redirectServerResp);
+      stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+      // Mock set cookie.
+      const setCookieAtTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+      stubs.push(setCookieAtTargetUrlStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+      operationHandler = new SignInOperationHandler(agentConfig, authenticationHandler, sharedSettings);
+
+      // When ID token is already available, the agent ID is likely already stored.
+      return authTenantsStorageManager.addTenant(agentId)
+        .then(() => {
+          return operationHandler.start();
+        })
+        .then(() => {
+          // Confirm SharedSettings cache used.
+          expect(cacheAndReturnResultSpy.getCall(0).thisValue)
+            .to.equal(sharedSettings.cache);
+          // Confirm SharedSettings gcipRequest used.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub.getCall(0).thisValue)
+            .to.equal(sharedSettings.gcipRequest);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, agentConfig.redirectUrl]);
+          // User should be processed before calling exchangeIdTokenAndGetOriginalAndTargetUrl.
+          expect(processUserSpy).to.have.been.calledOnce
+            .and.calledWith(agentAuth.currentUser)
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
+            .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+          // Confirm SharedSettings iapRequest used.
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub.getCall(0).thisValue)
+            .to.equal(sharedSettings.iapRequest);
+          // ID token for processed user should be used.
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(processUserSpy)
+            .and.calledWith(agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentId, agentConfig.state);
+          // Confirm SharedSettings iapRequest used.
+          expect(setCookieAtTargetUrlStub.getCall(0).thisValue)
+            .to.equal(sharedSettings.iapRequest);
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
@@ -1162,7 +1231,7 @@ describe('SignInOperationHandler', () => {
           expect(error).to.equal(expectedError);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
           expect(startSignInSpy).to.not.have.been.called;
           expect(processUserSpy).to.not.have.been.called;
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
@@ -1223,7 +1292,7 @@ describe('SignInOperationHandler', () => {
           expect(error).to.equal(expectedError);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
           expect(startSignInSpy).to.not.have.been.called;
           // User should be processed before calling exchangeIdTokenAndGetOriginalAndTargetUrl.
           expect(processUserSpy).to.have.been.calledOnce
@@ -1315,7 +1384,7 @@ describe('SignInOperationHandler', () => {
           expect(error).to.equal(expectedError);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrl, config.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
           expect(startSignInSpy).to.not.have.been.called;
           // User should be processed before calling exchangeIdTokenAndGetOriginalAndTargetUrl.
           expect(processUserSpy).to.have.been.calledOnce

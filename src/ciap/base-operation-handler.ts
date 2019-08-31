@@ -17,7 +17,6 @@
 import { FirebaseAuth, User } from './firebase-auth';
 import { AuthenticationHandler } from './authentication-handler';
 import { Config } from './config';
-import { HttpClient } from '../utils/http-client';
 import { GCIPRequestHandler } from './gcip-request';
 import { IAPRequestHandler, SessionInfoResponse } from './iap-request';
 import { runIfDefined, getCurrentUrl, addReadonlyGetter } from '../utils/index';
@@ -25,6 +24,7 @@ import { AuthTenantsStorageManager } from './auth-tenants-storage';
 import { globalStorageManager } from '../storage/manager';
 import { CLIENT_ERROR_CODES, CIAPError, isRecoverableError } from '../utils/error';
 import { PromiseCache } from '../utils/promise-cache';
+import { SharedSettings } from './shared-settings';
 
 /** Interface defining IAP/GCIP operation handler for sign-in, sign-out and re-auth flows. */
 export interface OperationHandler {
@@ -35,7 +35,7 @@ export interface OperationHandler {
 
 /**
  * Enum for the operation type.
- * @enum {string}
+ * @enum
  */
 export enum OperationType {
   SignIn = 'SIGN_IN',
@@ -45,7 +45,7 @@ export enum OperationType {
 
 /**
  * Enum for the caching timeouts for sign-in RPCs.
- * @enum {number}
+ * @enum
  */
 export enum CacheDuration {
   CheckAuthorizedDomains = 30 * 60 * 1000,
@@ -72,7 +72,6 @@ export abstract class BaseOperationHandler implements OperationHandler {
   protected projectId: string;
   private readonly realTenantId: string | null;
   private authTenantsStorageManager: AuthTenantsStorageManager;
-  private readonly httpClient: HttpClient;
   private progressBarVisible: boolean;
 
   /**
@@ -80,17 +79,22 @@ export abstract class BaseOperationHandler implements OperationHandler {
    * It will also initialize all underlying dependencies needed to get the current
    * Auth state, GCIP and IAP request handlers, etc.
    *
-   * @param {Config} config The current operation configuration.
-   * @param {AuthenticationHandler} handler The Authentication handler instance.
-   * @constructor
+   * @param config The current operation configuration.
+   * @param handler The Authentication handler instance.
+   * @param sharedSettings The shared settings to use for caching RPC requests.
    */
   constructor(
       protected readonly config: Config,
-      protected readonly handler: AuthenticationHandler) {
+      protected readonly handler: AuthenticationHandler,
+      sharedSettings?: SharedSettings) {
+    if (!sharedSettings) {
+      sharedSettings = new SharedSettings(config.apiKey);
+    }
     // Initialize the GCIP and IAP request handlers.
-    this.httpClient = new HttpClient();
-    this.gcipRequest = new GCIPRequestHandler(this.config.apiKey, this.httpClient);
-    this.iapRequest = new IAPRequestHandler(this.httpClient);
+    this.gcipRequest = sharedSettings.gcipRequest;
+    this.iapRequest = sharedSettings.iapRequest;
+    // Initialize promise cache.
+    this.cache = sharedSettings.cache;
     // This is the real tenant ID. For an agent flow, this is null.
     this.realTenantId = this.getRealTenantId(this.config.tid);
     // Initialize the corresponding Auth instance for the requested tenant ID if available.
@@ -105,11 +109,9 @@ export abstract class BaseOperationHandler implements OperationHandler {
     this.languageCode = config.hl;
     // Progress bar initially not visible.
     this.progressBarVisible = false;
-    // Initialize promise cache.
-    this.cache = new PromiseCache();
   }
 
-  /** @return {OperationType} The corresponding operation type. */
+  /** @return The corresponding operation type. */
   public abstract get type(): OperationType;
 
   /**
@@ -130,10 +132,10 @@ export abstract class BaseOperationHandler implements OperationHandler {
     }
   }
 
-  /** @return {Promise<void>} A promise that resolves when the internal operation handler processing is completed. */
+  /** @return A promise that resolves when the internal operation handler processing is completed. */
   protected abstract process(): Promise<void>;
 
-  /** @return {Promise<void>} A promise that resolves when the operation handler is initialized. */
+  /** @return A promise that resolves when the operation handler is initialized. */
   public start(): Promise<void> {
     // Show progress bar. This should be hidden in process, unless an error is thrown.
     this.showProgressBar();
@@ -214,13 +216,16 @@ export abstract class BaseOperationHandler implements OperationHandler {
   }
 
   /**
-   * @return {Promise<string>} A promise that resolves when current URL and optional redirect URL
+   * @return A promise that resolves when current URL and optional redirect URL
    *      are validated for the configuration API key, and returns the corresponding project ID.
    */
   protected validateAppAndGetProjectId(): Promise<string> {
     const urls: string[] = [];
+    const currentUrl = new URL(getCurrentUrl(window));
     // Since API key is provided externally, we need to confirm current URL is authorized for provided API key.
-    urls.push(getCurrentUrl(window));
+    // To take full advantage of caching, only check the origin of the request. The path and query string do not
+    // matter.
+    urls.push(currentUrl.origin);
     // Signout from all flows does not have a redirect URL.
     if (this.redirectUrl) {
       urls.push(this.redirectUrl);
@@ -235,9 +240,9 @@ export abstract class BaseOperationHandler implements OperationHandler {
   /**
    * Returns the Auth instance corresponding to tenant ID.
    *
-   * @param {string} tenantId The requested tenant ID. For agent flows, this is "_<ProjectNumber>".
+   * @param tenantId The requested tenant ID. For agent flows, this is "_<ProjectNumber>".
    *     For tenant flows, this is "<TenantId>".
-   * @return {?FirebaseAuth} The corresponding Auth instance.
+   * @return The corresponding Auth instance.
    */
   protected getAuth(tenantId: string): FirebaseAuth | null {
     // For sign out from all flow, no tenant ID or agent ID will be available.
@@ -275,12 +280,12 @@ export abstract class BaseOperationHandler implements OperationHandler {
     }
   }
 
-  /** @return {boolean} Whether the progress bar is visible. */
+  /** @return Whether the progress bar is visible. */
   protected isProgressBarVisible(): boolean {
     return this.progressBarVisible;
   }
 
-  /** @return {Promise<Array<string>} A promise that resolves with the list of stored tenant IDs. */
+  /** @return A promise that resolves with the list of stored tenant IDs. */
   protected listAuthTenants(): Promise<string[]> {
     this.checkAuthTenantsStorageManagerInitialized();
     return this.authTenantsStorageManager.listTenants();
@@ -289,8 +294,8 @@ export abstract class BaseOperationHandler implements OperationHandler {
   /**
    * Removes a tenant ID from the list of stored authenticated tenants.
    *
-   * @param {string} tenantId The tenant to remove.
-   * @return {Promise<void>} A promise that resolves on successful removal.
+   * @param tenantId The tenant to remove.
+   * @return A promise that resolves on successful removal.
    */
   protected removeAuthTenant(tenantId: string): Promise<void> {
     this.checkAuthTenantsStorageManagerInitialized();
@@ -300,8 +305,8 @@ export abstract class BaseOperationHandler implements OperationHandler {
   /**
    * Adds a tenant ID to the list of stored authenticated tenants.
    *
-   * @param {string} tenantId The tenant to add.
-   * @return {Promise<void>} A promise that resolves on successful addition.
+   * @param tenantId The tenant to add.
+   * @return A promise that resolves on successful addition.
    */
   protected addAuthTenant(tenantId: string): Promise<void> {
     this.checkAuthTenantsStorageManagerInitialized();
@@ -311,7 +316,7 @@ export abstract class BaseOperationHandler implements OperationHandler {
   /**
    * Clears list of stored authenticated tenants.
    *
-   * @return {Promise<void>} A promise that resolves on successful clearing of all authenticated tenants.
+   * @return A promise that resolves on successful clearing of all authenticated tenants.
    */
   protected clearAuthTenants(): Promise<void> {
     this.checkAuthTenantsStorageManagerInitialized();
@@ -321,8 +326,8 @@ export abstract class BaseOperationHandler implements OperationHandler {
   /**
    * Returns whether the provided user has a tenant ID matching current configuration.
    *
-   * @param {User} user The user whose tenant ID should match the current instance's.
-   * @return {boolean} Whether the user matches the configuration tenant ID.
+   * @param user The user whose tenant ID should match the current instance's.
+   * @return Whether the user matches the configuration tenant ID.
    */
   protected userHasMatchingTenantId(user: User): boolean {
     // If both user tenant ID and config tid are null or undefined, skip check.
@@ -344,8 +349,8 @@ export abstract class BaseOperationHandler implements OperationHandler {
   }
 
   /**
-   * @param {string} tenantId The configuration tenant ID.
-   * @return {?string} The real tenant ID from Auth SDK perspective.
+   * @param tenantId The configuration tenant ID.
+   * @return The real tenant ID from Auth SDK perspective.
    *     For agent flows, this is null.
    */
   private getRealTenantId(tenantId: string): string | null {

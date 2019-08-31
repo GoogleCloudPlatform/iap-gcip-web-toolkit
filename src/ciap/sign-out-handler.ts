@@ -19,6 +19,7 @@ import { BaseOperationHandler, OperationType, CacheDuration } from './base-opera
 import { Config } from './config';
 import { setCurrentUrl } from './../utils/index';
 import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
+import { SharedSettings } from './shared-settings';
 
 /**
  * Defines the sign-out operation handler.
@@ -29,14 +30,12 @@ export class SignOutOperationHandler extends BaseOperationHandler {
    * Initializes an sign-out operation handler. This will either sign out from a specified tenant
    * or all current tenants and then either redirect back or display a sign-out message.
    *
-   * @param {Config} config The current operation configuration.
-   * @param {AuthenticationHandler} handler The Authentication handler instance.
-   * @constructor
-   * @extends {BaseOperationHandler}
-   * @implements {OperationHandler}
+   * @param config The current operation configuration.
+   * @param handler The Authentication handler instance.
+   * @param sharedSettings The shared settings to use for caching RPC requests.
    */
-  constructor(config: Config, handler: AuthenticationHandler) {
-    super(config, handler);
+  constructor(config: Config, handler: AuthenticationHandler, sharedSettings?: SharedSettings) {
+    super(config, handler, sharedSettings);
     // Single tenant signout but tenant not found.
     if (this.tenantId && !this.auth) {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid request');
@@ -48,7 +47,7 @@ export class SignOutOperationHandler extends BaseOperationHandler {
   }
 
   /**
-   * @return {OperationType} The corresponding operation type.
+   * @return The corresponding operation type.
    * @override
    */
   public get type(): OperationType {
@@ -59,7 +58,7 @@ export class SignOutOperationHandler extends BaseOperationHandler {
    * Starts the sign-out operation handler processing. This will either sign out from a specified tenant
    * or all current tenants and then either redirect back or display a sign-out message.
    *
-   * @return {Promise<void>} A promise that resolves when the internal operation handler processing is completed.
+   * @return A promise that resolves when the internal operation handler processing is completed.
    * @override
    */
   protected process(): Promise<void> {
@@ -92,8 +91,7 @@ export class SignOutOperationHandler extends BaseOperationHandler {
   }
 
   /**
-   * @return {Promise<void>} A promise that resolves after sign out from specified tenant or
-   *     all tenants are resolved.
+   * @return A promise that resolves after sign out from specified tenant or all tenants are resolved.
    */
   private signOut(): Promise<void> {
     // Single tenant instance identified.
