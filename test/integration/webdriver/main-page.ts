@@ -17,6 +17,7 @@
 import {SignInPage} from './sign-in-page';
 import {FirebaseUiPage} from './firebaseui-page';
 import {WebElement} from 'selenium-webdriver';
+import {URL} from 'url';
 
 /**
  * The main page where the web driver test will be run from.
@@ -125,10 +126,9 @@ export class MainPage extends SignInPage {
     return this.getCurrentUrl()
       .then((url) => {
         firebaseUiUrl = url.replace('/custom', '/');
-        return this.findByClassName(this.searchSwitchToFirebaseUiButtonClass);
+        return this.visit(firebaseUiUrl);
       })
-      .then((switchToFirebaseUiButton) => {
-        switchToFirebaseUiButton.click();
+      .then(() => {
         return this.waitUntilUrlContains(firebaseUiUrl);
       })
       .then(() => {

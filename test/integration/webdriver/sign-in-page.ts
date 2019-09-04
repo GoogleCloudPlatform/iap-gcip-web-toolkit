@@ -24,6 +24,14 @@ const APP_PAGE_URL_REGEX = /\.appspot\.com/;
  * The Abstract sign-in page class used to handle sign and redirect to app page.
  */
 export abstract class SignInPage extends BasePage {
+  /** The class name of the button element to get the original URL. */
+  private readonly searchGetOriginalButtonClass = 'get-original-url';
+  /** The class name of the element containing the original URL. */
+  private readonly searchOriginalUrlClass = 'original-url';
+  /** The class name of the button to close the original URL modal. */
+  private readonly searchCloseModalButtonClass = 'close-original-url-modal';
+  /** The class of the sign-in page header container. */
+  private readonly searchSignInPageHeaderClass = 'sign-in-header';
 
   /**
    * Selects the tenant corresponding to the index provided from the list of visible tenants.
@@ -59,6 +67,39 @@ export abstract class SignInPage extends BasePage {
     return this.waitUntilUrlMatches(APP_PAGE_URL_REGEX)
       .then(() => {
         return new AppPage(this.driver);
+      });
+  }
+
+  /**
+   * @return A promise that resolves with the original URL string.
+   */
+  getOriginalUrl(): Promise<string> {
+    let originalUrl: string;
+    // Wait for ciap instance to be initialized.
+    return this.findByClassName(this.searchSignInPageHeaderClass)
+      .then(() => {
+        // Lookup get original URL button.
+        return this.findByClassName(this.searchGetOriginalButtonClass)
+      })
+      .then((getOriginalUrlButton) => {
+        // Click button to open modal.
+        getOriginalUrlButton.click();
+        // Get the original URL container element.
+        return this.findByClassName(this.searchOriginalUrlClass);
+      })
+      .then((originalUrlElement) => {
+        // Get text in element.
+        return originalUrlElement.getText();
+      })
+      .then((text) => {
+        originalUrl = text;
+        // Get modal close button.
+        return this.findByClassName(this.searchCloseModalButtonClass);
+      })
+      .then((closeButton) => {
+        // Click close button and return the retrieved URL.
+        closeButton.click();
+        return originalUrl;
       });
   }
 }

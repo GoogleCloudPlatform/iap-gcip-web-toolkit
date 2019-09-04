@@ -207,9 +207,25 @@ class CustomUiHandler {
 }
 
 $(() => {
+  let ciapInstance;
   $('#navbar').html(templates.showNavbar({
     link: `/${window.location.search}`,
   }));
+  // On get original URL button click, call getOriginalURL() and populate the
+  // result in the opened modal.
+  $('.get-original-url').on('click', (e) => {
+    if (ciapInstance) {
+      ciapInstance.getOriginalURL()
+        .then((originalUrl) => {
+          $('#originalUrlModal .modal-body').html(templates.showOriginalUrl({
+            originalUrl,
+          }));
+          $('#originalUrlModal').modal('show');
+        });
+    }
+    e.preventDefault();
+    return false;
+  });
   // Fetch configuration via reserved Firebase Hosting URL.
   fetch('/__/firebase/init.json').then((response) => {
     return response.json();
@@ -217,7 +233,7 @@ $(() => {
     // This will handle the underlying handshake for sign-in, sign-out,
     // token refresh, safe redirect to callback URL, etc.
     const handler = new CustomUiHandler('#sign-in-ui-container', config);
-    const ciapInstance = new ciap.Authentication(handler);
+    ciapInstance = new ciap.Authentication(handler);
     ciapInstance.start();
   });
 });
