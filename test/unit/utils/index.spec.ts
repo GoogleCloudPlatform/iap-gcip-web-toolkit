@@ -233,6 +233,14 @@ describe('formSubmitWithRedirect()', () => {
       expect(form.children[index].getAttribute('value')).to.equal(data[key].toString());
     });
   });
+
+  unsafeUrls.forEach((unsafeUrl) => {
+    it(`should throw on unsafe URL: ${unsafeUrl}`, () => {
+      expect(() => {
+        return formSubmitWithRedirect(document, unsafeUrl, 'POST', {});
+      }).to.throw();
+    });
+  });
 });
 
 describe('getCurrentUrl()', () => {

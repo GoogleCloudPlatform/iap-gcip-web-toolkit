@@ -100,6 +100,9 @@ export function formSubmitWithRedirect(
     url: string,
     httpMethod: 'GET' | 'POST',
     data: {[key: string]: any}) {
+  if (!isSafeUrl(url)) {
+    throw new Error(`Unsafe url ${url} specified`);
+  }
   const form: HTMLFormElement = doc.createElement('form');
   form.setAttribute('method', httpMethod);
   form.setAttribute('action', url);
