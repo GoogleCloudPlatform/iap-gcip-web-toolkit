@@ -19,7 +19,7 @@ import {
 } from '../../src/ciap/firebase-auth';
 import { addReadonlyGetter, runIfDefined } from '../../src/utils/index';
 import {
-  AuthenticationHandler, ProjectConfig, ProviderMatch,
+  AuthenticationHandler, ProjectConfig, SelectedTenantInfo,
 } from '../../src/ciap/authentication-handler';
 import { LowLevelError, HttpRequestConfig } from '../../src/utils/http-client';
 import { Factory } from '../../src/storage/storage';
@@ -305,14 +305,14 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
    *
    * @param tenant2Auth The tenant to FirebaseAuth map.
    * @param onStartSignIn The optional callback to run when startSignIn is triggered.
-   * @param selectedProviderMatch The optional ProviderMatch to return on selectProvider call. If
+   * @param selectedTenantInfo The optional SelectedTenantInfo to return on selectProvider call. If
    *     not provided, the first option in the list of tenant IDs is returned.
    * @constructor
    */
   constructor(
       private readonly tenant2Auth: {[key: string]: FirebaseAuth},
       private readonly onStartSignIn?: () => void,
-      private readonly selectedProviderMatch?: ProviderMatch) {
+      private readonly selectedTenantInfo?: SelectedTenantInfo) {
     this.progressBarVisible = false;
   }
 
@@ -385,15 +385,15 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
   }
 
   /**
-   * Selects `ProviderMatch` based on the list of tenant IDs provided.
+   * Selects `SelectedTenantInfo` based on the list of tenant IDs provided.
    *
    * @param projectConfig The project configuration associated with the tenants.
    * @param tenantIds The list of IDs of the tenants associated with the IAP resource.
-   * @return A promise that resolves with the `ProviderMatch` based on the user selection.
+   * @return A promise that resolves with the `SelectedTenantInfo` based on the user selection.
    */
-  public selectProvider(projectConfig: ProjectConfig, tenantIds: string[]): Promise<ProviderMatch> {
-    if (this.selectedProviderMatch) {
-      return Promise.resolve(this.selectedProviderMatch);
+  public selectProvider(projectConfig: ProjectConfig, tenantIds: string[]): Promise<SelectedTenantInfo> {
+    if (this.selectedTenantInfo) {
+      return Promise.resolve(this.selectedTenantInfo);
     }
     return Promise.resolve({
       tenantId: tenantIds[0],
@@ -438,15 +438,15 @@ export function createMockAuth(apiKey: string, tenantId?: string): MockAuth {
  *
  * @param tenant2Auth The tenant to FirebaseAuth map.
  * @param onStartSignIn The optional callback to run when startSignIn is triggered.
- * @param selectedProviderMatch The optional ProviderMatch to return on selectProvider call. If not
+ * @param selectedTenantInfo The optional SelectedTenantInfo to return on selectProvider call. If not
  *     provided, the first option in the list of tenant IDs is returned.
  * @return The mock AuthenticationHandler instance.
  */
 export function createMockAuthenticationHandler(
     tenant2Auth: {[key: string]: FirebaseAuth},
     onStartSignIn?: () => void,
-    selectedProviderMatch?: ProviderMatch): MockAuthenticationHandler {
-  return new MockAuthenticationHandler(tenant2Auth, onStartSignIn, selectedProviderMatch);
+    selectedTenantInfo?: SelectedTenantInfo): MockAuthenticationHandler {
+  return new MockAuthenticationHandler(tenant2Auth, onStartSignIn, selectedTenantInfo);
 }
 
 /**

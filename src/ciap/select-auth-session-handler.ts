@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { AuthenticationHandler, ProviderMatch } from './authentication-handler';
+import { AuthenticationHandler, SelectedTenantInfo } from './authentication-handler';
 import { BaseOperationHandler, OperationType } from './base-operation-handler';
 import { Config, ConfigMode } from './config';
 import {
@@ -64,7 +64,7 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
    * @override
    */
   protected process(): Promise<void> {
-    let providerMatch: ProviderMatch;
+    let selectedTenantInfo: SelectedTenantInfo;
     // This will resolve with the tenants associated with the current sign-in session.
     return this.getSessionInformation()
       .then((sessionInfo: SessionInfoResponse) => {
@@ -85,8 +85,8 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
             // This makes it easier to upgrade without breaking apps.
             Promise.resolve({tenantId: sessionInfo.tenantIds[0]});
       })
-      .then((match: ProviderMatch) => {
-        providerMatch = match;
+      .then((match: SelectedTenantInfo) => {
+        selectedTenantInfo = match;
         // If null is returned as tenantId, project level flow is selected.
         const selectedTenantId = match.tenantId || `_${this.projectId}`;
         if (this.tenantIds.indexOf(selectedTenantId) === -1) {
@@ -109,7 +109,7 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
         if (isHistoryAndCustomEventSupported(window)) {
           const data = {
             state: 'signIn',
-            providerMatch,
+            selectedTenantInfo,
           };
           pushHistoryState(
             window,
@@ -131,9 +131,9 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
           return Promise.resolve();
         } else {
           // Old browser that does not support history API.
-          // ProviderMatch needs to be passed via hash.
-          const hash = providerMatch.email || providerMatch.providerIds ?
-            `#hint=${providerMatch.email};${(providerMatch.providerIds || []).join(',')}` : '';
+          // SelectedTenantInfo needs to be passed via hash.
+          const hash = selectedTenantInfo.email || selectedTenantInfo.providerIds ?
+            `#hint=${selectedTenantInfo.email};${(selectedTenantInfo.providerIds || []).join(',')}` : '';
           this.showProgressBar();
           setCurrentUrl(window, `${signInUrl}${hash}`);
         }

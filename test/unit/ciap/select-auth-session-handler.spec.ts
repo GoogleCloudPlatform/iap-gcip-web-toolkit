@@ -50,13 +50,13 @@ describe('SelectAuthSessionOperationHandler', () => {
     originalUri,
     tenantIds: [tid1, tid2, tid3, parentProjectId],
   };
-  const selectedProviderMatch = {
+  const selectedTenantInfo = {
     email: 'user@example.com',
     tenantId: tid2,
     providerIds: ['saml.my-provider', 'oidc.provider'],
   };
-  const selectedProviderMatchHash =
-      `#hint=${selectedProviderMatch.email};${(selectedProviderMatch.providerIds || []).join(',')}`;
+  const selectedTenantInfoHash =
+      `#hint=${selectedTenantInfo.email};${(selectedTenantInfo.providerIds || []).join(',')}`;
   const selectAuthSessionConfig = new Config(createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, hl));
   let auth1: MockAuth;
   let auth2: MockAuth;
@@ -103,7 +103,7 @@ describe('SelectAuthSessionOperationHandler', () => {
     tenant2Auth[tid2] = auth2;
     tenant2Auth[tid3] = auth3;
     tenant2Auth._ = parentProjectAuth;
-    authenticationHandler = createMockAuthenticationHandler(tenant2Auth, null, selectedProviderMatch);
+    authenticationHandler = createMockAuthenticationHandler(tenant2Auth, null, selectedTenantInfo);
     operationHandler = new SelectAuthSessionOperationHandler(selectAuthSessionConfig, authenticationHandler);
   });
 
@@ -280,10 +280,10 @@ describe('SelectAuthSessionOperationHandler', () => {
     it('should use expected SharedSettings reference', () => {
       const expectedSignInUrl = `https://auth.example.com:8080/signin` +
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
-          `&tid=${encodeURIComponent(selectedProviderMatch.tenantId)}` +
+          `&tid=${encodeURIComponent(selectedTenantInfo.tenantId)}` +
           `&state=${encodeURIComponent(state)}` +
           `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-          `${selectedProviderMatchHash}`;
+          `${selectedTenantInfoHash}`;
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,
@@ -328,10 +328,10 @@ describe('SelectAuthSessionOperationHandler', () => {
     it('should redirect to the expected sign-in URL with hash on successful selection for old browsers', () => {
       const expectedSignInUrl = `https://auth.example.com:8080/signin` +
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
-          `&tid=${encodeURIComponent(selectedProviderMatch.tenantId)}` +
+          `&tid=${encodeURIComponent(selectedTenantInfo.tenantId)}` +
           `&state=${encodeURIComponent(state)}` +
           `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-          `${selectedProviderMatchHash}`;
+          `${selectedTenantInfoHash}`;
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,
@@ -362,7 +362,7 @@ describe('SelectAuthSessionOperationHandler', () => {
           expect(cacheAndReturnResultSpy.getCalls()[1].args[2])
             .to.deep.equal([selectAuthSessionConfig.redirectUrl, selectAuthSessionConfig.state]);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[3]).to.equal(CacheDuration.GetSessionInfo);
-          // Progress bar should be shown on initialization and after ProviderMatch is returned.
+          // Progress bar should be shown on initialization and after SelectedTenantInfo is returned.
           expect(showProgressBarSpy).to.have.been.calledTwice;
           expect(showProgressBarSpy).to.have.been.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           expect(showProgressBarSpy).to.have.been.calledAfter(selectProviderSpy);
@@ -399,11 +399,11 @@ describe('SelectAuthSessionOperationHandler', () => {
       const pushstateCallback = sinon.spy();
       const expectedData = {
         state: 'signIn',
-        providerMatch: selectedProviderMatch,
+        selectedTenantInfo,
       };
       const expectedSignInUrl = `https://auth.example.com:8080/signin` +
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
-          `&tid=${encodeURIComponent(selectedProviderMatch.tenantId)}` +
+          `&tid=${encodeURIComponent(selectedTenantInfo.tenantId)}` +
           `&state=${encodeURIComponent(state)}` +
           `&redirect_uri=${encodeURIComponent(redirectUri)}`;
       // Mock domains are authorized.
@@ -482,7 +482,7 @@ describe('SelectAuthSessionOperationHandler', () => {
         });
     });
 
-    it('should select first providerMatch when no selectProvider is provided', () => {
+    it('should select first selectedTenantInfo when no selectProvider is provided', () => {
       const expectedSignInUrl = `https://auth.example.com:8080/signin` +
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
           `&tid=${encodeURIComponent(sessionInfoResponse.tenantIds[0])}` +
@@ -571,10 +571,10 @@ describe('SelectAuthSessionOperationHandler', () => {
       const expectedError = new HttpCIAPError(504);
       const expectedSignInUrl = `https://auth.example.com:8080/signin` +
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
-          `&tid=${encodeURIComponent(selectedProviderMatch.tenantId)}` +
+          `&tid=${encodeURIComponent(selectedTenantInfo.tenantId)}` +
           `&state=${encodeURIComponent(state)}` +
           `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-          `${selectedProviderMatchHash}`;
+          `${selectedTenantInfoHash}`;
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,

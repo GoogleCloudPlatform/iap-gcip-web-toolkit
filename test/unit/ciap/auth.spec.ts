@@ -40,14 +40,14 @@ describe('Authentication', () => {
   const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
   const auth = createMockAuth(apiKey, tid);
   const tenant2Auth: {[key: string]: FirebaseAuth} = {};
-  const selectedProviderMatch = {
+  const selectedTenantInfo = {
     email: 'user@example.com',
     tenantId: tid,
     providerIds: ['saml.my-provider', 'oidc.provider'],
   };
   const historyState = {
     state: 'signIn',
-    providerMatch: selectedProviderMatch,
+    selectedTenantInfo,
   };
   tenant2Auth[tid] = auth;
   tenant2Auth[tid2] = createMockAuth(apiKey, tid2);

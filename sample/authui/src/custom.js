@@ -100,7 +100,7 @@ class CustomUiHandler {
     });
   }
 
-  startSignIn(auth, providerMatch) {
+  startSignIn(auth, selectedTenantInfo) {
     return new Promise((resolve, reject) => {
       this.container.innerHTML = templates.signIn({
         tenantId: auth.tenantId,

@@ -16,10 +16,10 @@
 
 import { sanitizeUrl } from '../utils/index';
 import { isEmail, isArray, isNonEmptyString, isProviderId, isString } from '../utils/validator';
-import { ProviderMatch } from './authentication-handler';
+import { SelectedTenantInfo } from './authentication-handler';
 
-/** The REGEX used to retrieve the ProviderMatch from the URL hash. */
-const PROVIDER_MATCH_REGEXP = /#hint=([^;]*);(.*)$/;
+/** The REGEX used to retrieve the SelectedTenantInfo from the URL hash. */
+const SELECTED_TENANT_INFO_REGEXP = /#hint=([^;]*);(.*)$/;
 
 /**
  * Enum for the configuration mode.
@@ -44,7 +44,7 @@ export class Config {
   public readonly redirectUrl: string | null;
   public readonly state: string | null;
   public readonly hl: string | null;
-  public readonly providerMatch: ProviderMatch | null;
+  public readonly selectedTenantInfo: SelectedTenantInfo | null;
   private readonly parsedUrl: URL;
 
   /**
@@ -67,30 +67,30 @@ export class Config {
     this.state = this.parsedUrl.searchParams.get('state') || null;
     this.hl = this.parsedUrl.searchParams.get('hl') || null;
 
-    this.providerMatch = this.getProviderMatch(this.parsedUrl.hash, historyState);
+    this.selectedTenantInfo = this.getSelectedTenantInfo(this.parsedUrl.hash, historyState);
   }
 
   /**
-   * Returns the configuration ProviderMatch if available.
+   * Returns the configuration SelectedTenantInfo if available.
    * @param hash The current URL hash fragment.
    * @param historyState The current history.state if available.
-   * @return The configuration ProviderMatch if available.
+   * @return The configuration SelectedTenantInfo if available.
    */
-  private getProviderMatch(hash: string, historyState?: any): ProviderMatch | null {
-    let providerMatch: ProviderMatch | null = null;
-    // Older browsers that do not support history API will use hash to pass ProviderMatch.
+  private getSelectedTenantInfo(hash: string, historyState?: any): SelectedTenantInfo | null {
+    let selectedTenantInfo: SelectedTenantInfo | null = null;
+    // Older browsers that do not support history API will use hash to pass SelectedTenantInfo.
     // history.state should have higher priority over hash.
     if (!this.tid) {
-      providerMatch = null;
+      selectedTenantInfo = null;
     } else if (historyState) {
       // Populate from history.state.
-      providerMatch = !!historyState && historyState.state === 'signIn' ?
-          historyState.providerMatch : null;
+      selectedTenantInfo = !!historyState && historyState.state === 'signIn' ?
+          historyState.selectedTenantInfo : null;
     } else if (hash) {
       // Populate from hash.
-      const matches = PROVIDER_MATCH_REGEXP.exec(hash);
+      const matches = SELECTED_TENANT_INFO_REGEXP.exec(hash);
       if (matches.length > 1) {
-        providerMatch = {
+        selectedTenantInfo = {
           email: matches[1].trim(),
           providerIds: (matches[2] || '').split(','),
           tenantId: this.tid,
@@ -98,37 +98,37 @@ export class Config {
       }
     }
 
-    // Validate providerMatch.
-    if (providerMatch) {
+    // Validate selectedTenantInfo.
+    if (selectedTenantInfo) {
       let trimmedProviderId: string;
       const providerIds: string[] = [];
       // Validate email.
-      if (!isEmail(providerMatch.email)) {
-        delete providerMatch.email;
+      if (!isEmail(selectedTenantInfo.email)) {
+        delete selectedTenantInfo.email;
       }
       // Validate providerIds.
-      if (!isArray(providerMatch.providerIds)) {
-        providerMatch.providerIds = [];
+      if (!isArray(selectedTenantInfo.providerIds)) {
+        selectedTenantInfo.providerIds = [];
       } else {
         // Trim providerId strings.
-        providerMatch.providerIds.forEach((providerId) => {
+        selectedTenantInfo.providerIds.forEach((providerId) => {
           if (isString(providerId)) {
             trimmedProviderId = providerId.trim();
             if (isProviderId(trimmedProviderId)) {
               providerIds.push(trimmedProviderId);
             }
           }
-          providerMatch.providerIds = providerIds;
+          selectedTenantInfo.providerIds = providerIds;
         });
       }
       // Validate tenantId.
       // When tid is set to top level project ID, set to null.
       const realTenantId = this.tid && this.tid.charAt(0) === '_' ? null : this.tid;
-      if (providerMatch.tenantId !== realTenantId) {
-        providerMatch = null;
+      if (selectedTenantInfo.tenantId !== realTenantId) {
+        selectedTenantInfo = null;
       }
     }
-    return providerMatch;
+    return selectedTenantInfo;
   }
 
   /**

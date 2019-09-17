@@ -17,7 +17,7 @@
 import { FirebaseAuth, UserCredential, User } from './firebase-auth';
 import { isNonNullObject } from '../utils/validator';
 
-export interface ProviderMatch {
+export interface SelectedTenantInfo {
   email?: string;
   tenantId: string | null;
   providerIds?: string[];
@@ -39,7 +39,7 @@ export interface AuthenticationHandler {
   getAuth(apiKey: string, tenantId: string | null): FirebaseAuth;
   // Starts sign in with the corresponding Auth instance. Developer is expected to show
   // the corresponding sign in options based on auth.tenantId.
-  startSignIn(auth: FirebaseAuth, match?: ProviderMatch): Promise<UserCredential>;
+  startSignIn(auth: FirebaseAuth, match?: SelectedTenantInfo): Promise<UserCredential>;
   // Triggered after user is signed out from all tenants or from single tenant with no redirect URL.
   completeSignOut(): Promise<void>;
   showProgressBar?(): void;
@@ -50,7 +50,7 @@ export interface AuthenticationHandler {
   selectProvider?(
     projectConfig: ProjectConfig,
     tenantIds: string[],
-  ): Promise<ProviderMatch>;
+  ): Promise<SelectedTenantInfo>;
 }
 
 /**

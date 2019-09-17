@@ -31,7 +31,7 @@ declare namespace ciap {
     apiKey: string;
   }
 
-  interface ProviderMatch {
+  interface SelectedTenantInfo {
     email?: string;
     tenantId: string | null;
     providerIds?: string[];
@@ -58,7 +58,7 @@ declare namespace ciap {
     selectProvider?(
       projectConfig: ProjectConfig,
       tenantIds: string[],
-    ): Promise<ProviderMatch>;
+    ): Promise<SelectedTenantInfo>;
   }
 
   class Authentication {

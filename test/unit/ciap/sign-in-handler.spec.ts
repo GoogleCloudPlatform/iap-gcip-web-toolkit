@@ -46,16 +46,16 @@ describe('SignInOperationHandler', () => {
   const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl));
   const agentRedirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
   const agentConfig = new Config(createMockUrl('login', apiKey, agentId, agentRedirectUri, state, hl));
-  const selectedProviderMatch = {
+  const selectedTenantInfo = {
     email: 'user@example.com',
     tenantId: tid,
     providerIds: ['saml.my-provider', 'oidc.provider'],
   };
   const historyState = {
     state: 'signIn',
-    providerMatch: selectedProviderMatch,
+    selectedTenantInfo,
   };
-  const configWithProviderMatch =
+  const configWithSelectedTenantInfo =
       new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl), historyState);
   let auth: MockAuth;
   let agentAuth: MockAuth;
@@ -365,8 +365,8 @@ describe('SignInOperationHandler', () => {
           // onStartSignIn simulates user signing in with matching user.
           () => auth.setCurrentMockUser(matchingUser));
 
-      // Initialize SignInOperationHandler using config with ProviderMatch.
-      operationHandler = new SignInOperationHandler(configWithProviderMatch, authenticationHandler);
+      // Initialize SignInOperationHandler using config with SelectedTenantInfo.
+      operationHandler = new SignInOperationHandler(configWithSelectedTenantInfo, authenticationHandler);
 
       return operationHandler.start()
         .then(() => {
@@ -375,13 +375,13 @@ describe('SignInOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, configWithProviderMatch.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, configWithSelectedTenantInfo.redirectUrl]);
           // Progress bar should be hidden before startSignIn.
           expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledBefore(startSignInSpy);
           // startSignIn should be called even though a user is already signed in, since
           // that user has mismatching tenant ID.
           expect(startSignInSpy).to.have.been.calledOnce
-            .and.calledWith(auth, configWithProviderMatch.providerMatch);
+            .and.calledWith(auth, configWithSelectedTenantInfo.selectedTenantInfo);
           // Progress bar should be shown after the user is signed in and ID token is being processed.
           expect(showProgressBarSpy).to.have.been.calledTwice.and.calledAfter(startSignInSpy);
           // User should be processed before calling exchangeIdTokenAndGetOriginalAndTargetUrl.
@@ -393,10 +393,10 @@ describe('SignInOperationHandler', () => {
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
             .and.calledWith(
-              configWithProviderMatch.redirectUrl,
+              configWithSelectedTenantInfo.redirectUrl,
               'ID_TOKEN1-processed',
-              configWithProviderMatch.tid,
-              configWithProviderMatch.state);
+              configWithSelectedTenantInfo.tid,
+              configWithSelectedTenantInfo.state);
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);

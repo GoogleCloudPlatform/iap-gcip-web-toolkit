@@ -19,7 +19,7 @@ import { isAuthenticationHandler, AuthenticationHandler } from '../../../src/cia
 import { createMockAuth } from '../../resources/utils';
 
 describe('isAuthenticationHandler()', () => {
-  const providerMatch = {
+  const selectedTenantInfo = {
     tenantId: 'tenant-1',
   };
   const apiKey = 'API_KEY';
@@ -46,7 +46,7 @@ describe('isAuthenticationHandler()', () => {
     handler.showProgressBar = () => {/** Null function. */};
     handler.hideProgressBar = () => {/** Null function. */};
     handler.processUser = (user) => Promise.resolve(user);
-    handler.selectProvider = (projectConfig, tenantIds) => Promise.resolve(providerMatch);
+    handler.selectProvider = (projectConfig, tenantIds) => Promise.resolve(selectedTenantInfo);
     expect(isAuthenticationHandler(handler)).to.be.true;
   });
 

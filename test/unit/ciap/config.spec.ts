@@ -25,16 +25,16 @@ describe('Config', () => {
     const state = 'STATE';
     const hl = 'en-US';
     const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
-    const providerMatch = {
+    const selectedTenantInfo = {
       email: 'user@example.com',
       tenantId: tid,
       providerIds: ['saml.my-provider', 'oidc.provider'],
     };
     const historyState = {
       state: 'signIn',
-      providerMatch,
+      selectedTenantInfo,
     };
-    const otherProviderMatch = {
+    const otherSelectedTenantInfo = {
       email: 'other@example.com',
       tenantId: 'TENANT_ID2',
       providerIds: ['microsoft.com', 'linkedin.com'],
@@ -47,10 +47,10 @@ describe('Config', () => {
       expect(config.state).to.equal(state);
       expect(config.hl).to.equal(hl);
       expect(config.redirectUrl).to.equal(redirectUri);
-      expect(config.providerMatch).to.be.null;
+      expect(config.selectedTenantInfo).to.be.null;
     });
 
-    it('should populate providerMatch from history.state', () => {
+    it('should populate selectedTenantInfo from history.state', () => {
       const config = new Config(createMockUrl('login', apiKey, tid, redirectUri, state, hl), historyState);
 
       expect(config.mode).to.equal(ConfigMode.Login);
@@ -59,12 +59,12 @@ describe('Config', () => {
       expect(config.state).to.equal(state);
       expect(config.hl).to.equal(hl);
       expect(config.redirectUrl).to.equal(redirectUri);
-      expect(config.providerMatch).to.deep.equal(providerMatch);
+      expect(config.selectedTenantInfo).to.deep.equal(selectedTenantInfo);
     });
 
-    it('should populate providerMatch from hash when history.state is not available', () => {
+    it('should populate selectedTenantInfo from hash when history.state is not available', () => {
       const url = createMockUrl('login', apiKey, tid, redirectUri, state, hl) +
-          `#hint=${providerMatch.email};${(providerMatch.providerIds || []).join(',')}`;
+          `#hint=${selectedTenantInfo.email};${(selectedTenantInfo.providerIds || []).join(',')}`;
       const config = new Config(url);
 
       expect(config.mode).to.equal(ConfigMode.Login);
@@ -73,19 +73,19 @@ describe('Config', () => {
       expect(config.state).to.equal(state);
       expect(config.hl).to.equal(hl);
       expect(config.redirectUrl).to.equal(redirectUri);
-      expect(config.providerMatch).to.deep.equal(providerMatch);
+      expect(config.selectedTenantInfo).to.deep.equal(selectedTenantInfo);
     });
 
-    it('should nullify providerMatch when no tenant ID is available', () => {
+    it('should nullify selectedTenantInfo when no tenant ID is available', () => {
       const url = createMockUrl('selectAuthSession', apiKey, null, redirectUri, state, hl) +
-          `#hint=${providerMatch.email};${(providerMatch.providerIds || []).join(',')}`;
+          `#hint=${selectedTenantInfo.email};${(selectedTenantInfo.providerIds || []).join(',')}`;
       const config = new Config(url);
-      expect(config.providerMatch).to.be.null;
+      expect(config.selectedTenantInfo).to.be.null;
     });
 
-    it('should populate providerMatch from history.state even when hash is available', () => {
+    it('should populate selectedTenantInfo from history.state even when hash is available', () => {
       const url = createMockUrl('login', apiKey, tid, redirectUri, state, hl) +
-          `#hint=${otherProviderMatch.email};${(otherProviderMatch.providerIds || []).join(',')}`;
+          `#hint=${otherSelectedTenantInfo.email};${(otherSelectedTenantInfo.providerIds || []).join(',')}`;
       const config = new Config(url, historyState);
 
       expect(config.mode).to.equal(ConfigMode.Login);
@@ -94,24 +94,24 @@ describe('Config', () => {
       expect(config.state).to.equal(state);
       expect(config.hl).to.equal(hl);
       expect(config.redirectUrl).to.equal(redirectUri);
-      expect(config.providerMatch).to.deep.equal(providerMatch);
+      expect(config.selectedTenantInfo).to.deep.equal(selectedTenantInfo);
     });
 
-    it('should nullify providerMatch on tenant ID mismatch', () => {
+    it('should nullify selectedTenantInfo on tenant ID mismatch', () => {
       const invalidHistoryState = {
         state: 'signIn',
-        providerMatch: {
+        selectedTenantInfo: {
           tenantId: 'mismatching-tenant-id',
         },
       };
       const url = createMockUrl('login', apiKey, tid, redirectUri, state, hl);
       const config = new Config(url, invalidHistoryState);
 
-      expect(config.providerMatch).to.be.null;
+      expect(config.selectedTenantInfo).to.be.null;
     });
 
-    it('should not nullify providerMatch on project level flow', () => {
-      const topLevelProjectProviderMatch = {
+    it('should not nullify selectedTenantInfo on project level flow', () => {
+      const topLevelProjectSelectedTenantInfo = {
         email: 'user@example.com',
         // Project level project ID.
         tenantId: null,
@@ -119,7 +119,7 @@ describe('Config', () => {
       };
       const topLevelProjectHistoryState = {
         state: 'signIn',
-        providerMatch: topLevelProjectProviderMatch,
+        selectedTenantInfo: topLevelProjectSelectedTenantInfo,
       };
       const config = new Config(
           createMockUrl('login', apiKey, '_PROJECT_ID', redirectUri, state, hl),
@@ -131,10 +131,10 @@ describe('Config', () => {
       expect(config.state).to.equal(state);
       expect(config.hl).to.equal(hl);
       expect(config.redirectUrl).to.equal(redirectUri);
-      expect(config.providerMatch).to.deep.equal(topLevelProjectProviderMatch);
+      expect(config.selectedTenantInfo).to.deep.equal(topLevelProjectSelectedTenantInfo);
     });
 
-    it('should nullify tenant level providerMatch on mismatch with project level flow', () => {
+    it('should nullify tenant level selectedTenantInfo on mismatch with project level flow', () => {
       const config = new Config(
           createMockUrl('login', apiKey, '_PROJECT_ID', redirectUri, state, hl),
           historyState);
@@ -145,11 +145,11 @@ describe('Config', () => {
       expect(config.state).to.equal(state);
       expect(config.hl).to.equal(hl);
       expect(config.redirectUrl).to.equal(redirectUri);
-      expect(config.providerMatch).to.be.null;
+      expect(config.selectedTenantInfo).to.be.null;
     });
 
-    it('should nullify project level providerMatch on mismatch with tenant level flow', () => {
-      const topLevelProjectProviderMatch = {
+    it('should nullify project level selectedTenantInfo on mismatch with tenant level flow', () => {
+      const topLevelProjectSelectedTenantInfo = {
         email: 'user@example.com',
         // Project level project ID.
         tenantId: null,
@@ -157,7 +157,7 @@ describe('Config', () => {
       };
       const topLevelProjectHistoryState = {
         state: 'signIn',
-        providerMatch: topLevelProjectProviderMatch,
+        selectedTenantInfo: topLevelProjectSelectedTenantInfo,
       };
       const config = new Config(
           createMockUrl('login', apiKey, tid, redirectUri, state, hl),
@@ -169,63 +169,63 @@ describe('Config', () => {
       expect(config.state).to.equal(state);
       expect(config.hl).to.equal(hl);
       expect(config.redirectUrl).to.equal(redirectUri);
-      expect(config.providerMatch).to.be.null;
+      expect(config.selectedTenantInfo).to.be.null;
     });
 
-    it('should nullify providerMatch on invalid history.state', () => {
+    it('should nullify selectedTenantInfo on invalid history.state', () => {
       const invalidHistoryState = {
         state: 'other',
-        providerMatch,
+        selectedTenantInfo,
       };
       const url = createMockUrl('login', apiKey, tid, redirectUri, state, hl);
       const config = new Config(url, invalidHistoryState);
 
-      expect(config.providerMatch).to.be.null;
+      expect(config.selectedTenantInfo).to.be.null;
     });
 
-    it('should clear invalid email in providerMatch', () => {
+    it('should clear invalid email in selectedTenantInfo', () => {
       const invalidHistoryState = {
         state: 'signIn',
-        providerMatch: {
+        selectedTenantInfo: {
           email: 'invalid',
           tenantId: tid,
           providerIds: ['saml.idp'],
         },
       };
-      const expectedProviderMatch = {
+      const expectedSelectedTenantInfo = {
         tenantId: tid,
         providerIds: ['saml.idp'],
       };
       const url = createMockUrl('login', apiKey, tid, redirectUri, state, hl);
       const config = new Config(url, invalidHistoryState);
 
-      expect(config.providerMatch).to.deep.equal(expectedProviderMatch);
+      expect(config.selectedTenantInfo).to.deep.equal(expectedSelectedTenantInfo);
     });
 
-    it('should clear non-array providerIds in providerMatch', () => {
+    it('should clear non-array providerIds in selectedTenantInfo', () => {
       const invalidHistoryState = {
         state: 'signIn',
-        providerMatch: {
+        selectedTenantInfo: {
           email: 'invalid',
           tenantId: tid,
           // This should be an array.
           providerIds: 'saml.idp',
         },
       };
-      const expectedProviderMatch = {
+      const expectedSelectedTenantInfo = {
         tenantId: tid,
         providerIds: [],
       };
       const url = createMockUrl('login', apiKey, tid, redirectUri, state, hl);
       const config = new Config(url, invalidHistoryState);
 
-      expect(config.providerMatch).to.deep.equal(expectedProviderMatch);
+      expect(config.selectedTenantInfo).to.deep.equal(expectedSelectedTenantInfo);
     });
 
-    it('should remove each invalid providerId in providerMatch from history.state', () => {
+    it('should remove each invalid providerId in selectedTenantInfo from history.state', () => {
       const invalidHistoryState = {
         state: 'signIn',
-        providerMatch: {
+        selectedTenantInfo: {
           email: 'user@example.com',
           tenantId: tid,
           providerIds: [
@@ -233,7 +233,7 @@ describe('Config', () => {
           ],
         },
       };
-      const expectedProviderMatch = {
+      const expectedSelectedTenantInfo = {
         email: 'user@example.com',
         tenantId: tid,
         providerIds: ['saml.idp', 'oidc.provider', 'google.com'],
@@ -241,22 +241,22 @@ describe('Config', () => {
       const url = createMockUrl('login', apiKey, tid, redirectUri, state, hl);
       const config = new Config(url, invalidHistoryState);
 
-      expect(config.providerMatch).to.deep.equal(expectedProviderMatch);
+      expect(config.selectedTenantInfo).to.deep.equal(expectedSelectedTenantInfo);
     });
 
-    it('should clear each invalid providerId in providerMatch from URL hash', () => {
+    it('should clear each invalid providerId in selectedTenantInfo from URL hash', () => {
       // Since spaces are not allowed in hashes (they will be encoded as %20), provider Ids with
       // spaces will be ignored as invalid.
       const url = createMockUrl('login', apiKey, tid, redirectUri, state, hl) +
           '#hint=user@example.com;,{},  ,!invalid,saml.idp,oidc.provider,  google.com  ';
       const config = new Config(url);
-      const expectedProviderMatch = {
+      const expectedSelectedTenantInfo = {
         email: 'user@example.com',
         tenantId: tid,
         providerIds: ['saml.idp', 'oidc.provider'],
       };
 
-      expect(config.providerMatch).to.deep.equal(expectedProviderMatch);
+      expect(config.selectedTenantInfo).to.deep.equal(expectedSelectedTenantInfo);
     });
 
     it('should sanitize the redirect URL in the query string', () => {
@@ -268,7 +268,7 @@ describe('Config', () => {
       expect(config.state).to.equal(state);
       expect(config.hl).to.equal(hl);
       expect(config.redirectUrl).to.equal('about:invalid');
-      expect(config.providerMatch).to.be.null;
+      expect(config.selectedTenantInfo).to.be.null;
     });
 
     it('should initialize successfully with reauth config mode', () => {
@@ -279,7 +279,7 @@ describe('Config', () => {
       expect(config.state).to.equal(state);
       expect(config.hl).to.equal(hl);
       expect(config.redirectUrl).to.equal(redirectUri);
-      expect(config.providerMatch).to.be.null;
+      expect(config.selectedTenantInfo).to.be.null;
     });
 
     it('should initialize successfully with signout config mode', () => {
@@ -290,7 +290,7 @@ describe('Config', () => {
       expect(config.state).to.equal(state);
       expect(config.hl).to.equal(hl);
       expect(config.redirectUrl).to.equal(redirectUri);
-      expect(config.providerMatch).to.be.null;
+      expect(config.selectedTenantInfo).to.be.null;
     });
 
     it('should initialize successfully with selectAuthSession config mode', () => {
@@ -301,7 +301,7 @@ describe('Config', () => {
       expect(config.state).to.equal(state);
       expect(config.hl).to.equal(hl);
       expect(config.redirectUrl).to.equal(redirectUri);
-      expect(config.providerMatch).to.be.null;
+      expect(config.selectedTenantInfo).to.be.null;
     });
 
     it('should initialize successfully with unknown config mode when invalid mode passed', () => {
@@ -312,7 +312,7 @@ describe('Config', () => {
       expect(config.state).to.be.null;
       expect(config.hl).to.be.null;
       expect(config.redirectUrl).to.be.null;
-      expect(config.providerMatch).to.be.null;
+      expect(config.selectedTenantInfo).to.be.null;
     });
 
     it('should initialize successfully with unknown config mode when no mode is passed', () => {
@@ -323,7 +323,7 @@ describe('Config', () => {
       expect(config.state).to.be.null;
       expect(config.hl).to.be.null;
       expect(config.redirectUrl).to.be.null;
-      expect(config.providerMatch).to.be.null;
+      expect(config.selectedTenantInfo).to.be.null;
     });
   });
 });
