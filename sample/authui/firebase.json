@@ -3,25 +3,13 @@
     "rules": "database.rules.json"
   },
   "hosting": {
-    "public": "public",
+    "public": "dist/my-app",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
     "rewrites": [
-      {
-        "source": "/custom",
-        "destination": "/custom.html"
-      },
-      {
-        "source": "/tos",
-        "destination": "/tospp.html"
-      },
-      {
-        "source": "/privacypolicy",
-        "destination": "/tospp.html"
-      },
       {
         "source": "**",
         "destination": "/index.html"

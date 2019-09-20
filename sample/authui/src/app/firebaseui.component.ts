@@ -12,21 +12,19 @@
  * limitations under the License.
  */
 
-import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
-import '../public/style.css';
-
+import { Component } from '@angular/core';
 // Import Firebase dependencies.
 import firebase from '@firebase/app';
 import '@firebase/auth';
 // Import FirebaseUI dependencies.
-import * as firebaseui from 'firebaseui'
+import * as firebaseui from 'firebaseui';
 // Import GCIP/IAP module.
-import * as ciap from '../../../builds/ciap/index.esm';
+import * as ciap from '../../../../builds/ciap/index.esm';
 
 // The list of UI configs for each supported tenant.
 const tenantsConfig = {
   // Agent flow.
-  '_': {
+  _: {
     signInOptions: [
       firebase.auth.EmailAuthProvider.PROVIDER_ID,
       firebase.auth.GoogleAuthProvider.PROVIDER_ID,
@@ -36,25 +34,25 @@ const tenantsConfig = {
     privacyPolicyUrl: '/privacypolicy',
     credentialHelper: firebaseui.auth.CredentialHelper.NONE,
     callbacks: {
-      uiShown: function() {
+      uiShown: () => {
         document.getElementById('tid').textContent = 'Awesome App';
         document.getElementById('tenant-header').classList.remove('hidden');
       },
-      beforeSignInSuccess: function(user) {
+      beforeSignInSuccess: (user) => {
         // Do additional processing on user before sign-in is complete.
         return Promise.resolve(user);
-      }
+      },
     },
   },
   // Tenant flow.
-  '1036546636501': {
+  1036546636501: {
     signInOptions: [
       firebase.auth.EmailAuthProvider.PROVIDER_ID,
       {
         provider: 'saml.okta-cicp-app',
         providerName: 'SAML',
         buttonColor: '#4666FF',
-        iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png'
+        iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
       },
     ],
     signInFlow: 'redirect',
@@ -68,31 +66,51 @@ const tenantsConfig = {
     privacyPolicyUrl: '/privacypolicy',
     credentialHelper: firebaseui.auth.CredentialHelper.NONE,
     callbacks: {
-      uiShown: function() {
+      uiShown: () => {
         document.getElementById('tid').textContent = 'Tenant 1036546636501';
         document.getElementById('tenant-header').classList.remove('hidden');
       },
-      beforeSignInSuccess: function(user) {
+      beforeSignInSuccess: (user) => {
         // Do additional processing on user before before sign-in is complete.
         return Promise.resolve(user);
-      }
-    }
+      },
+    },
   },
 };
 
-// Fetch configuration via reserved Firebase Hosting URL.
-fetch('/__/firebase/init.json').then((response) => {
-  return response.json();
-}).then((config) => {
-  const configs = {};
-  configs[config['apiKey']] = {
-    authDomain: config['authDomain'],
-    tenants: tenantsConfig
-  };
-  // This will handle the underlying handshake for sign-in, sign-out,
-  // token refresh, safe redirect to callback URL, etc.
-  const handler = new firebaseui.auth.FirebaseUiHandler(
-      '#firebaseui-container', configs);
-  const ciapInstance = new ciap.Authentication(handler);
-  ciapInstance.start();
-});
+@Component({
+  selector: 'firebaseui',
+  template: `
+    <div class="main-container">
+      <h3 class="heading-center">FirebaseUI Handler Demo</h3>
+      <h5 id="tenant-header" class="heading-center hidden">
+        <span>Application:</span>
+        <span id="tid"></span>
+      </h5>
+      <link type="text/css" rel="stylesheet"
+          href="https://cdn.firebase.com/libs/firebaseui/4.0.0/firebaseui.css" />
+      <div id="firebaseui-container"></div>
+    </div>
+    `,
+})
+
+export class FirebaseUiComponent {
+  constructor() {
+    // Fetch configuration via reserved Firebase Hosting URL.
+    fetch('/__/firebase/init.json').then((response) => {
+      return response.json();
+    }).then((config) => {
+      const configs = {};
+      configs[config.apiKey] = {
+        authDomain: config.authDomain,
+        tenants: tenantsConfig,
+      };
+      // This will handle the underlying handshake for sign-in, sign-out,
+      // token refresh, safe redirect to callback URL, etc.
+      const handler = new firebaseui.auth.FirebaseUiHandler(
+          '#firebaseui-container', configs);
+      const ciapInstance = new ciap.Authentication(handler);
+      ciapInstance.start();
+    });
+  }
+}

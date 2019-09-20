@@ -27,5 +27,5 @@ cp dist/index.esm.js builds/ciap/index.esm.js
 cd sample/authui
 # Install sample Auth UI dependencies.
 npm install
-# Generate sample AuthUI bundle.
-npm run bundle
+# Build sample AuthUI bundle.
+npm run build

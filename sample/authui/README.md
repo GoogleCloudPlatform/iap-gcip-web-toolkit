@@ -24,7 +24,7 @@ You need to have created a GCIP Project in the
 
 To set up a development environment to build the sample from source, you must
 have the following installed:
-- Node.js (>= 8.0.0)
+- Node.js (>= 10.0.0)
 - npm (should be included with Node.js)
 
 Download the sample application source and its dependencies with:
@@ -41,12 +41,12 @@ npm run build
 
 Generate the latest development `firebaseui` tarball which implements the
 `AuthenticationHandler` interface required to work with CIAP JS library.
-Save the file in `sample/authui` as `firebaseui.tgz`.
+Save the file in `builds/firebaseui` as `firebaseui.tgz`.
 
 Generate the latest development `firebase` JS SDK tarball which supports
 multi-tenancy and `AuthCredential` serialization required for `firebaseui`
 dependency.
-Save the file in `sample/authui` as `firebase.tgz`.
+Save the file in `builds/firebase-js-sdk` as `firebase-auth.tgz`.
 
 ### Install Sample App dependencies
 
@@ -56,13 +56,13 @@ Install all dependencies for the sample AuthUI:
 cd sample/authui
 npm install
 ```
-Update `src/custom.js` and `src/script.js` to import the GCIP/IAP module using
-local build:
+Update `src/app/app.component.ts` and `src/app/firebaseui.component.ts` to
+import the GCIP/IAP module using local build:
 ```javascript
-import * as ciap from '../../../dist/index.esm';
+import * as ciap from '../../../../dist/index.esm';
 ```
 You can also generate the files in the sample authui expected path
-`../../../builds/ciap/*` by running in the root folder:
+`../../../../builds/ciap/*` by running in the root folder:
 ```bash
 npm run build-ciap
 ```
@@ -98,21 +98,21 @@ IAP resources.
 
 Enable multi-tenancy for the GCIP project and configure a couple of
 tenants with different sign-in providers. You can do this by following the
-[multi-tenant quickstart documentation](https://docs.google.com/document/d/11xhYFb7wKeZ4OHfccJDwbRqhazYlQUSue5YXK8PiFME/).
+[multi-tenant documentation](https://cloud.google.com/identity-platform/docs/multi-tenancy-quickstart).
 
 #### Configuring Authentication URL
 
 You have 2 options to deploy an authentication page:
 
 - Using FirebaseUI
-  Update the multi-tenancy configuration in `src/script.js`.
+  Update the multi-tenancy configuration in `src/app/firebaseui.component.ts`.
   You will need to substitute the tenant ID/IdP configurations in `uiConfigs`.
   This page will be accessible via `/` URL path.
 - Using custom UI
   This sample app uses an email/password provider and a SAML provider.
   You will need to enable email/password provider for that tenant and update
-  the `SAML_PROVIDER_ID` constant in `src/custom.js` identifying the SAML provider
-  configured.
+  the `SAML_PROVIDER_ID` constant in `src/app/app.component.ts` identifying the SAML
+  provider configured.
   This page will be accessible via `/custom` URL path.
 
 You will also need to whitelist the IAP redirect domain as an Authorized
@@ -135,10 +135,10 @@ and Facebook are required.
 You have 2 options to deploy an authentication page:
 
 - Using FirebaseUI
-  No changes are needed in `src/script.js`.
+  No changes are needed in `src/app/firebaseui.component.ts`.
   This page will be accessible via `/` URL path.
 - Using custom UI
-  No changes are needed in `src/custom.js`.
+  No changes are needed in `src/app/app.component.ts`.
   This page will be accessible via `/custom` URL path.
 
 You will also need to whitelist the IAP redirect domain as an Authorized
@@ -152,7 +152,7 @@ npm run start
 ```
 
 This will deploy the authentication UI to
-`http://localhost:5000`.
+`http://localhost:4200`.
 
 To deploy the authentication UI to production, in the same directory
 `sample/authui`, run:
