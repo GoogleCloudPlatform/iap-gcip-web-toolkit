@@ -18,7 +18,8 @@
   },
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "ng-serve": "ng serve",
+    "start": "ng build && firebase serve",
     "build": "ng build",
     "lint": "ng lint",
     "deploy": "ng build && firebase deploy"

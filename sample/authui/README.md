@@ -152,7 +152,7 @@ npm run start
 ```
 
 This will deploy the authentication UI to
-`http://localhost:4200`.
+`http://localhost:5000`.
 
 To deploy the authentication UI to production, in the same directory
 `sample/authui`, run:
