@@ -58,6 +58,9 @@ export class AppPage extends BasePage {
   clickSignOutAndWaitForRedirect(signInPageUrl: string): Promise<any> {
     return this.findById(this.searchSignOutButtonId)
       .then((signOutButton) => {
+        return this.scrollToWebElement(signOutButton);
+      })
+      .then((signOutButton) => {
         signOutButton.click();
         return this.waitUntilUrlContains(signInPageUrl);
       })

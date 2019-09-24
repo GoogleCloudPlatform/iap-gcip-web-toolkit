@@ -39,6 +39,9 @@ function initializeChromeOptions(): chrome.Options {
  */
 const DELAY = 15000;
 
+/** The delay to wait in milliseconds to ensure an element is scrolled into view. */
+const SCROLL_DELAY = 300;
+
 /**
  * The base page class to be extended for each new page where the webdriver test will be run.
  */
@@ -178,5 +181,19 @@ export class BasePage {
    */
   protected write(el: WebElement, txt: string): Promise<void> {
     return el.sendKeys(txt);
+  }
+
+  /**
+   * Scrolls into view the specified element.
+   * @param el The WebElement to scroll to.
+   * @return A promise that resolves with the web element when scrolled into view.
+   */
+  protected scrollToWebElement(el: WebElement): Promise<WebElement> {
+    this.driver.executeScript('arguments[0].scrollIntoView()', el);
+    return new Promise((resolve) => {
+      setTimeout(resolve, SCROLL_DELAY);
+    }).then(() => {
+      return el;
+    });
   }
 }
