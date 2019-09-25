@@ -59,99 +59,6 @@ function generateRandomString(length: number): string {
   return text;
 }
 
-/**
- * Creates a new email / password user in the project specified by the Admin SDK instance
- * and the optional tenant.
- * @param app The admin SDK instance.
- * @param email The email of the new user to create.
- * @param password The password of the new user to create.
- * @param tenantId The corresponding tenant ID that the user belongs to if available.
- * @return A promise that resolves with the created user's uid.
- */
-function createUserWithEmailAndPassword(
-    app: admin.app.App,
-    email: string,
-    password: string,
-    tenantId: string | null = null): Promise<string> {
-  if (!!tenantId) {
-    // TODO: replace tenant logic to depend on Admin SDK when multi-tenancy beta launches.
-    return app.options.credential.getAccessToken()
-      .then((googleOAuthAccessToken) => {
-        const accessToken = googleOAuthAccessToken.access_token;
-        const projectId = (app.options.credential as any).certificate.projectId;
-        return new Promise<string>((resolve, reject) => {
-          request({
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            url: `https://identitytoolkit.googleapis.com/v1/projects/` +
-                 `${projectId}/tenants/${tenantId}/accounts`,
-            method: 'POST',
-            body: JSON.stringify({
-              email,
-              password,
-            }),
-          }, (error, response, body) => {
-            if (!error && response.statusCode === 200) {
-              try {
-                resolve(JSON.parse(body).localId);
-              } catch (e) {
-                reject(e);
-              }
-            } else {
-              reject(error);
-            }
-          });
-        });
-      });
-  } else {
-    return app.auth().createUser({email, password})
-      .then((userRecord) => userRecord.uid);
-  }
-}
-
-/**
- * Deletes a user in the project specified by the Admin SDK instance and the optional tenant.
- * @param app The admin SDK instance.
- * @param uid The uid of the user to delete.
- * @param tenantId The corresponding tenant ID that the user belongs to if available.
- * @return A promise that resolves on successful deletion.
- */
-function deleteUser(
-    app: admin.app.App, uid: string, tenantId: string | null = null): Promise<void> {
-  if (!!tenantId) {
-    // TODO: replace tenant logic to depend on Admin SDK when multi-tenancy beta launches.
-    return app.options.credential.getAccessToken()
-      .then((googleOAuthAccessToken) => {
-        const accessToken = googleOAuthAccessToken.access_token;
-        const projectId = (app.options.credential as any).certificate.projectId;
-        return new Promise<void>((resolve, reject) => {
-          request({
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            url: `https://identitytoolkit.googleapis.com/v1/projects/` +
-                 `${projectId}/tenants/${tenantId}/accounts:delete`,
-            method: 'POST',
-            body: JSON.stringify({
-              localId: uid,
-            }),
-          }, (error, response, body) => {
-            if (!error && response.statusCode === 200) {
-              resolve();
-            } else {
-              reject(error);
-            }
-          });
-        });
-      });
-  } else {
-    return app.auth().deleteUser(uid);
-  }
-}
-
 describe('GCIP/IAP sign-in automated testing', () => {
   describe('Using IAP resource configured with 3P Auth project level IdPs', () => {
     const uids = [];
@@ -185,10 +92,10 @@ describe('GCIP/IAP sign-in automated testing', () => {
       const email = `user_${generateRandomString(20).toLowerCase()}@example.com`;
       const password = generateRandomString(10);
       // Create a temporary user.
-      return createUserWithEmailAndPassword(app, email, password)
-        .then((uid) => {
-          currentUid = uid;
-          uids.push(uid);
+      return app.auth().createUser({email, password})
+        .then((userRecord) => {
+          currentUid = userRecord.uid;
+          uids.push(userRecord.uid);
           // Visit the GAE app.
           // The application has to be configured with IAP already.
           // In addition, the GAE app has to have been deployed already.
@@ -246,10 +153,10 @@ describe('GCIP/IAP sign-in automated testing', () => {
       const email = `user_${generateRandomString(20).toLowerCase()}@example.com`;
       const password = generateRandomString(10);
       // Create a temporary user.
-      return createUserWithEmailAndPassword(app, email, password)
-        .then((uid) => {
-          currentUid = uid;
-          uids.push(uid);
+      return app.auth().createUser({email, password})
+        .then((userRecord) => {
+          currentUid = userRecord.uid;
+          uids.push(userRecord.uid);
           // Visit the GAE app.
           // The application has to be configured with IAP already.
           // In addition, the GAE app has to have been deployed already.
@@ -357,11 +264,14 @@ describe('GCIP/IAP sign-in automated testing', () => {
           tenantId = queryParams.get('tid');
           expect(tenantId).to.not.be.undefined;
           // Create a temporary user.
-          return createUserWithEmailAndPassword(app, email, password, tenantId);
+          return app.auth()
+            .tenantManager()
+            .authForTenant(tenantId)
+            .createUser({email, password});
         })
-        .then((uid) => {
-          uids.push(uid);
-          currentUid = uid;
+        .then((userRecord) => {
+          uids.push(userRecord.uid);
+          currentUid = userRecord.uid;
           // Start sign in with email.
           return mainPage.startSignInWithEmail();
         })
@@ -424,11 +334,14 @@ describe('GCIP/IAP sign-in automated testing', () => {
           tenantId = queryParams.get('tid');
           expect(tenantId).to.not.be.undefined;
           // Create a temporary user.
-          return createUserWithEmailAndPassword(app, email, password, tenantId);
+          return app.auth()
+            .tenantManager()
+            .authForTenant(tenantId)
+            .createUser({email, password});
         })
-        .then((uid) => {
-          currentUid = uid;
-          uids.push(uid);
+        .then((userRecord) => {
+          currentUid = userRecord.uid;
+          uids.push(userRecord.uid);
           // Redirect to FirebaseUI page.
           return mainPage.getFirebaseUiPage();
         })
@@ -546,11 +459,14 @@ describe('GCIP/IAP sign-in automated testing', () => {
           expect(queryParams.get('tid')).to.equal(tenantId);
           expect(tenantId).to.not.be.undefined;
           // Create a temporary user.
-          return createUserWithEmailAndPassword(app, email, password, tenantId);
+          return app.auth()
+            .tenantManager()
+            .authForTenant(tenantId)
+            .createUser({email, password});
         })
-        .then((uid) => {
-          uids.push(uid);
-          currentUid = uid;
+        .then((userRecord) => {
+          uids.push(userRecord.uid);
+          currentUid = userRecord.uid;
           // Start sign in with email.
           return mainPage.startSignInWithEmail();
         })
@@ -626,7 +542,14 @@ function safeDelete(
   // Wait for delete queue to empty.
   const deletePromise = deleteQueue
     .then(() => {
-      return deleteUser(app, uid, tenantId);
+      if (tenantId) {
+        return app.auth()
+          .tenantManager()
+          .authForTenant(tenantId)
+          .deleteUser(uid);
+      } else {
+        return app.auth().deleteUser(uid);
+      }
     })
     .catch((error) => {
       // Suppress user not found error.
