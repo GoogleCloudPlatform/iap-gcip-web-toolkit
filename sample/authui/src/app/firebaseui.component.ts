@@ -14,8 +14,8 @@
 
 import { Component } from '@angular/core';
 // Import Firebase dependencies.
-import firebase from '@firebase/app';
-import '@firebase/auth';
+import * as firebase from 'firebase/app';
+import 'firebase/auth';
 // Import FirebaseUI dependencies.
 import * as firebaseui from 'firebaseui';
 // Import GCIP/IAP module.
@@ -25,6 +25,7 @@ import * as ciap from '../../../../builds/ciap/index.esm';
 const tenantsConfig = {
   // Agent flow.
   _: {
+    displayName: 'My Organization',
     signInOptions: [
       firebase.auth.EmailAuthProvider.PROVIDER_ID,
       firebase.auth.GoogleAuthProvider.PROVIDER_ID,
@@ -32,20 +33,10 @@ const tenantsConfig = {
     ],
     tosUrl: '/tos',
     privacyPolicyUrl: '/privacypolicy',
-    credentialHelper: firebaseui.auth.CredentialHelper.NONE,
-    callbacks: {
-      uiShown: () => {
-        document.getElementById('tid').textContent = 'Awesome App';
-        document.getElementById('tenant-header').classList.remove('hidden');
-      },
-      beforeSignInSuccess: (user) => {
-        // Do additional processing on user before sign-in is complete.
-        return Promise.resolve(user);
-      },
-    },
   },
-  // Tenant flow.
+  // Single tenant flow.
   1036546636501: {
+    displayName: 'My Company',
     signInOptions: [
       firebase.auth.EmailAuthProvider.PROVIDER_ID,
       {
@@ -64,17 +55,59 @@ const tenantsConfig = {
     immediateFederatedRedirect: false,
     tosUrl: '/tos',
     privacyPolicyUrl: '/privacypolicy',
-    credentialHelper: firebaseui.auth.CredentialHelper.NONE,
-    callbacks: {
-      uiShown: () => {
-        document.getElementById('tid').textContent = 'Tenant 1036546636501';
-        document.getElementById('tenant-header').classList.remove('hidden');
+  },
+  // Multiple tenants flow.
+  'tenant-a-esjtn': {
+    displayName: 'Company A',
+    buttonColor: '#007bff',
+    iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
+    signInOptions: [
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
+      {
+        provider: 'saml.okta-cicp-app',
+        providerName: 'SAML',
+        buttonColor: '#4666FF',
+        iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
       },
-      beforeSignInSuccess: (user) => {
-        // Do additional processing on user before before sign-in is complete.
-        return Promise.resolve(user);
+    ],
+    tosUrl: '/tos',
+    privacyPolicyUrl: '/privacypolicy',
+  },
+  'tenant-b-59ih0': {
+    displayName: 'Company B',
+    buttonColor: '#007bff',
+    iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
+    signInOptions: [
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
+      {
+        provider: 'saml.okta-cicp-app',
+        providerName: 'SAML',
+        buttonColor: '#4666FF',
+        iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
       },
-    },
+    ],
+    tosUrl: '/tos',
+    privacyPolicyUrl: '/privacypolicy',
+  },
+  'tenant-c-iooex': {
+    displayName: 'Company C',
+    buttonColor: '#007bff',
+    iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
+    signInOptions: [
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
+    ],
+    tosUrl: '/tos',
+    privacyPolicyUrl: '/privacypolicy',
+  },
+  'tenant-d-9t831': {
+    displayName: 'Company D',
+    buttonColor: '#007bff',
+    iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
+    signInOptions: [
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
+    ],
+    tosUrl: '/tos',
+    privacyPolicyUrl: '/privacypolicy',
   },
 };
 
@@ -87,8 +120,6 @@ const tenantsConfig = {
         <span>Application:</span>
         <span id="tid"></span>
       </h5>
-      <link type="text/css" rel="stylesheet"
-          href="https://cdn.firebase.com/libs/firebaseui/4.0.0/firebaseui.css" />
       <div id="firebaseui-container"></div>
     </div>
     `,
@@ -103,6 +134,27 @@ export class FirebaseUiComponent {
       const configs = {};
       configs[config.apiKey] = {
         authDomain: config.authDomain,
+        callbacks: {
+          // The callback to trigger when the sign-in page
+          // is shown.
+          signInUiShown: (tenantId) => {
+            const configKey = tenantId ? tenantId : '_';
+            const title = tenantsConfig[configKey].displayName;
+            document.getElementById('tid').textContent = title;
+            document.getElementById('tenant-header').classList.remove('hidden');
+          },
+          beforeSignInSuccess: (user) => {
+            // Do additional processing on user before sign-in is
+            // complete.
+            return Promise.resolve(user);
+          },
+        },
+        displayMode: 'optionsFirst',
+        // The terms of service URL and privacy policy URL for the page
+        // where the user selects a tenant or enters an email for tenant/provider
+        // matching.
+        tosUrl: '/tos',
+        privacyPolicyUrl: '/privacypolicy',
         tenants: tenantsConfig,
       };
       // This will handle the underlying handshake for sign-in, sign-out,

@@ -15,6 +15,7 @@
  */
 
 import {SignInPage} from './sign-in-page';
+import {WebElement} from 'selenium-webdriver';
 
 /**
  * The FirebaseUI page where the web driver test will be run from.
@@ -31,6 +32,8 @@ export class FirebaseUiPage extends SignInPage {
   private readonly searchPasswordInputClass = 'firebaseui-id-password';
   /** The class name of the password sign-in button element. */
   private readonly searchSignInButtonClass = 'firebaseui-id-submit';
+  /** The class name of the sign in with tenant button elements. */
+  private readonly searchSelectTenantButtonClass = 'firebaseui-id-tenant-selection-button';
 
   /**
    * Selects the tenant corresponding to the index provided from the list of visible tenants.
@@ -38,7 +41,17 @@ export class FirebaseUiPage extends SignInPage {
    * @return A promise that resolves with the tenant ID of the selected tenant button.
    */
   selectTenant(index: number): Promise<string | null> {
-    return Promise.resolve(null);
+    let selectedElement: WebElement;
+    return this.findElementsByClassName(this.searchSelectTenantButtonClass)
+      .then((elements) => {
+        selectedElement = elements[index];
+        // Get selected tenant ID.
+        return selectedElement.getAttribute('data-tenant-id');
+      })
+      .then((tenantId) => {
+        selectedElement.click();
+        return tenantId;
+      });
   }
 
   /**

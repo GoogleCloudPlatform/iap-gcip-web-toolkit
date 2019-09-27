@@ -24,8 +24,8 @@ import {SignOutComponent} from './signout.component';
 import {ProgressBarComponent} from './progressbar.component';
 
 // Import Firebase dependencies.
-import firebase from '@firebase/app';
-import '@firebase/auth';
+import * as firebase from 'firebase/app';
+import 'firebase/auth';
 // Import GCIP/IAP module.
 import * as ciap from '../../../../builds/ciap/index.esm';
 import * as $ from 'jquery';

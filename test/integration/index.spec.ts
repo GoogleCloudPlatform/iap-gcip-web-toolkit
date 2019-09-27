@@ -506,6 +506,97 @@ describe('GCIP/IAP sign-in automated testing', () => {
           return appPage.clickSignOutAndWaitForRedirect(signInUrl);
         });
     });
+
+    it('should handle sign-in and sign-out successfully for FirebaseUI', () => {
+      let appPage: AppPage;
+      let currentUid: string;
+      let firebaseuiPage: FirebaseUiPage;
+      const email = `user_${generateRandomString(20).toLowerCase()}@example.com`;
+      const password = generateRandomString(10);
+      // Visit the GAE app.
+      // The application has to be configured with IAP already.
+      // In addition, the GAE app has to have been deployed already.
+      return mainPage.start()
+        .then(() => {
+          return mainPage.getCurrentUrl();
+        })
+        .then((currentUrl) => {
+          // Should be redirected to sign-in page.
+          const url = new URL(currentUrl);
+          expect(url.protocol + '//' + url.hostname).to.equal(signInUrl);
+          const queryParams = url.searchParams;
+          expect(queryParams.get('mode')).to.equal('selectAuthSession');
+          return mainPage.getFirebaseUiPage();
+        })
+        .then((page) => {
+          firebaseuiPage = page;
+          // Select the second visible tenant.
+          return firebaseuiPage.selectTenant(1);
+        })
+        .then((selectedTenantId) => {
+          tenantId = selectedTenantId;
+          // Wait for provider sign-in page to be displayed and then verify
+          // the sign-in URL.
+          return firebaseuiPage.startSignInWithEmail();
+        })
+        .then(() => {
+          return firebaseuiPage.getCurrentUrl();
+        })
+        .then((currentUrl) => {
+          // Should be redirected to sign-in page for that tenant.
+          const url = new URL(currentUrl);
+          expect(url.protocol + '//' + url.hostname).to.equal(signInUrl);
+          // Confirm tenant ID and create user for that tenant.
+          const queryParams = url.searchParams;
+          expect(queryParams.get('mode')).to.equal('login');
+          expect(queryParams.get('tid')).to.equal(tenantId);
+          expect(tenantId).to.not.be.undefined;
+          // Create a temporary user.
+          return app.auth()
+            .tenantManager()
+            .authForTenant(tenantId)
+            .createUser({email, password});
+        })
+        .then((userRecord) => {
+          uids.push(userRecord.uid);
+          currentUid = userRecord.uid;
+          // Enter email and click next button.
+          return firebaseuiPage.inputEmailAndSubmit(email);
+        })
+        .then(() => {
+          // Enter password and click sign in button.
+          return firebaseuiPage.inputPasswordAndSignIn(password);
+        })
+        .then(() => {
+          return firebaseuiPage.getAppPage();
+        })
+        .then((page) => {
+          appPage = page;
+          return appPage.getSignInResult();
+        })
+        .then((results) => {
+          // Confirm user signed and IAP token issued with gcip claims.
+          expect(results.gcip).to.not.be.undefined;
+          expect(results.gcip.firebase).to.not.be.undefined;
+          expect(results.gcip.firebase.identities).to.not.be.undefined;
+          expect(results.gcip.firebase.identities.email).to.not.be.undefined;
+          expect(results.gcip.email).to.equal(email);
+          expect(results.gcip.firebase.identities.email[0]).to.equal(email);
+          expect(results.gcip.firebase.sign_in_provider).to.equal('password');
+          expect(results.gcip.firebase.tenant).to.equal(tenantId);
+          expect(results.email).to.equal(
+              `securetoken.google.com/${projectId}/${tenantId}:${email}`);
+          expect(results.sub).to.equal(
+              `securetoken.google.com/${projectId}/${tenantId}:${currentUid}`);
+          expect(results.iss).to.equal('https://cloud.google.com/iap');
+          return appPage.getCurrentUrl();
+        })
+        .then((currentUrl) => {
+          // Original URL should be redirected to.
+          expect(currentUrl).to.equal(`${appUrl}/resource`);
+          return appPage.clickSignOutAndWaitForRedirect(signInUrl);
+        });
+    });
   });
 });
 
