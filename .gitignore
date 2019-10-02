@@ -27,9 +27,9 @@ tmp/
 # Do not check in any configuration related data.
 **/.firebaserc
 
-# Exclude webpack generated files.
-sample/authui/public/script.js
-sample/authui/public/custom.js
+# Exclude generated files.
+sample/authui-react/build/
+sample/authui/dist/
 
 # Real key file and other project information should not be checked in
 test/resources/key*.json

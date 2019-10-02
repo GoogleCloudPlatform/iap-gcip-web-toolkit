@@ -15,6 +15,8 @@
     "clean": "gulp cleanup",
     "rollup": "rollup -c",
     "lint": "run-p lint:src lint:unit lint:integration lint:typings",
+    "prepare": "npm run build",
+    "prepublish": "npm run build",
     "test": "run-s lint test:unit",
     "test:unit": "karma start karma.config.js --type=unit",
     "test:integration": "mocha test/integration/index.spec.ts --slow 5000 --timeout 90000 --require ts-node/register",
@@ -40,7 +42,6 @@
     "url": "https://github.com/GoogleCloudPlatform/gcip-iap-js"
   },
   "main": "dist/index.cjs.js",
-  "browser": "dist/index.iife.js",
   "module": "dist/index.esm.js",
   "files": [
     "dist/",
@@ -54,13 +55,14 @@
     "node-forge": "0.7.4"
   },
   "peerDependencies": {
-    "firebase": "6.6.0",
+    "firebase": "7.0.0",
     "promise-polyfill": "^8.1.0",
     "url-polyfill": "^1.1.3",
     "whatwg-fetch": "^3.0.0"
   },
   "devDependencies": {
-    "firebase": "6.6.0",
+    "firebase": "7.0.0",
+    "@firebase/auth-types": "0.8.0",
     "@types/chai": "^3.4.34",
     "@types/chai-as-promised": "0.0.29",
     "@types/lodash": "^4.14.137",
@@ -108,14 +110,14 @@
     "rollup-plugin-commonjs": "^9.2.0",
     "rollup-plugin-node-resolve": "^4.0.0",
     "rollup-plugin-typescript2": "^0.12.0",
-    "selenium-webdriver": "^4.0.0-alpha.4",
+    "selenium-webdriver": "4.0.0-alpha.4",
     "sinon": "^4.4.5",
     "sinon-chai": "^2.8.0",
     "ts-node": "^3.3.0",
     "tslint": "^5.9.0",
     "typescript": "^2.7.2",
     "url-polyfill": "^1.1.7",
-    "webpack": "^3.0.0",
+    "webpack": "4.40.2",
     "whatwg-fetch": "^3.0.0",
     "yargs": "12.0.5"
   }

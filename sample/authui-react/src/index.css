@@ -1,0 +1,41 @@
+.main-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.padded-div {
+  padding: 10px;
+}
+
+.heading-center {
+  text-align: center;
+  justify-content: center;
+}
+
+.hidden {
+  display: none;
+}
+
+/** https://stackoverflow.com/questions/23584120/line-before-and-after-title-over-image */
+h3.line-through {
+  color: #777777;
+  font-size: 1.0rem;
+  font-weight: 400;
+  margin: .7em auto;
+  overflow: hidden;
+  text-align: center;
+  width: 100%;
+}
+
+h3.line-through:before, h3.line-through:after {
+  border-bottom: 1px solid rgba(0,0,0,.125);
+  content: "";
+  display: inline-block;
+  margin: 0 .5em 0 -55%;
+  vertical-align: middle;
+  width: 50%;
+}
+
+h3.line-through:after {
+  margin: 0 -55% 0 .5em;
+}

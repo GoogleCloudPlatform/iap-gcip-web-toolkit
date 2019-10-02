@@ -109,7 +109,6 @@ gulp.task('rollupjs', (done) => {
     external: id => deps.some(dep => id === dep || id.startsWith(`${dep}/`))
   }).then(bundle => {
     const promises = [
-      bundle.write({ file: pkg.browser, format: 'iife', name: 'ciap'}),
       bundle.write({ file: pkg.main, format: 'cjs' }),
       bundle.write({ file: pkg.module, format: 'es' })
     ]

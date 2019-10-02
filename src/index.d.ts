@@ -49,7 +49,7 @@ declare namespace ciap {
     // This is optional to provide the developer the ability to render their own
     // UI on signout.
     // This is not called on single tenant sign out.
-    completeSignout(): Promise<void>;
+    completeSignOut(): Promise<void>;
     // Developer may want to make additional changes to the user before handing ID token to IAP.
     processUser?(user: User): Promise<User>;
     showProgressBar?(): void;
