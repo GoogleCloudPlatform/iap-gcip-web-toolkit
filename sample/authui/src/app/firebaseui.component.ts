@@ -116,16 +116,19 @@ const tenantsConfig = {
   template: `
     <div class="main-container">
       <h3 class="heading-center">FirebaseUI Handler Demo</h3>
-      <h5 id="tenant-header" class="heading-center hidden">
-        <span>Application:</span>
-        <span id="tid"></span>
-      </h5>
+      <ng-template [ngIf]="!!title">
+        <h5 id="tenant-header" class="heading-center">
+          <span>Application:</span>
+          <span id="tid">{{title}}</span>
+        </h5>
+      </ng-template>
       <div id="firebaseui-container"></div>
     </div>
     `,
 })
 
 export class FirebaseUiComponent {
+  public title?: string;
   constructor() {
     // Fetch configuration via reserved Firebase Hosting URL.
     fetch('/__/firebase/init.json').then((response) => {
@@ -135,13 +138,16 @@ export class FirebaseUiComponent {
       configs[config.apiKey] = {
         authDomain: config.authDomain,
         callbacks: {
+          // The callback to trigger when the provider selection page
+          // is shown.
+          selectProviderUiShown: () => {
+            this.title = undefined;
+          },
           // The callback to trigger when the sign-in page
           // is shown.
           signInUiShown: (tenantId) => {
             const configKey = tenantId ? tenantId : '_';
-            const title = tenantsConfig[configKey].displayName;
-            document.getElementById('tid').textContent = title;
-            document.getElementById('tenant-header').classList.remove('hidden');
+            this.title = tenantsConfig[configKey].displayName;
           },
           beforeSignInSuccess: (user) => {
             // Do additional processing on user before sign-in is
