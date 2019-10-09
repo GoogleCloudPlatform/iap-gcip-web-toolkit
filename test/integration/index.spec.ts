@@ -108,6 +108,12 @@ describe('GCIP/IAP sign-in automated testing', () => {
           // Should be redirected to sign-in page.
           const url = new URL(currentUrl);
           expect(url.protocol + '//' + url.hostname).to.equal(signInUrl);
+          // Get the original URL.
+          return mainPage.getOriginalUrl();
+        })
+        .then((originalUrl) => {
+          // Confirm original URL is the expected app URL that was originally visited.
+          expect(originalUrl).to.equal(`${appUrl}/`);
           // Start sign in with email.
           return mainPage.startSignInWithEmail();
         })
@@ -263,6 +269,12 @@ describe('GCIP/IAP sign-in automated testing', () => {
           const queryParams = url.searchParams;
           tenantId = queryParams.get('tid');
           expect(tenantId).to.not.be.undefined;
+          // Get the original URL.
+          return mainPage.getOriginalUrl();
+        })
+        .then((originalUrl) => {
+          // Confirm original URL is the expected app URL that was originally visited.
+          expect(originalUrl).to.equal(`${appUrl}/`);
           // Create a temporary user.
           return app.auth()
             .tenantManager()
