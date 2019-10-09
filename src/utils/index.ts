@@ -276,3 +276,36 @@ export function getHistoryState(win: Window = window): any {
   }
   return null;
 }
+
+/**
+ * @param win Optional window to check whether it is an iframe.
+ *     If not provided, the current window is checked.
+ * @return Whether web page is running in an iframe.
+ */
+export function isIframe(win: Window = window): boolean {
+  try {
+    // Check that the current window is not the top window.
+    // If so, return true.
+    return !!(win && win !== win.top);
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * @param win Optional window to check whether it is a cross origin iframe.
+ *     If not provided, the current window is checked.
+ * @return Whether web page is running in a cross origin iframe.
+ */
+export function isCrossOriginIframe(win: Window = window): boolean {
+  if (isIframe(win)) {
+    try {
+      // This will throw on cross origin embed.
+      return !(win.parent.location.hostname === win.location.hostname &&
+          win.parent.location.protocol === win.location.protocol);
+    } catch (e) {
+      return true;
+    }
+  }
+  return false;
+}

@@ -56,6 +56,7 @@ const main = HandleBars.compile(`
         </p>
       </div>
     <div>
+    <iframe src="/_gcp_iap/session_refresher" style="width:0;height:0;border:0; border:none;"></iframe>
   </body>
 </html>
 `);
