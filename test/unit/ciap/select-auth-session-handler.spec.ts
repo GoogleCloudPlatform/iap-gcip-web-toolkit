@@ -75,6 +75,7 @@ describe('SelectAuthSessionOperationHandler', () => {
   const currentUrlOrigin = 'https://auth.example.com:8080';
   let startSpy: sinon.SinonSpy;
   let getCurrentUrlStub: sinon.SinonStub;
+  let isCrossOriginIframeStub: sinon.SinonStub;
   const projectConfig = {
     projectId,
     apiKey,
@@ -83,6 +84,8 @@ describe('SelectAuthSessionOperationHandler', () => {
 
   beforeEach(() => {
     sharedSettings = new SharedSettings(apiKey);
+    isCrossOriginIframeStub = sinon.stub(utils, 'isCrossOriginIframe').returns(false);
+    stubs.push(isCrossOriginIframeStub);
     getCurrentUrlStub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
     stubs.push(getCurrentUrlStub);
     // Simulate history API is not supported as the default case.
@@ -175,6 +178,50 @@ describe('SelectAuthSessionOperationHandler', () => {
             .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
           // Expected error should be thrown.
           expect(error).to.equal(unauthorizedDomainError);
+          // Confirm selectProvider not called.
+          expect(selectProviderSpy).to.not.have.been.called;
+          // Confirm getSessionInfoStub not called.
+          expect(getSessionInfoStub).to.not.have.been.called;
+          // No redirect should occur.
+          expect(setCurrentUrlStub).to.not.have.been.called;
+          // On failure, progress bar should be hidden.
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
+        });
+    });
+
+    it('should reject when triggered in a cross origin iframe', () => {
+      // Simulate cross origin iframe.
+      isCrossOriginIframeStub.returns(true);
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          GCIPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo');
+      stubs.push(getSessionInfoStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+
+      return operationHandler.start()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          // Expected error should be thrown.
+          expect(error).to.have.property('message', 'The page is displayed in a cross origin iframe.');
+          expect(error).to.have.property('code', 'permission-denied');
+          // Progress bar should be shown on initialization.
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
           // Confirm selectProvider not called.
           expect(selectProviderSpy).to.not.have.been.called;
           // Confirm getSessionInfoStub not called.

@@ -70,6 +70,7 @@ describe('SignOutOperationHandler', () => {
   let authTenantsStorageManager: authTenantsStorage.AuthTenantsStorageManager;
   const currentUrlOrigin = new URL(utils.getCurrentUrl(window)).origin;
   let startSpy: sinon.SinonSpy;
+  let isCrossOriginIframeStub: sinon.SinonStub;
 
   beforeEach(() => {
     sharedSettings = new SharedSettings(apiKey);
@@ -87,6 +88,8 @@ describe('SignOutOperationHandler', () => {
             expect(appId).to.equal(projectId);
             return authTenantsStorageManager;
           }));
+    isCrossOriginIframeStub = sinon.stub(utils, 'isCrossOriginIframe').returns(false);
+    stubs.push(isCrossOriginIframeStub);
     // Listen to auth.signOut calls.
     signOutSpy = sinon.spy(MockAuth.prototype, 'signOut');
     // Listen to completeSignOut, showProgressBar and hideProgressBar.
@@ -183,6 +186,57 @@ describe('SignOutOperationHandler', () => {
             .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, singleSignOutConfig.redirectUrl]);
           // Expected error should be thrown.
           expect(error).to.equal(unauthorizedDomainError);
+          // Confirm completeSignOut not called.
+          expect(completeSignOutSpy).to.not.have.been.called;
+          // Confirm getOriginalUrlForSignOutStub not called.
+          expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
+          // No redirect should occur.
+          expect(setCurrentUrlStub).to.not.have.been.called;
+          // On failure, progress bar should be hidden.
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+          // User should still be signed in.
+          expect(auth1.currentUser).to.not.be.null;
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
+          // Confirm stored tenant ID is not cleared from storage.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.deep.equal([tid1]);
+        });
+    });
+
+    it('should reject when triggered in a cross origin iframe', () => {
+      // Simulate cross origin iframe.
+      isCrossOriginIframeStub.returns(true);
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          GCIPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock getOriginalUrlForSignOut API.
+      const getOriginalUrlForSignOutStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
+      stubs.push(getOriginalUrlForSignOutStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+
+      return singleSignOutOperationHandler.start()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          // Expected error should be thrown.
+          expect(error).to.have.property('message', 'The page is displayed in a cross origin iframe.');
+          expect(error).to.have.property('code', 'permission-denied');
+          // Progress bar should be shown on initialization.
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, singleSignOutConfig.redirectUrl]);
           // Confirm completeSignOut not called.
           expect(completeSignOutSpy).to.not.have.been.called;
           // Confirm getOriginalUrlForSignOutStub not called.

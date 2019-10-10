@@ -77,6 +77,7 @@ describe('SignInOperationHandler', () => {
   const currentUrlOrigin = new URL(utils.getCurrentUrl(window)).origin;
   let cacheAndReturnResultSpy: sinon.SinonSpy;
   let startSpy: sinon.SinonSpy;
+  let isCrossOriginIframeStub: sinon.SinonStub;
 
   beforeEach(() => {
     sharedSettings = new SharedSettings(apiKey);
@@ -94,6 +95,8 @@ describe('SignInOperationHandler', () => {
             expect(appId).to.equal(projectId);
             return authTenantsStorageManager;
           }));
+    isCrossOriginIframeStub = sinon.stub(utils, 'isCrossOriginIframe').returns(false);
+    stubs.push(isCrossOriginIframeStub);
 
     // Listen to startSignIn calls.
     startSignInSpy = sinon.spy(MockAuthenticationHandler.prototype, 'startSignIn');
@@ -752,6 +755,56 @@ describe('SignInOperationHandler', () => {
         });
     });
 
+    it('should reject when startSignIn triggers in a cross origin iframe', () => {
+      // Simulate cross origin iframe.
+      isCrossOriginIframeStub.returns(true);
+      operationHandler = new SignInOperationHandler(config, authenticationHandler);
+      // Mock domain is authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          GCIPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock ID token exchange endpoint.
+      const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
+            .resolves(redirectServerResp);
+      stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+      // Mock set cookie.
+      const setCookieAtTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+      stubs.push(setCookieAtTargetUrlStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+
+      return operationHandler.start()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          // Expected error should be thrown.
+          expect(error).to.have.property('message', 'The page is displayed in a cross origin iframe.');
+          expect(error).to.have.property('code', 'permission-denied');
+          // Progress bar should be shown on initialization.
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
+          // Progress bar should be hidden checking authorized origins.
+          expect(hideProgressBarSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm startSignIn is not called.
+          expect(startSignInSpy).to.not.have.been.called;
+          expect(processUserSpy).to.not.have.been.called;
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub).to.not.have.been.called;
+          expect(setCookieAtTargetUrlStub).to.not.have.been.called;
+          expect(setCurrentUrlStub).to.not.have.been.called;
+          // Confirm error passed to handler.
+          expect(authenticationHandler.getLastHandledError()).to.equal(error);
+        });
+    });
+
     it('should reject when authenticationHandler processUser resolves with a mismatching user tenant ID', () => {
       const mismatchUser = createMockUser('UID1', 'ID_TOKEN1', 'MISMATCHING_TENANT_ID');
       auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
@@ -873,6 +926,61 @@ describe('SignInOperationHandler', () => {
         })
         .then((tenantList: string[]) => {
           expect(tenantList).to.have.same.members([tid]);
+        });
+    });
+
+    it('should complete silent token refresh for existing user in a cross origin iframe', () => {
+      // Simulate cross origin iframe.
+      isCrossOriginIframeStub.returns(true);
+      auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          GCIPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock ID token exchange endpoint.
+      const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
+            .resolves(redirectServerResp);
+      stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+      // Mock set cookie.
+      const setCookieAtTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+      stubs.push(setCookieAtTargetUrlStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+
+      // When ID token is already available, the tenant ID is likely already stored.
+      return authTenantsStorageManager.addTenant(tid)
+        .then(() => {
+          return operationHandler.start();
+        })
+        .then(() => {
+          expect(hideProgressBarSpy).to.not.have.been.called;
+          // Progress bar should be shown on initialization.
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
+          // Since ID token is available, startSignIn should not be called.
+          expect(startSignInSpy).to.not.have.been.called;
+          // User should be processed before calling exchangeIdTokenAndGetOriginalAndTargetUrl.
+          expect(processUserSpy).to.have.been.calledOnce
+            .and.calledWith(auth.currentUser)
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
+            .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+          // ID token for processed user should be used.
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(processUserSpy)
+            .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.tid, config.state);
+          expect(setCookieAtTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
+          expect(setCurrentUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(setCookieAtTargetUrlStub)
+            .and.calledWith(window, redirectServerResp.originalUri);
         });
     });
 

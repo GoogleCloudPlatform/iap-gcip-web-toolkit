@@ -21,7 +21,8 @@ import {
   formSubmitWithRedirect, getCurrentUrl, setCurrentUrl, runIfDefined,
   generateRandomAlphaNumericString, mapObject, onDomReady, sanitizeUrl,
   isSafeUrl, isHistorySupported, isHistoryAndCustomEventSupported,
-  pushHistoryState, isCustomEventSupported, getHistoryState,
+  pushHistoryState, isCustomEventSupported, getHistoryState, isIframe,
+  isCrossOriginIframe,
 } from '../../../src/utils/index';
 
 interface Obj {
@@ -508,5 +509,109 @@ describe('getHistoryState', () => {
     };
 
     expect(getHistoryState(win)).to.equal(data);
+  });
+});
+
+describe('isIframe', () => {
+  it('should return false when current window is not an iframe', () => {
+    // Simulate mock window is not embedded in an iframe.
+    const mockWin: any = {
+      top: null,
+    };
+    mockWin.top = mockWin;
+
+    expect(isIframe(mockWin)).to.be.false;
+  });
+
+  it('should return true when current window is an iframe', () => {
+    // Simulate mock window is embedded in an iframe.
+    const mockWin: any = {
+      top: {},
+    };
+
+    expect(isIframe(mockWin)).to.be.true;
+  });
+});
+
+describe('isCrossOriginIframe', () => {
+  it('should return false when not embedded in an iframe', () => {
+    const mockWin: any = {
+      top: null,
+      parent: null,
+      location: {
+        hostname: 'www.example.com',
+        protocol: 'https:',
+      },
+    };
+    // top and parent point to same window.
+    mockWin.top = mockWin;
+    mockWin.parent = mockWin;
+
+    expect(isCrossOriginIframe(mockWin)).to.be.false;
+  });
+
+  it('should return false when embedded in the same origin', () => {
+    const mockWin: any = {
+      top: null,
+      parent: null,
+      location: {
+        hostname: 'www.example.com',
+        protocol: 'https:',
+      },
+    };
+    // Embedded and same origin.
+    // Set top to same origin.
+    mockWin.top = {
+      location: {
+        hostname: 'www.example.com',
+        protocol: 'https:',
+      },
+    };
+    mockWin.parent = mockWin.top;
+
+    expect(isCrossOriginIframe(mockWin)).to.be.false;
+  });
+
+  it('should return true when embedded in a cross domain iframe', () => {
+    const mockWin: any = {
+      top: null,
+      parent: null,
+      location: {
+        hostname: 'www.example.com',
+        protocol: 'https:',
+      },
+    };
+    // Embedded and cross origin.
+    // Set top to different origin.
+    mockWin.top = {
+      location: {
+        hostname: 'www.crossdomain.com',
+        protocol: 'https:',
+      },
+    };
+    mockWin.parent = mockWin.top;
+
+    expect(isCrossOriginIframe(mockWin)).to.be.true;
+  });
+
+  it('should return true when embedded in a cross protocol iframe', () => {
+    const mockWin: any = {
+      top: null,
+      parent: null,
+      location: {
+        hostname: 'www.example.com',
+        protocol: 'https:',
+      },
+    };
+    // Embedded and cross origin.
+    // Set top to different protocol.
+    mockWin.top = {
+      location: {
+        hostname: 'www.example.com',
+        protocol: 'http:',
+      },
+    };
+
+    expect(isCrossOriginIframe(mockWin)).to.be.true;
   });
 });

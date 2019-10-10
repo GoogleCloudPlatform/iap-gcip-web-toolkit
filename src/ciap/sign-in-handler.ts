@@ -19,7 +19,7 @@ import { BaseOperationHandler, OperationType, CacheDuration } from './base-opera
 import { Config } from './config';
 import { RedirectServerResponse } from './iap-request';
 import { UserCredential, User } from './firebase-auth';
-import { setCurrentUrl } from '../utils/index';
+import { setCurrentUrl, isCrossOriginIframe } from '../utils/index';
 import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 import { SharedSettings } from './shared-settings';
 
@@ -75,6 +75,12 @@ export class SignInOperationHandler extends BaseOperationHandler {
           // Pass user back.
           return this.finishSignIn(user);
         } else {
+          // Do not allow sign-in in a cross origin iframe.
+          // Only allow silent re-authentication.
+          if (isCrossOriginIframe(window)) {
+            this.hideProgressBar();
+            throw new CIAPError(CLIENT_ERROR_CODES['permission-denied'], 'The page is displayed in a cross origin iframe.');
+          }
           // No user available, start sign-in flow.
           return this.startSignIn();
         }

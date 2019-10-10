@@ -19,6 +19,7 @@ import { BaseOperationHandler, OperationType } from './base-operation-handler';
 import { Config, ConfigMode } from './config';
 import {
   setCurrentUrl, getCurrentUrl, isHistoryAndCustomEventSupported, pushHistoryState,
+  isCrossOriginIframe,
 } from '../utils/index';
 import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 import { SessionInfoResponse } from './iap-request';
@@ -65,6 +66,14 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
    */
   protected process(): Promise<void> {
     let selectedTenantInfo: SelectedTenantInfo;
+    // Do not allow sign-in in a cross origin iframe.
+    // Only allow silent re-authentication.
+    if (isCrossOriginIframe(window)) {
+      this.hideProgressBar();
+      return Promise.reject(new CIAPError(
+          CLIENT_ERROR_CODES['permission-denied'],
+          'The page is displayed in a cross origin iframe.'));
+    }
     // This will resolve with the tenants associated with the current sign-in session.
     return this.getSessionInformation()
       .then((sessionInfo: SessionInfoResponse) => {

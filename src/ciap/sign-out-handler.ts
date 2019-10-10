@@ -17,7 +17,7 @@
 import { AuthenticationHandler } from './authentication-handler';
 import { BaseOperationHandler, OperationType, CacheDuration } from './base-operation-handler';
 import { Config } from './config';
-import { setCurrentUrl } from './../utils/index';
+import { setCurrentUrl, isCrossOriginIframe } from './../utils/index';
 import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 import { SharedSettings } from './shared-settings';
 
@@ -62,6 +62,13 @@ export class SignOutOperationHandler extends BaseOperationHandler {
    * @override
    */
   protected process(): Promise<void> {
+    // Do not allow signout in a cross origin iframe.
+    if (isCrossOriginIframe(window)) {
+      this.hideProgressBar();
+      return Promise.reject(new CIAPError(
+          CLIENT_ERROR_CODES['permission-denied'],
+          'The page is displayed in a cross origin iframe.'));
+    }
     // Clear internal Auth state.
     return this.signOut().then(() => {
       // Single tenant sign-out with redirect URL.
