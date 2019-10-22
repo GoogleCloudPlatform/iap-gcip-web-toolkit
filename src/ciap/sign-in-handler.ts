@@ -176,7 +176,7 @@ export class SignInOperationHandler extends BaseOperationHandler {
         return this.cache.cacheAndReturnResult<RedirectServerResponse>(
             this.iapRequest.exchangeIdTokenAndGetOriginalAndTargetUrl,
             this.iapRequest,
-            [this.redirectUrl, idToken, this.tenantId, this.state],
+            [this.redirectUrl, idToken, this.state],
             CacheDuration.ExchangeIdToken);
       })
       .then((response: RedirectServerResponse) => {

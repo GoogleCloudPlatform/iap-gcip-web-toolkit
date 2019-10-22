@@ -77,7 +77,7 @@ export class SignOutOperationHandler extends BaseOperationHandler {
         return this.cache.cacheAndReturnResult<string>(
             this.iapRequest.getOriginalUrlForSignOut,
             this.iapRequest,
-            [this.redirectUrl, this.tenantId, this.state],
+            [this.redirectUrl, this.state],
             CacheDuration.GetOriginalUrl,
         )
         .then((originalUrl: string) => {

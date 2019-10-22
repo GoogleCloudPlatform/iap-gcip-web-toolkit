@@ -291,7 +291,7 @@ describe('SignOutOperationHandler', () => {
               cacheAndReturnResultSpy.getCalls()[1].args[1].getOriginalUrlForSignOut);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[1]).to.be.instanceof(IAPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[2])
-            .to.deep.equal([singleSignOutConfig.redirectUrl, singleSignOutConfig.tid, singleSignOutConfig.state]);
+            .to.deep.equal([singleSignOutConfig.redirectUrl, singleSignOutConfig.state]);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[3]).to.equal(CacheDuration.GetOriginalUrl);
 
           // Progress bar should be shown on initialization.
@@ -311,7 +311,7 @@ describe('SignOutOperationHandler', () => {
           // Confirm getOriginalUrlForSignOutStub called.
           expect(getOriginalUrlForSignOutStub)
             .to.have.been.calledOnce.and.calledAfter(signOutSpy)
-            .and.calledWith(singleSignOutConfig.redirectUrl, singleSignOutConfig.tid, singleSignOutConfig.state);
+            .and.calledWith(singleSignOutConfig.redirectUrl, singleSignOutConfig.state);
           // Confirm redirect to originalUri.
           expect(setCurrentUrlStub)
             .to.have.been.calledOnce.and.calledAfter(getOriginalUrlForSignOutStub)
@@ -367,7 +367,7 @@ describe('SignOutOperationHandler', () => {
               cacheAndReturnResultSpy.getCalls()[1].args[1].getOriginalUrlForSignOut);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[1]).to.be.instanceof(IAPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[2])
-            .to.deep.equal([agentConfig.redirectUrl, agentId, agentConfig.state]);
+            .to.deep.equal([agentConfig.redirectUrl, agentConfig.state]);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[3]).to.equal(CacheDuration.GetOriginalUrl);
 
           // Progress bar should be shown on initialization.
@@ -387,7 +387,7 @@ describe('SignOutOperationHandler', () => {
           // Confirm getOriginalUrlForSignOutStub called.
           expect(getOriginalUrlForSignOutStub)
             .to.have.been.calledOnce.and.calledAfter(signOutSpy)
-            .and.calledWith(agentConfig.redirectUrl, agentId, agentConfig.state);
+            .and.calledWith(agentConfig.redirectUrl, agentConfig.state);
           // Confirm redirect to originalUri.
           expect(setCurrentUrlStub)
             .to.have.been.calledOnce.and.calledAfter(getOriginalUrlForSignOutStub)
@@ -661,7 +661,7 @@ describe('SignOutOperationHandler', () => {
           // Confirm getOriginalUrlForSignOutStub called.
           expect(getOriginalUrlForSignOutStub)
             .to.have.been.calledOnce.and.calledAfter(signOutSpy)
-            .and.calledWith(singleSignOutConfig.redirectUrl, singleSignOutConfig.tid, singleSignOutConfig.state);
+            .and.calledWith(singleSignOutConfig.redirectUrl, singleSignOutConfig.state);
           // No redirect should occur.
           expect(setCurrentUrlStub).to.not.have.been.called;
           // User should be signed out.
@@ -688,7 +688,7 @@ describe('SignOutOperationHandler', () => {
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce;
           expect(getOriginalUrlForSignOutStub).to.have.been.calledTwice;
           expect(getOriginalUrlForSignOutStub.getCalls()[1].args)
-            .to.deep.equal([singleSignOutConfig.redirectUrl, singleSignOutConfig.tid, singleSignOutConfig.state]);
+            .to.deep.equal([singleSignOutConfig.redirectUrl, singleSignOutConfig.state]);
           // Confirm redirect to originalUri.
           expect(setCurrentUrlStub)
             .to.have.been.calledOnce.and.calledAfter(getOriginalUrlForSignOutStub)

@@ -122,7 +122,6 @@ describe('IAPRequestHandler', () => {
       data: {
         id_token: idToken,
         state,
-        id_token_tenant_id: tenantId,
       },
     };
     const jsonResponse = {
@@ -136,7 +135,7 @@ describe('IAPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
       stubs.push(stub);
 
-      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, tenantId, state)
+      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, state)
         .then((response: RedirectServerResponse) => {
           expect(response).to.deep.equal(jsonResponse);
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
@@ -154,7 +153,7 @@ describe('IAPRequestHandler', () => {
 
       const mobileRequestHandler = new IAPRequestHandler(httpClient);
       return mobileRequestHandler
-        .exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, tenantId, state)
+        .exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, state)
         .then((response: RedirectServerResponse) => {
           expect(response).to.deep.equal(jsonResponse);
           expect(stub).to.have.been.calledOnce.and.calledWith(mobileConfigRequest);
@@ -166,7 +165,7 @@ describe('IAPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
       stubs.push(stub);
 
-      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(invalidUrl, idToken, tenantId, state)
+      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(invalidUrl, idToken, state)
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -185,7 +184,7 @@ describe('IAPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
       stubs.push(stub);
 
-      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(unsafeUrl, idToken, tenantId, state)
+      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(unsafeUrl, idToken, state)
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -208,25 +207,6 @@ describe('IAPRequestHandler', () => {
         return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(
             iapRedirectServerUrl,
             invalidNonEmptyString as any,
-            tenantId,
-            state).then(() => {
-              throw new Error('Unexpected success');
-            })
-            .catch((error) => {
-              expect(error).to.have.property('message', 'Invalid request');
-              expect(error).to.have.property('code', 'invalid-argument');
-              expect(stub).to.not.have.been.called;
-            });
-      });
-
-      it('should reject on invalid tenantId: ' + JSON.stringify(invalidNonEmptyString), () => {
-        const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
-        stubs.push(stub);
-
-        return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(
-            iapRedirectServerUrl,
-            idToken,
-            invalidNonEmptyString as any,
             state).then(() => {
               throw new Error('Unexpected success');
             })
@@ -244,7 +224,6 @@ describe('IAPRequestHandler', () => {
         return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(
             iapRedirectServerUrl,
             idToken,
-            tenantId,
             invalidNonEmptyString as any).then(() => {
               throw new Error('Unexpected success');
             })
@@ -262,7 +241,7 @@ describe('IAPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(invalidResponse);
       stubs.push(stub);
 
-      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, tenantId, state)
+      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, state)
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -285,7 +264,7 @@ describe('IAPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(invalidResponse);
       stubs.push(stub);
 
-      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, tenantId, state)
+      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, state)
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -309,7 +288,7 @@ describe('IAPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(invalidResponse);
       stubs.push(stub);
 
-      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, tenantId, state)
+      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, state)
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -326,7 +305,7 @@ describe('IAPRequestHandler', () => {
       const expectedError = new Error('server side error');
       const stub = sinon.stub(HttpClient.prototype, 'send').rejects(expectedError);
       stubs.push(stub);
-      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, tenantId, state)
+      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, state)
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -361,7 +340,7 @@ describe('IAPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').rejects(serverLowLevelError);
       stubs.push(stub);
 
-      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, tenantId, state)
+      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, state)
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -392,7 +371,7 @@ describe('IAPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').rejects(serverLowLevelError);
       stubs.push(stub);
 
-      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, tenantId, state)
+      return requestHandler.exchangeIdTokenAndGetOriginalAndTargetUrl(iapRedirectServerUrl, idToken, state)
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -585,7 +564,6 @@ describe('IAPRequestHandler', () => {
         // dummy value always passed for signout flow.
         id_token: 'dummy',
         state,
-        id_token_tenant_id: tenantId,
       },
     };
     const jsonResponse = {
@@ -599,7 +577,7 @@ describe('IAPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
       stubs.push(stub);
 
-      return requestHandler.getOriginalUrlForSignOut(iapRedirectServerUrl, tenantId, state)
+      return requestHandler.getOriginalUrlForSignOut(iapRedirectServerUrl, state)
         .then((actualOriginalUri: string) => {
           expect(actualOriginalUri).to.equal(originalUri);
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
@@ -617,7 +595,7 @@ describe('IAPRequestHandler', () => {
 
       const mobileRequestHandler = new IAPRequestHandler(httpClient);
       return mobileRequestHandler
-        .getOriginalUrlForSignOut(iapRedirectServerUrl, tenantId, state)
+        .getOriginalUrlForSignOut(iapRedirectServerUrl, state)
         .then((actualOriginalUri: string) => {
           expect(actualOriginalUri).to.equal(originalUri);
           expect(stub).to.have.been.calledOnce.and.calledWith(mobileConfigRequest);
@@ -629,7 +607,7 @@ describe('IAPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
       stubs.push(stub);
 
-      return requestHandler.getOriginalUrlForSignOut(invalidUrl, tenantId, state)
+      return requestHandler.getOriginalUrlForSignOut(invalidUrl, state)
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -648,7 +626,7 @@ describe('IAPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
       stubs.push(stub);
 
-      return requestHandler.getOriginalUrlForSignOut(unsafeUrl, tenantId, state)
+      return requestHandler.getOriginalUrlForSignOut(unsafeUrl, state)
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -664,30 +642,12 @@ describe('IAPRequestHandler', () => {
 
     const invalidNonEmptyStrings = [null, NaN, 0, 1, true, false, [], '', ['a'], {}, { a: 1 }, _.noop];
     invalidNonEmptyStrings.forEach((invalidNonEmptyString) => {
-      it('should reject on invalid tenantId: ' + JSON.stringify(invalidNonEmptyString), () => {
-        const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
-        stubs.push(stub);
-
-        return requestHandler.getOriginalUrlForSignOut(
-            iapRedirectServerUrl,
-            invalidNonEmptyString as any,
-            state).then(() => {
-              throw new Error('Unexpected success');
-            })
-            .catch((error) => {
-              expect(error).to.have.property('message', 'Invalid request');
-              expect(error).to.have.property('code', 'invalid-argument');
-              expect(stub).to.not.have.been.called;
-            });
-      });
-
       it('should reject on invalid state: ' + JSON.stringify(invalidNonEmptyString), () => {
         const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
         stubs.push(stub);
 
         return requestHandler.getOriginalUrlForSignOut(
             iapRedirectServerUrl,
-            tenantId,
             invalidNonEmptyString as any).then(() => {
               throw new Error('Unexpected success');
             })
@@ -705,7 +665,7 @@ describe('IAPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(invalidResponse);
       stubs.push(stub);
 
-      return requestHandler.getOriginalUrlForSignOut(iapRedirectServerUrl, tenantId, state)
+      return requestHandler.getOriginalUrlForSignOut(iapRedirectServerUrl, state)
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -721,7 +681,7 @@ describe('IAPRequestHandler', () => {
       const expectedError = new Error('server side error');
       const stub = sinon.stub(HttpClient.prototype, 'send').rejects(expectedError);
       stubs.push(stub);
-      return requestHandler.getOriginalUrlForSignOut(iapRedirectServerUrl, tenantId, state)
+      return requestHandler.getOriginalUrlForSignOut(iapRedirectServerUrl, state)
         .then(() => {
           throw new Error('Unexpected success');
         })
@@ -756,7 +716,7 @@ describe('IAPRequestHandler', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').rejects(serverLowLevelError);
       stubs.push(stub);
 
-      return requestHandler.getOriginalUrlForSignOut(iapRedirectServerUrl, tenantId, state)
+      return requestHandler.getOriginalUrlForSignOut(iapRedirectServerUrl, state)
         .then(() => {
           throw new Error('Unexpected success');
         })

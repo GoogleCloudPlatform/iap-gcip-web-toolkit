@@ -267,7 +267,7 @@ describe('SignInOperationHandler', () => {
           // ID token for processed user should be used.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
-            .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.tid, config.state);
+            .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.state);
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
@@ -327,7 +327,7 @@ describe('SignInOperationHandler', () => {
           // ID token for unprocessed user should be used.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
-            .and.calledWith(config.redirectUrl, 'ID_TOKEN1', config.tid, config.state);
+            .and.calledWith(config.redirectUrl, 'ID_TOKEN1', config.state);
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
@@ -398,7 +398,6 @@ describe('SignInOperationHandler', () => {
             .and.calledWith(
               configWithSelectedTenantInfo.redirectUrl,
               'ID_TOKEN1-processed',
-              configWithSelectedTenantInfo.tid,
               configWithSelectedTenantInfo.state);
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
@@ -466,7 +465,7 @@ describe('SignInOperationHandler', () => {
           // ID token for processed user should be used.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
-            .and.calledWith(agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentId, agentConfig.state);
+            .and.calledWith(agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentConfig.state);
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
@@ -527,7 +526,7 @@ describe('SignInOperationHandler', () => {
           expect(cacheAndReturnResultSpy.getCalls()[1].args[1]).to.be.instanceof(IAPRequestHandler);
           // ID token for processed user should be used.
           expect(cacheAndReturnResultSpy.getCalls()[1].args[2])
-            .to.deep.equal([config.redirectUrl, 'ID_TOKEN1-processed', config.tid, config.state]);
+            .to.deep.equal([config.redirectUrl, 'ID_TOKEN1-processed', config.state]);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[3]).to.equal(CacheDuration.ExchangeIdToken);
           // Expect setCookieAtTargetUrl to be cached for 5 mins.
           expect(cacheAndReturnResultSpy.getCalls()[2].args[0]).to.equal(
@@ -558,7 +557,7 @@ describe('SignInOperationHandler', () => {
           // Confirm ID token for processed user exchanged.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
-            .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.tid, config.state);
+            .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.state);
           // Confirm set cookie endpoint called.
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
@@ -629,7 +628,7 @@ describe('SignInOperationHandler', () => {
           expect(cacheAndReturnResultSpy.getCalls()[1].args[1]).to.be.instanceof(IAPRequestHandler);
           // ID token for processed user should be used.
           expect(cacheAndReturnResultSpy.getCalls()[1].args[2])
-            .to.deep.equal([agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentId, agentConfig.state]);
+            .to.deep.equal([agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentConfig.state]);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[3]).to.equal(CacheDuration.ExchangeIdToken);
           // Expect setCookieAtTargetUrl to be cached for 5 mins.
           expect(cacheAndReturnResultSpy.getCalls()[2].args[0]).to.equal(
@@ -661,7 +660,7 @@ describe('SignInOperationHandler', () => {
           // Confirm ID token for processed user exchanged.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
-            .and.calledWith(agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentId, agentConfig.state);
+            .and.calledWith(agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentConfig.state);
           // Confirm set cookie endpoint called.
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
@@ -914,7 +913,7 @@ describe('SignInOperationHandler', () => {
           // ID token for processed user should be used.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
-            .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.tid, config.state);
+            .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.state);
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
@@ -974,7 +973,7 @@ describe('SignInOperationHandler', () => {
           // ID token for processed user should be used.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
-            .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.tid, config.state);
+            .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.state);
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
@@ -1066,7 +1065,7 @@ describe('SignInOperationHandler', () => {
           // ID token for processed valid user should be used.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
-            .and.calledWith(config.redirectUrl, 'ID_TOKEN2-processed', config.tid, config.state);
+            .and.calledWith(config.redirectUrl, 'ID_TOKEN2-processed', config.state);
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
@@ -1163,7 +1162,7 @@ describe('SignInOperationHandler', () => {
           // ID token for processed valid user should be used.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
-            .and.calledWith(config.redirectUrl, 'ID_TOKEN2-processed', config.tid, config.state);
+            .and.calledWith(config.redirectUrl, 'ID_TOKEN2-processed', config.state);
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
@@ -1223,7 +1222,7 @@ describe('SignInOperationHandler', () => {
           // ID token for processed user should be used.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
-            .and.calledWith(agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentId, agentConfig.state);
+            .and.calledWith(agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentConfig.state);
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
@@ -1286,7 +1285,7 @@ describe('SignInOperationHandler', () => {
           // ID token for processed user should be used.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
-            .and.calledWith(agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentId, agentConfig.state);
+            .and.calledWith(agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentConfig.state);
           // Confirm SharedSettings iapRequest used.
           expect(setCookieAtTargetUrlStub.getCall(0).thisValue)
             .to.equal(sharedSettings.iapRequest);
@@ -1410,7 +1409,7 @@ describe('SignInOperationHandler', () => {
           // ID token for processed user should be used.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
-            .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.tid, config.state);
+            .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.state);
           expect(setCookieAtTargetUrlStub).to.not.have.been.called;
           expect(setCurrentUrlStub).to.not.have.been.called;
           // Confirm error passed to handler.
@@ -1436,7 +1435,7 @@ describe('SignInOperationHandler', () => {
           // Second call made for failing exchangeIdTokenAndGetOriginalAndTargetUrl.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub).to.have.been.calledTwice;
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub.getCalls()[1].args)
-            .to.deep.equal([config.redirectUrl, 'ID_TOKEN1-processed', config.tid, config.state]);
+            .to.deep.equal([config.redirectUrl, 'ID_TOKEN1-processed', config.state]);
           // Confirm set cookie endpoint called.
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
@@ -1502,7 +1501,7 @@ describe('SignInOperationHandler', () => {
           // ID token for processed user should be used.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
-            .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.tid, config.state);
+            .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.state);
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);

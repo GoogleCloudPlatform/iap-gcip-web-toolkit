@@ -98,8 +98,7 @@ export class IAPRequestHandler {
     }
     // Validate all data parameters.
     if (!isNonEmptyString(config.data.id_token) ||
-        !isNonEmptyString(config.data.state) ||
-        !isNonEmptyString(config.data.id_token_tenant_id)) {
+        !isNonEmptyString(config.data.state)) {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid request');
     }
   }).setResponseValidator((response: HttpResponse) => {
@@ -175,24 +174,20 @@ export class IAPRequestHandler {
 
   /**
    * Exchanges the provided Firebase ID token for a redirect token, original and target URI.
-   * TODO: remove depedency on id_token_tenant_id.
    *
    * @param iapRedirectServerUrl The IAP redirect server URL passed via query string.
    * @param idToken The Firebase ID token.
-   * @param tenantId The tenant ID.
    * @param state The state JWT.
    * @return A promise that resolves with the redirect token, target and original URI.
    */
   public exchangeIdTokenAndGetOriginalAndTargetUrl(
       iapRedirectServerUrl: string,
       idToken: string,
-      tenantId: string,
       state: string): Promise<RedirectServerResponse> {
     const urlParams = {iapRedirectServerUrl};
     const requestData = {
       id_token: idToken,
       state,
-      id_token_tenant_id: tenantId,
     };
     return IAPRequestHandler.EXCHANGE_ID_TOKEN.process(this.httpClient, urlParams, requestData, null, this.timeout)
         .then((response: HttpResponse) => {
@@ -228,22 +223,18 @@ export class IAPRequestHandler {
 
   /**
    * Get the original URI associated with the state JWT used to complete signout.
-   * TODO: remove depedency on id_token_tenant_id.
    *
    * @param iapRedirectServerUrl The IAP redirect server URL passed via query string.
-   * @param tenantId The tenant ID.
    * @param state The state JWT.
    * @return A promise that resolves on successful response with the original URI.
    */
   public getOriginalUrlForSignOut(
       iapRedirectServerUrl: string,
-      tenantId: string,
       state: string): Promise<string> {
     const urlParams = {iapRedirectServerUrl};
     const requestData = {
       id_token: 'dummy',
       state,
-      id_token_tenant_id: tenantId,
     };
     // Re-use same API for sign-in with dummy variable passed as ID token.
     return IAPRequestHandler.EXCHANGE_ID_TOKEN.process(this.httpClient, urlParams, requestData, null, this.timeout)
