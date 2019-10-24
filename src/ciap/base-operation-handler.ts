@@ -35,7 +35,6 @@ export interface OperationHandler {
 
 /**
  * Enum for the operation type.
- * @enum
  */
 export enum OperationType {
   SignIn = 'SIGN_IN',
@@ -45,7 +44,6 @@ export enum OperationType {
 
 /**
  * Enum for the caching timeouts for sign-in RPCs.
- * @enum
  */
 export enum CacheDuration {
   CheckAuthorizedDomains = 30 * 60 * 1000,

@@ -36,7 +36,6 @@ const GCIP_HEADERS = {
  * Enum for GCIP request timeout durations in milliseconds.
  * Short timeout is used for desktop browsers.
  * Long timeout is used for mobile browsers.
- * @enum {number}
  */
 enum GCIP_TIMEOUT {
   Short = 30000,
@@ -73,9 +72,8 @@ export class GCIPRequestHandler {
   /**
    * Initializes the GCIP request handler with the provided API key and HttpClient instance.
    *
-   * @param {string} apiKey The browser API key.
-   * @param {HttpClient} httpClient The HTTP client used to process RPCs to GCIP endpoints.
-   * @constructor
+   * @param apiKey The browser API key.
+   * @param httpClient The HTTP client used to process RPCs to GCIP endpoints.
    */
   constructor(private readonly apiKey: string, private readonly httpClient: HttpClient) {
     if (!isNonEmptyString(apiKey)) {
@@ -92,8 +90,8 @@ export class GCIPRequestHandler {
    * Checks whether the provided URLs are authorized to receive ID tokens and credentials on behalf
    * of the corresponding project.
    *
-   * @param {Array<string>} urls The URLs to check.
-   * @return {Promise<string>} A promise that resolves with the status whether the domain is
+   * @param urls The URLs to check.
+   * @return A promise that resolves with the status whether the domain is
    *     authorized or not.
    */
   public checkAuthorizedDomainsAndGetProjectId(urls: string[]): Promise<string> {
@@ -161,8 +159,8 @@ export class GCIPRequestHandler {
    *   }
    * }
    *
-   * @param {Error} error The error caught when calling the GCIP server.
-   * @return {Error} The translated error.
+   * @param error The error caught when calling the GCIP server.
+   * @return The translated error.
    */
   private translateLowLevelError(error: Error): Error {
     // Check if low level error, otherwise pass it through.

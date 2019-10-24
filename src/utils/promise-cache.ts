@@ -61,7 +61,6 @@ export class PromiseCache {
 
   /**
    * Initializes the promise caching utility.
-   * @constructor
    */
   constructor() {
     this.cachedPromises = {};
@@ -72,11 +71,11 @@ export class PromiseCache {
    * If no cached results are found. Runs the function and caches its result before
    * returning it.
    *
-   * @param {function(...args): Promise<T>} cb The function to call.
-   * @param {any} thisArg The `this` argument for the function call.
-   * @param {any[]} args The arguments to call the function with.
-   * @param {number} duration The cache duration in milliseconds for the result.
-   * @return {Promise<T>} The cached or current Promise result of the call.
+   * @param cb The function to call.
+   * @param thisArg The `this` argument for the function call.
+   * @param args The arguments to call the function with.
+   * @param duration The cache duration in milliseconds for the result.
+   * @return The cached or current Promise result of the call.
    */
   public cacheAndReturnResult<T>(
       cb: (...args) => Promise<T>,
@@ -132,7 +131,7 @@ export class PromiseCache {
    * Clears the cached result for the callback function. If no callback function is
    * specified, clears the whole cache.
    *
-   * @param {function(...args): Promise<T>=} cb The optional callback function.
+   * @param cb The optional callback function.
    */
   public clear(cb?: (...args) => Promise<any>) {
     if (typeof cb === 'undefined') {

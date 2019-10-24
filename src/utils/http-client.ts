@@ -96,8 +96,8 @@ export interface LowLevelError extends Error {
  * low level http response. HTTP error responses are not handled and returned as part of the
  * low level response.
  *
- * @param {HttpRequestConfig} config The HTTP request configuration.
- * @return {Promise<LowLevelResponse>} A promise that resolves with the low level response.
+ * @param config The HTTP request configuration.
+ * @return A promise that resolves with the low level response.
  */
 function sendRequest(config: HttpRequestConfig): Promise<LowLevelResponse> {
   let actualResponse: Response;
@@ -180,12 +180,12 @@ function sendRequest(config: HttpRequestConfig): Promise<LowLevelResponse> {
 /**
  * Creates a LowLevelError using the parameters provided.
  *
- * @param {string} message The error message.
- * @param {number} status The HTTP error code.
- * @param {HttpRequestConfig} config The original HTTP request configuration.
- * @param {Request} request The original Request object.
- * @param {LowLevelResponse=} response The low level response if vailable.
- * @return {LowLevelError} The corresponding LowLevelError.
+ * @param message The error message.
+ * @param status The HTTP error code.
+ * @param config The original HTTP request configuration.
+ * @param request The original Request object.
+ * @param response The low level response if vailable.
+ * @return The corresponding LowLevelError.
  */
 function createLowLevelError(
     message: string, status: number, config: HttpRequestConfig, request: RequestInit,
@@ -213,8 +213,7 @@ class DefaultHttpResponse implements HttpResponse {
   /**
    * Constructs a new HttpResponse from the given LowLevelResponse.
    *
-   * @param {LowLevelResponse} resp The low level response used to initialize the DefaultHttpResponse.
-   * @constructor
+   * @param resp The low level response used to initialize the DefaultHttpResponse.
    */
   constructor(resp: LowLevelResponse) {
     this.status = resp.status;
@@ -234,7 +233,7 @@ class DefaultHttpResponse implements HttpResponse {
   }
 
   /**
-   * @return {*} The underlying data (JSON or text) returned from the remote server.
+   * @return The underlying data (JSON or text) returned from the remote server.
    */
   get data(): any {
     if (this.isJson()) {
@@ -245,7 +244,7 @@ class DefaultHttpResponse implements HttpResponse {
   }
 
   /**
-   * @return {boolean} Whether the server server is JSON formatted or not.
+   * @return Whether the server server is JSON formatted or not.
    */
   public isJson(): boolean {
     return typeof this.parsedData !== 'undefined';
@@ -262,8 +261,8 @@ export class HttpClient {
    * a promise that resolves with the return HTTP response. Any returned HTTP error responses
    * will be translated to LowLevelErrors.
    *
-   * @param {HttpRequestConfig} config The HTTP request configuration.
-   * @return {Promise<HttpResponse>} A promise that resolves with the server HTTP response on success.
+   * @param config The HTTP request configuration.
+   * @return A promise that resolves with the server HTTP response on success.
    */
   public send(config: HttpRequestConfig): Promise<HttpResponse> {
     return sendRequest(config)

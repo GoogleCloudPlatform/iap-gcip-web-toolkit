@@ -71,8 +71,7 @@ export class ApiRequester {
   /**
    * Initializes the API requester instance with the base configuration.
    *
-   * @param {HttpRequestConfig} baseConfig The base HTTP request configuration to use for this endpoint.
-   * @constructor
+   * @param baseConfig The base HTTP request configuration to use for this endpoint.
    */
   constructor(private readonly baseConfig: HttpRequestConfig) {
     // URL can contain variables, eg:
@@ -90,11 +89,11 @@ export class ApiRequester {
    * After receiving the response, any defined response validator will be applied before
    * resolving with the response.
    *
-   * @param {HttpClient} client The HTTP client instance used to send HTTP requests.
-   * @param {object|null=} urlParams The URL parameters to substitute.
-   * @param {object|string|null=} data The additional variable data to pass in request.
-   * @param {object|null=} headers The additional variable headers to pass in request.
-   * @return {Promise<HttpResponse>} A promise that resolves with the server HTTP response on success.
+   * @param client The HTTP client instance used to send HTTP requests.
+   * @param urlParams The URL parameters to substitute.
+   * @param data The additional variable data to pass in request.
+   * @param headers The additional variable headers to pass in request.
+   * @return A promise that resolves with the server HTTP response on success.
    */
   public process(
       client: HttpClient,
@@ -138,8 +137,8 @@ export class ApiRequester {
   /**
    * Sets the request validator. Passing null will clear existing validator.
    *
-   * @param {?RequestValidatorCallback} requestValidator The request validator.
-   * @return {ApiRequester} The current API settings instance.
+   * @param requestValidator The request validator.
+   * @return The current API settings instance.
    */
   public setRequestValidator(requestValidator: RequestValidatorCallback | null): ApiRequester {
     this.requestValidator = requestValidator || ((config: HttpRequestConfig) => undefined);
@@ -149,8 +148,8 @@ export class ApiRequester {
   /**
    * Sets the response validator. Passing null will clear existing validator.
    *
-   * @param {?ResponseValidatorCallback} responseValidator The response validator.
-   * @return {ApiRequester} The current API settings instance.
+   * @param responseValidator The response validator.
+   * @return The current API settings instance.
    */
   public setResponseValidator(responseValidator: ResponseValidatorCallback | null): ApiRequester {
     this.responseValidator = responseValidator || ((response: HttpResponse) => undefined);

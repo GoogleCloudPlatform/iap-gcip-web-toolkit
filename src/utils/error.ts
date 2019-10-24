@@ -47,11 +47,10 @@ export class CIAPError extends Error {
   /**
    * Initializes the CIAP error object.
    *
-   * @param {ErrorInfo} errorInfo The error information (code and message).
-   * @param {Error=} underlyingReason The underlying error reason. For example, this could be a
+   * @param errorInfo The error information (code and message).
+   * @param message The optional error message.
+   * @param underlyingReason The underlying error reason. For example, this could be a
    *     LowLevelError or a Firebase Error, etc.
-   * @constructor
-   * @extends {Error}
    */
   constructor(private errorInfo: ErrorInfo, message?: string, private readonly underlyingReason?: Error) {
     super(message || errorInfo.message);
@@ -62,25 +61,25 @@ export class CIAPError extends Error {
     Object.setPrototypeOf(this, CIAPError.prototype);
   }
 
-  /** @return {string} The error code. */
+  /** @return The error code. */
   public get code(): string {
     return this.errorInfo.code;
   }
 
-  /** @return {string} The error message. */
+  /** @return The error message. */
   public get message(): string {
     return this.errorInfo.message;
   }
 
   /**
-   * @return {Error|undefined} The underlying reason error if available. this could be a
+   * @return The underlying reason error if available. this could be a
    *     LowLevelError, a Firebase error, etc.
    */
   public get reason(): Error {
     return this.underlyingReason;
   }
 
-  /** @return {object} The object representation of the error. */
+  /** @return The object representation of the error. */
   public toJSON(): object {
     const json = {
       code: this.code,
@@ -100,11 +99,11 @@ export class HttpCIAPError extends CIAPError {
    * Returns the ErrorInfo corresponding to the provided combination of HTTP error code,
    * status code and message.
    *
-   * @param {number} httpErrorCode The required HTTP error code.
-   * @param {string=} statusCode The status code of the error if available.
-   * @param {string=} message The optional custom message which when provided, overrides
+   * @param httpErrorCode The required HTTP error code.
+   * @param statusCode The status code of the error if available.
+   * @param message The optional custom message which when provided, overrides
    *     any default message associated with the error.
-   * @return {ErrorInfo} The corresponding ErrorInfo for the supplied combination of error properties.
+   * @return The corresponding ErrorInfo for the supplied combination of error properties.
    */
   private static getErrorInfo(httpErrorCode: number, statusCode?: string, message?: string): ErrorInfo {
     // Prioritize status code matches over http error codes.
@@ -138,12 +137,10 @@ export class HttpCIAPError extends CIAPError {
    * Initializes the HTTP CIAP error using the server http error and status code, in addition to an optional
    * detailed message and the underlying Error if available.
    *
-   * @param {number} httpErrorCode The HTTP error code number.
-   * @param {string=} statusCode The status code.
-   * @param {string=} message The detailed error message.
-   * @param {Error=} reason The optional underlying error object.
-   * @constructor
-   * @extends {CIAPError}
+   * @param httpErrorCode The HTTP error code number.
+   * @param statusCode The status code.
+   * @param message The detailed error message.
+   * @param reason The optional underlying error object.
    */
   constructor(public readonly httpErrorCode: number, statusCode?: string, message?: string, reason?: Error) {
     super(HttpCIAPError.getErrorInfo(httpErrorCode, statusCode, message), undefined, reason);
@@ -155,8 +152,7 @@ export class HttpCIAPError extends CIAPError {
   }
 
   /**
-   * @return {object} The object representation of the error.
-   * @override
+   * @return The object representation of the error.
    */
   public toJSON(): object {
     // Inject the HTTP error code.
@@ -167,8 +163,8 @@ export class HttpCIAPError extends CIAPError {
 /**
  * Returns whether the error is a recoverable error or not.
  *
- * @param {{code: string|undefined, message: string}} error The error to check.
- * @return {boolean} Whether the error is recoverable.
+ * @param error The error to check.
+ * @return Whether the error is recoverable.
  */
 export function isRecoverableError(error: {code?: string, message: string}): boolean {
   return RECOVERABLE_ERROR_CODES.indexOf(error.code) !== -1;
@@ -179,8 +175,8 @@ export function isRecoverableError(error: {code?: string, message: string}): boo
  * This will lowercase the string and replace underscores with dashes.
  * This will also make all error codes compatible with each other.
  *
- * @param {string} statusCode The server side status code.
- * @return {string} The client side formatted status code.
+ * @param statusCode The server side status code.
+ * @return The client side formatted status code.
  */
 function reformatStatusCode(statusCode: string): string {
   return statusCode.toLowerCase().replace(/_/g, '-');

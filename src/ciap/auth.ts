@@ -41,7 +41,6 @@ export class Authentication {
    * @param handler The externally provided AuthenticationHandler used to
    *     interact with the GCIP/Firebase Auth instance and display sign-in or sign-out related UI.
    * @param sharedSettings The shared settings to use for caching RPC requests.
-   * @constructor
    */
   constructor(private readonly handler: AuthenticationHandler, sharedSettings?: SharedSettings) {
     // This is a developer error and should be thrown synchronously.

@@ -39,8 +39,7 @@ export class StorageManager {
 
   /**
    * Initializes a StorageManager instance.
-   * @param {Factory} factory The WebStorage factory instance.
-   * @constructor
+   * @param factory The WebStorage factory instance.
    */
   constructor(factory: Factory) {
     try {
@@ -56,9 +55,9 @@ export class StorageManager {
 
   /**
    * Gets the stored value from the corresponding storage.
-   * @param {DataStorageInfo} dataStorageInfo The key information under which the value is stored.
-   * @param {string=} id Additional optional identifier typically associated with multiple resource storage.
-   * @return {Promise<any>} A Promise that resolves with the stored value.
+   * @param dataStorageInfo The key information under which the value is stored.
+   * @param id Additional optional identifier typically associated with multiple resource storage.
+   * @return A Promise that resolves with the stored value.
    */
   public get(dataStorageInfo: DataStorageInfo, id?: string): Promise<any> {
     return this.getStorage(dataStorageInfo.type).get(this.getKeyName(dataStorageInfo, id));
@@ -66,10 +65,10 @@ export class StorageManager {
 
   /**
    * Stores the value in the corresponding storage.
-   * @param {DateStorageInfo} dataStorageInfo The key information under which the value is stored.
-   * @param {any} value The value to store.
-   * @param {string=} id Additional optional identifier typically associated with multiple resource storage.
-   * @return {Promise<void>} A Promise that resolves when the operation is completed.
+   * @param dataStorageInfo The key information under which the value is stored.
+   * @param value The value to store.
+   * @param id Additional optional identifier typically associated with multiple resource storage.
+   * @return A Promise that resolves when the operation is completed.
    */
   public set(dataStorageInfo: DataStorageInfo, value: any, id?: string): Promise<void> {
     return this.getStorage(dataStorageInfo.type).set(this.getKeyName(dataStorageInfo, id), value);
@@ -77,9 +76,9 @@ export class StorageManager {
 
   /**
    * Removes the stored value from the corresponding storage.
-   * @param {DateStorageInfo} dataStorageInfo The key information under which the value is stored.
-   * @param {string=} id Additional optional identifier typically associated with multiple resource storage.
-   * @return {Promise<void>} A Promise that resolves when the operation is completed.
+   * @param dataStorageInfo The key information under which the value is stored.
+   * @param id Additional optional identifier typically associated with multiple resource storage.
+   * @return A Promise that resolves when the operation is completed.
    */
   public remove(dataStorageInfo: DataStorageInfo, id?: string): Promise<void> {
     return this.getStorage(dataStorageInfo.type).remove(this.getKeyName(dataStorageInfo, id));
@@ -87,8 +86,8 @@ export class StorageManager {
 
   /**
    * Returns the WebStorage instance for the type provided.
-   * @param {StorageType} type The type of WebStorage.
-   * @return {WebStorage} The WebStorage instance corresponding to the StorageType provided.
+   * @param type The type of WebStorage.
+   * @return The WebStorage instance corresponding to the StorageType provided.
    */
   private getStorage(type: StorageType): WebStorage {
     switch (type) {
@@ -103,9 +102,9 @@ export class StorageManager {
 
   /**
    * Constructs the corresponding storage key name.
-   * @param {DateStorageInfo} dataStorageInfo The key information under which the value is stored.
-   * @param {string=} id Additional optional identifier typically associated with multiple resource storage.
-   * @return {string} The corresponding key name.
+   * @param dataStorageInfo The key information under which the value is stored.
+   * @param id Additional optional identifier typically associated with multiple resource storage.
+   * @return The corresponding key name.
    */
   private getKeyName(dataStorageInfo: DataStorageInfo, id?: string): string {
     const suffix = isNonEmptyString(id) ? `${SEPARATOR}${id}` : '';

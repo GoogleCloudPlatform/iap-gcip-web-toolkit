@@ -25,7 +25,6 @@ import { isSafeUrl } from '../utils/index';
  * Enum for IAP request timeout durations in milliseconds.
  * Short timeout is used for desktop browsers.
  * Long timeout is used for mobile browsers.
- * @enum {number}
  */
 enum IAP_TIMEOUT {
   Short = 30000,
@@ -50,7 +49,6 @@ const IAP_ERROR_CODE: {[key: string]: string} = {
 
 /**
  * Enum for GCIP customized error codes.
- * enum {string}
  */
 enum GCIP_ERROR_CODES {
   RestartProcess = 'RESTART_PROCESS',
@@ -163,7 +161,6 @@ export class IAPRequestHandler {
    * Initializes the IAP request handler with the provided HttpClient instance.
    *
    * @param httpClient The HTTP client used to process RPCs to IAP endpoints.
-   * @constructor
    */
   constructor(private readonly httpClient: HttpClient) {
     if (!httpClient || typeof httpClient.send !== 'function') {

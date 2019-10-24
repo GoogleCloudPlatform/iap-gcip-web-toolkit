@@ -29,9 +29,9 @@ const INNOCUOUS_STRING = 'about:invalid';
 /**
  * Defines a new read-only property directly on an object and returns the object.
  *
- * @param {object} obj The object on which to define the property.
- * @param {string} prop The name of the property to be defined or modified.
- * @param {any} value The value associated with the property.
+ * @param obj The object on which to define the property.
+ * @param prop The name of the property to be defined or modified.
+ * @param value The value associated with the property.
  */
 export function addReadonlyGetter(obj: object, prop: string, value: any): void {
   Object.defineProperty(obj, prop, {
@@ -47,8 +47,8 @@ export function addReadonlyGetter(obj: object, prop: string, value: any): void {
  * Removes entries in an object whose values are undefined and returns the same
  * object. This only removes the top-level undefined fields.
  *
- * @param {T} obj The object whose undefined fields are to be removed.
- * @return {T} The same object with undefined fields removed.
+ * @param obj The object whose undefined fields are to be removed.
+ * @return The same object with undefined fields removed.
  */
 export function removeUndefinedFields<T>(obj: T): T {
   // If obj is not a non-null object, return it back.
@@ -68,11 +68,11 @@ export function removeUndefinedFields<T>(obj: T): T {
  * with corresponding arguments {projectId: '1234', api: 'resource'}
  * and returns output: 'project/1234/resource'.
  *
- * @param {string} str The original string where the param need to be
+ * @param str The original string where the param need to be
  *     replaced.
- * @param {object=} params The optional parameters to replace in the
+ * @param params The optional parameters to replace in the
  *     string.
- * @return {string} The resulting formatted string.
+ * @return The resulting formatted string.
  */
 export function formatString(str: string, params?: object): string {
   let formatted = str;
@@ -90,10 +90,10 @@ export function formatString(str: string, params?: object): string {
  * All data values will be converted to string formats before they are sent to server and all
  * null and undefined values will be ignored.
  *
- * @param {HTMLDocument} doc The HTML document instance.
- * @param {string} url The form action URL.
- * @param {string} httpMethod The form HTTP method.
- * @param {object<string, *>} data The data to be form-urlencoded and sent along to URL.
+ * @param doc The HTML document instance.
+ * @param url The form action URL.
+ * @param httpMethod The form HTTP method.
+ * @param data The data to be form-urlencoded and sent along to URL.
  */
 export function formSubmitWithRedirect(
     doc: HTMLDocument,
@@ -124,8 +124,8 @@ export function formSubmitWithRedirect(
 /**
  * Returns the current URL if available.
  *
- * @param {Window} windowInstance The window reference.
- * @return {?string} The current URL if available.
+ * @param windowInstance The window reference.
+ * @return The current URL if available.
  */
 export function getCurrentUrl(windowInstance: Window) {
   return (windowInstance && windowInstance.location && windowInstance.location.href) || null;
@@ -134,8 +134,8 @@ export function getCurrentUrl(windowInstance: Window) {
 /**
  * Redirects the window instance to the requested URL.
  *
- * @param {Window} windowInstance The window reference.
- * @param {string} url The URL to redirect to.
+ * @param windowInstance The window reference.
+ * @param url The URL to redirect to.
  */
 export function setCurrentUrl(windowInstance: Window, url: string) {
   windowInstance.location.assign(sanitizeUrl(url));
@@ -144,9 +144,9 @@ export function setCurrentUrl(windowInstance: Window, url: string) {
 /**
  * Runs the provided callback function if defined.
  *
- * @param {function()=} cb Callback function to run if defined.
- * @param {any=} thisArg The thisArg of the callback function if available.
- * @param {any[]=} args The list of optional arguments to pass to the callback function.
+ * @param cb Callback function to run if defined.
+ * @param thisArg The thisArg of the callback function if available.
+ * @param args The list of optional arguments to pass to the callback function.
  */
 export function runIfDefined(cb?: (...args: any[]) => any, thisArg?: any, args: any[] = []): any {
   if (typeof cb === 'function') {
@@ -157,8 +157,8 @@ export function runIfDefined(cb?: (...args: any[]) => any, thisArg?: any, args: 
 /**
  * Generates a random alpha numeric string.
  *
- * @param {number} numOfChars The number of random characters within the string.
- * @return {string} A string with a specific number of random characters.
+ * @param numOfChars The number of random characters within the string.
+ * @return A string with a specific number of random characters.
  */
 export function generateRandomAlphaNumericString(numOfChars: number) {
   const chars: string[] = [];
@@ -176,9 +176,9 @@ export function generateRandomAlphaNumericString(numOfChars: number) {
 /**
  * Maps an object's value based on the provided callback function.
  *
- * @param {object<string, T>} obj The object to map.
- * @param {function(string, T): V} cb The callback function used to compute the new mapped value.
- * @return {object<string, V} The mapped new object.
+ * @param obj The object to map.
+ * @param cb The callback function used to compute the new mapped value.
+ * @return The mapped new object.
  */
 export function mapObject<T, V>(
     obj: {[key: string]: T},
@@ -193,8 +193,8 @@ export function mapObject<T, V>(
 /**
  * Returns a promise that resolves on DOM readiness.
  *
- * @param {Document} doc The document reference.
- * @return {Promise<void>} A promise that resolves when DOM is ready.
+ * @param doc The document reference.
+ * @return A promise that resolves when DOM is ready.
  */
 export function onDomReady(doc: Document): Promise<void> {
   return new Promise((resolve) => {
@@ -211,8 +211,8 @@ export function onDomReady(doc: Document): Promise<void> {
 /**
  * Sanitizes the URL provided.
  *
- * @param {string} url The unsanitized URL.
- * @return {string} The sanitized URL.
+ * @param url The unsanitized URL.
+ * @return The sanitized URL.
  */
 export function sanitizeUrl(url: string): string {
   if (!isSafeUrl(url)) {
@@ -222,8 +222,8 @@ export function sanitizeUrl(url: string): string {
 }
 
 /**
- * @param {string} url The URL to validate for safety.
- * @return {boolean} Whether the URL is safe to use.
+ * @param url The URL to validate for safety.
+ * @return Whether the URL is safe to use.
  */
 export function isSafeUrl(url: string): boolean {
   return SAFE_URL_PATTERN.test(url);

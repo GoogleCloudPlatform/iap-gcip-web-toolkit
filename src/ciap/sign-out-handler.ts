@@ -48,7 +48,6 @@ export class SignOutOperationHandler extends BaseOperationHandler {
 
   /**
    * @return The corresponding operation type.
-   * @override
    */
   public get type(): OperationType {
     return OperationType.SignOut;
@@ -59,7 +58,6 @@ export class SignOutOperationHandler extends BaseOperationHandler {
    * or all current tenants and then either redirect back or display a sign-out message.
    *
    * @return A promise that resolves when the internal operation handler processing is completed.
-   * @override
    */
   protected process(): Promise<void> {
     // Do not allow signout in a cross origin iframe.

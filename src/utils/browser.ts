@@ -16,7 +16,6 @@
 
 /**
  * Enums for Browser name.
- * @enum {string}
  */
 export enum BrowserName {
   Android = 'Android',
@@ -34,8 +33,8 @@ export enum BrowserName {
 }
 
 /**
- * @param {string} userAgent The navigator user agent string.
- * @return {string} The browser name, eg Safari, Firefox, etc.
+ * @param userAgent The navigator user agent string.
+ * @return The browser name, eg Safari, Firefox, etc.
  */
 export function getBrowserName(userAgent: string): string {
   const ua = userAgent.toLowerCase();
@@ -85,7 +84,7 @@ export function getBrowserName(userAgent: string): string {
 }
 
 /**
- * @return {string} The user agent string reported by the environment, or the
+ * @return The user agent string reported by the environment, or the
  *     empty string if not available.
  */
 function getUserAgentString(): string {
@@ -95,8 +94,8 @@ function getUserAgentString(): string {
 /**
  * Detects whether browser is running on a mobile device.
  *
- * @param {?string=} userAgent The navigator user agent.
- * @return {boolean} True if the browser is running on a mobile device.
+ * @param userAgent The navigator user agent.
+ * @return True if the browser is running on a mobile device.
  */
 export function isMobileBrowser(userAgent?: string): boolean {
   const ua = userAgent || getUserAgentString();
@@ -116,8 +115,8 @@ export function isMobileBrowser(userAgent?: string): boolean {
  * Returns the client version to be passed in x-client-version header.
  * This library is only usable from a window browser environment.
  *
- * @param {string=} The optional user agent.
- * @return {string} The full client SDK version.
+ * @param The optional user agent.
+ * @return The full client SDK version.
  */
 export function getClientVersion(userAgent?: string): string {
   return `${getBrowserName(userAgent || getUserAgentString())}/CIAP/<XXX_SDK_VERSION_XXX>`;

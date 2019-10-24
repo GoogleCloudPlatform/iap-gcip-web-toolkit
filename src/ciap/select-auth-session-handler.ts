@@ -51,7 +51,6 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
 
   /**
    * @return The corresponding operation type.
-   * @override
    */
   public get type(): OperationType {
     return OperationType.SelectAuthSession;
@@ -62,7 +61,6 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
    * UI being presented to the end user to pick a tenant from.
    *
    * @return A promise that resolves when the internal operation handler processing is completed.
-   * @override
    */
   protected process(): Promise<void> {
     let selectedTenantInfo: SelectedTenantInfo;

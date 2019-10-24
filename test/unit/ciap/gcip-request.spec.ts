@@ -37,9 +37,9 @@ const expect = chai.expect;
 /**
  * Generates a mock 200 HttpResponse with corresponding headers and data.
  *
- * @param {object} headers The headers to include in the mock HttpResponse.
- * @param (any=} response The optional raw HTTP body response.
- * @return {HttpResponse} The corresponding mock HttpResponse.
+ * @param headers The headers to include in the mock HttpResponse.
+ * @param response The optional raw HTTP body response.
+ * @return The corresponding mock HttpResponse.
  */
 function createMockHttpResponse(headers: object, response?: any): HttpResponse {
   let data: any;

@@ -28,7 +28,6 @@ export interface WebStorage {
 
 /**
  * Enum for the storage type.
- * @enum {string}
  */
 export enum StorageType {
   Local = 'LOCAL',
@@ -41,8 +40,8 @@ const STORAGE_AVAILABLE_KEY = '__sak';
 
 /**
  * Checks whether the Storage instance is available.
- * @param {Storage} storage The Storage instance to check.
- * @return {boolean} Whether the Storage instance is available.
+ * @param storage The Storage instance to check.
+ * @return Whether the Storage instance is available.
  */
 function isStorageAvailable(storage: Storage): boolean {
   try {
@@ -63,8 +62,7 @@ function isStorageAvailable(storage: Storage): boolean {
 abstract class AbstractStorage implements WebStorage {
   /**
    * Initializes an instance of WebStorage using the provided Storage instance.
-   * @param {Storage} storage The HTML5 storage instance.
-   * @constructor
+   * @param storage The HTML5 Storage instance.
    */
   constructor(protected readonly storage: Storage) {
     if (!isStorageAvailable(storage)) {
@@ -72,14 +70,14 @@ abstract class AbstractStorage implements WebStorage {
     }
   }
 
-  /** @return {StorageType} The corresponding storage type. */
+  /** @return The corresponding storage type. */
   public abstract get type(): StorageType;
 
   /**
    * Stores the value at the specified key.
-   * @param {string} key The entry key.
-   * @param {any} value The entry value.
-   * @return {Promise<void>} A promise that resolves when the operation completes.
+   * @param key The entry key.
+   * @param value The entry value.
+   * @return A promise that resolves when the operation completes.
    */
   public set(key: string, value: any): Promise<void> {
     return Promise.resolve()
@@ -90,8 +88,8 @@ abstract class AbstractStorage implements WebStorage {
 
   /**
    * Retrieves the value stored at the key.
-   * @param {string} key The key to lookup.
-   * @return {Promise<any>} A promise that resolves with the entry value.
+   * @param key The key to lookup.
+   * @return A promise that resolves with the entry value.
    */
   public get(key: string): Promise<any> {
     return Promise.resolve()
@@ -111,8 +109,8 @@ abstract class AbstractStorage implements WebStorage {
 
   /**
    * Removes the value at the specified key.
-   * @param {string} key The key of the entry to remove.
-   * @return {Promise<void>} A promise that resolves when the operation completes.
+   * @param key The key of the entry to remove.
+   * @return A promise that resolves when the operation completes.
    */
   public remove(key: string): Promise<void> {
     return Promise.resolve()
@@ -123,7 +121,7 @@ abstract class AbstractStorage implements WebStorage {
 
   /**
    * Clears all stored entries in storage.
-   * @return {Promise<void>} A promise that resolves when the operation completes.
+   * @return A promise that resolves when the operation completes.
    */
   public clear(): Promise<void> {
     this.storage.clear();
@@ -135,18 +133,14 @@ abstract class AbstractStorage implements WebStorage {
 export class LocalStorage extends AbstractStorage {
   /**
    * Initializes an instance of WebStorage using the provided localStorage instance.
-   * @param {Window} win The window instance.
-   * @constructor
-   * @extends {AbstractStorage}
-   * @implements {WebStorage}
+   * @param win The window instance.
    */
   constructor(win: Window) {
     super(win.localStorage);
   }
 
   /**
-   * @return {StorageType} The corresponding storage type.
-   * @override
+   * @return The corresponding storage type.
    */
   public get type(): StorageType {
     return StorageType.Local;
@@ -157,18 +151,14 @@ export class LocalStorage extends AbstractStorage {
 export class SessionStorage extends AbstractStorage {
   /**
    * Initializes an instance of WebStorage using the provided sessionStorage instance.
-   * @param {Window} win The window instance.
-   * @constructor
-   * @extends {AbstractStorage}
-   * @implements {WebStorage}
+   * @param win The window instance.
    */
   constructor(win: Window) {
     super(win.sessionStorage);
   }
 
   /**
-   * @return {StorageType} The corresponding storage type.
-   * @override
+   * @return The corresponding storage type.
    */
   public get type(): StorageType {
     return StorageType.Session;
@@ -181,15 +171,13 @@ export class InMemoryStorage implements WebStorage {
 
   /**
    * Initializes an instance of WebStorage with in-memory persistence.
-   * @constructor
-   * @implements {WebStorage}
    */
   constructor() {
     this.storageMap = {};
   }
 
   /**
-   * @return {StorageType} The corresponding storage type.
+   * @return The corresponding storage type.
    */
   public get type(): StorageType {
     return StorageType.None;
@@ -197,9 +185,9 @@ export class InMemoryStorage implements WebStorage {
 
   /**
    * Stores the value at the specified key.
-   * @param {string} key The entry key.
-   * @param {any} value The entry value.
-   * @return {Promise<void>} A promise that resolves when the operation completes.
+   * @param key The entry key.
+   * @param value The entry value.
+   * @return A promise that resolves when the operation completes.
    */
   public set(key: string, value: any): Promise<void> {
     this.storageMap[key] = value;
@@ -208,8 +196,8 @@ export class InMemoryStorage implements WebStorage {
 
   /**
    * Retrieves the value stored at the key.
-   * @param {string} key The key to lookup.
-   * @return {Promise<any>} A promise that resolves with the entry value.
+   * @param key The key to lookup.
+   * @return A promise that resolves with the entry value.
    */
   public get(key: string): Promise<any> {
     return Promise.resolve(this.storageMap[key]);
@@ -217,8 +205,8 @@ export class InMemoryStorage implements WebStorage {
 
   /**
    * Removes the value at the specified key.
-   * @param {string} key The key of the entry to remove.
-   * @return {Promise<void>} A promise that resolves when the operation completes.
+   * @param key The key of the entry to remove.
+   * @return A promise that resolves when the operation completes.
    */
   public remove(key: string): Promise<void> {
     delete this.storageMap[key];
@@ -227,7 +215,7 @@ export class InMemoryStorage implements WebStorage {
 
   /**
    * Clears all stored entries in storage.
-   * @return {Promise<void>} A promise that resolves when the operation completes.
+   * @return A promise that resolves when the operation completes.
    */
   public clear(): Promise<void> {
     return Promise.resolve()
@@ -241,15 +229,14 @@ export class InMemoryStorage implements WebStorage {
 export class Factory {
   /**
    * Initializes a WebStorage factory instance using the window instance provided.
-   * @param {Window} win The window instance.
-   * @constructor
+   * @param win The window instance.
    */
   constructor(private readonly win: Window) {}
 
   /**
    * Generates a WebStorage instance using the storage type provided.
-   * @param {StorageType} type The type of storage to use.
-   * @return {WebStorage} The WebStorage corresponding to the StorageType provided.
+   * @param type The type of storage to use.
+   * @return The WebStorage corresponding to the StorageType provided.
    */
   public makeStorage(type: StorageType): WebStorage {
     switch (type) {

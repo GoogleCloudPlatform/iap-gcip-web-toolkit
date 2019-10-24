@@ -52,7 +52,6 @@ export class SignInOperationHandler extends BaseOperationHandler {
 
   /**
    * @return The corresponding operation type.
-   * @override
    */
   public get type(): OperationType {
     return OperationType.SignIn;
@@ -64,7 +63,6 @@ export class SignInOperationHandler extends BaseOperationHandler {
    * re-authentication.
    *
    * @return A promise that resolves when the internal operation handler processing is completed.
-   * @override
    */
   protected process(): Promise<void> {
     // This will validate URLs and initialize auth tenant storage manager.

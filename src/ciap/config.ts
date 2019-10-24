@@ -23,7 +23,6 @@ const SELECTED_TENANT_INFO_REGEXP = /#hint=([^;]*);(.*)$/;
 
 /**
  * Enum for the configuration mode.
- * @enum {string}
  */
 export enum ConfigMode {
   Login = 'login',
@@ -52,7 +51,6 @@ export class Config {
    *
    * @param url The configuration URL.
    * @param historyState The optional current history.state.
-   * @constructor
    */
   constructor(url: string, historyState?: any) {
     this.parsedUrl = new URL(url);

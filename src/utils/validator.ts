@@ -20,8 +20,8 @@ const IP_ADDRESS_REGEXP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
 /**
  * Validates that a value is an array.
  *
- * @param {any} value The value to validate.
- * @return {boolean} Whether the value is an array or not.
+ * @param value The value to validate.
+ * @return Whether the value is an array or not.
  */
 export function isArray(value: any): boolean {
   return Array.isArray(value);
@@ -30,8 +30,8 @@ export function isArray(value: any): boolean {
 /**
  * Validates that a value is a non-empty array.
  *
- * @param {any} value The value to validate.
- * @return {boolean} Whether the value is a non-empty array or not.
+ * @param value The value to validate.
+ * @return Whether the value is a non-empty array or not.
  */
 export function isNonEmptyArray(value: any): boolean {
   return isArray(value) && value.length !== 0;
@@ -40,8 +40,8 @@ export function isNonEmptyArray(value: any): boolean {
 /**
  * Validates that a value is a boolean.
  *
- * @param {any} value The value to validate.
- * @return {boolean} Whether the value is a boolean or not.
+ * @param value The value to validate.
+ * @return Whether the value is a boolean or not.
  */
 export function isBoolean(value: any): boolean {
   return typeof value === 'boolean';
@@ -50,8 +50,8 @@ export function isBoolean(value: any): boolean {
 /**
  * Validates that a value is a number.
  *
- * @param {any} value The value to validate.
- * @return {boolean} Whether the value is a number or not.
+ * @param value The value to validate.
+ * @return Whether the value is a number or not.
  */
 export function isNumber(value: any): boolean {
   return typeof value === 'number' && !isNaN(value);
@@ -60,8 +60,8 @@ export function isNumber(value: any): boolean {
 /**
  * Validates that a value is a string.
  *
- * @param {any} value The value to validate.
- * @return {boolean} Whether the value is a string or not.
+ * @param value The value to validate.
+ * @return Whether the value is a string or not.
  */
 export function isString(value: any): value is string {
   return typeof value === 'string';
@@ -70,8 +70,8 @@ export function isString(value: any): value is string {
 /**
  * Validates that a value is a non-empty string.
  *
- * @param {any} value The value to validate.
- * @return {boolean} Whether the value is a non-empty string or not.
+ * @param value The value to validate.
+ * @return Whether the value is a non-empty string or not.
  */
 export function isNonEmptyString(value: any): value is string {
   return isString(value) && value !== '';
@@ -80,8 +80,8 @@ export function isNonEmptyString(value: any): value is string {
 /**
  * Validates that a value is a nullable object.
  *
- * @param {any} value The value to validate.
- * @return {boolean} Whether the value is an object or not.
+ * @param value The value to validate.
+ * @return Whether the value is an object or not.
  */
 export function isObject(value: any): boolean {
   return typeof value === 'object' && !isArray(value);
@@ -90,8 +90,8 @@ export function isObject(value: any): boolean {
 /**
  * Validates that a value is a non-null object.
  *
- * @param {any} value The value to validate.
- * @return {boolean} Whether the value is a non-null object or not.
+ * @param value The value to validate.
+ * @return Whether the value is a non-null object or not.
  */
 export function isNonNullObject(value: any): boolean {
   return isObject(value) && value !== null;
@@ -107,9 +107,9 @@ export function isNonNullObject(value: any): boolean {
  * must be an exact match domain == 'abcdefghijklmnopqrstuvwxyz123456'.
  * For GCIP/IAP purposes, only http and https domains (traditional browser application) will be accepted.
  *
- * @param {Array<string>} authorizedDomains List of authorized domains.
- * @param {string} url The URL to check.
- * @return {boolean} Whether the passed domain is an authorized one.
+ * @param authorizedDomains List of authorized domains.
+ * @param url The URL to check.
+ * @return Whether the passed domain is an authorized one.
  */
 export function isAuthorizedDomain(authorizedDomains: string[], url: string): boolean {
   const uri = new URL(url);
@@ -125,11 +125,11 @@ export function isAuthorizedDomain(authorizedDomains: string[], url: string): bo
 }
 
 /**
- * @param {string} domainPattern The domain pattern to match.
- * @param {string} domain The domain to check. It is assumed that it is a valid
+ * @param domainPattern The domain pattern to match.
+ * @param domain The domain to check. It is assumed that it is a valid
  *     domain, not a user provided one.
- * @param {string} scheme The scheme of the domain to check.
- * @return {boolean} Whether the provided domain matches the domain pattern.
+ * @param scheme The scheme of the domain to check.
+ * @return Whether the provided domain matches the domain pattern.
  */
 function matchDomain(domainPattern: string, domain: string, scheme: string): boolean {
   if (scheme !== 'http:' && scheme !== 'https:') {
@@ -156,8 +156,8 @@ function matchDomain(domainPattern: string, domain: string, scheme: string): boo
 /**
  * Validates that a string is a valid web URL.
  *
- * @param {any} urlStr The string to validate.
- * @return {boolean} Whether the string is valid web URL or not.
+ * @param urlStr The string to validate.
+ * @return Whether the string is valid web URL or not.
  */
 export function isURL(urlStr: any): boolean {
   if (typeof urlStr !== 'string') {
@@ -200,8 +200,8 @@ export function isURL(urlStr: any): boolean {
 /**
  * Validates that a string is a valid HTTPS URL.
  *
- * @param {any} urlStr The string to validate.
- * @return {boolean} Whether the string is valid HTTPS URL or not.
+ * @param urlStr The string to validate.
+ * @return Whether the string is valid HTTPS URL or not.
  */
 export function isHttpsURL(urlStr: any): boolean {
   return isURL(urlStr) && new URL(urlStr).protocol === 'https:';
@@ -212,8 +212,8 @@ export function isHttpsURL(urlStr: any): boolean {
  * This is needed to facilitate testing. As localhost is always served locally, there is no
  * risk of man in the middle attack.
  *
- * @param {any} urlStr The string to validate.
- * @return {boolean} Whether the string is localhost/valid HTTPS URL or not.
+ * @param urlStr The string to validate.
+ * @return Whether the string is localhost/valid HTTPS URL or not.
  */
 export function isLocalhostOrHttpsURL(urlStr: any): boolean {
   if (isURL(urlStr)) {

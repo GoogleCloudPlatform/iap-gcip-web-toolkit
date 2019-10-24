@@ -31,9 +31,8 @@ export class AuthTenantsStorageManager {
   /**
    * Initializes a storage manager for storing and manipulating a list of authenticated tenants.
    *
-   * @param {StorageManager} storageManager The storage manager to use to access localStorage.
-   * @param {string} appId The storage key identifier.
-   * @constructor
+   * @param storageManager The storage manager to use to access localStorage.
+   * @param appId The storage key identifier.
    */
   constructor(private readonly storageManager: StorageManager, public readonly appId: string) {
     this.queue = this.storageManager.get(AUTH_TENANTS_DATA_STORAGE_INFO, this.appId)
@@ -42,7 +41,7 @@ export class AuthTenantsStorageManager {
       });
   }
 
-  /** @return {Promise<Array<string>} A promise that resolves with the list of stored tenant IDs. */
+  /** @return A promise that resolves with the list of stored tenant IDs. */
   public listTenants(): Promise<string[]> {
     // Wait for queue to be ready before returning results.
     return this.addToQueue(() => Promise.resolve(this.tenantList.concat()));
@@ -51,8 +50,8 @@ export class AuthTenantsStorageManager {
   /**
    * Removes a tenant ID from the list of stored authenticated tenants.
    *
-   * @param {string} tenantId The tenant to remove.
-   * @return {Promise<void>} A promise that resolves on successful removal.
+   * @param tenantId The tenant to remove.
+   * @return A promise that resolves on successful removal.
    */
   public removeTenant(tenantId: string): Promise<void> {
     return this.addToQueue(() => {
@@ -66,8 +65,8 @@ export class AuthTenantsStorageManager {
   /**
    * Adds a tenant ID to the list of stored authenticated tenants.
    *
-   * @param {string} tenantId The tenant to add.
-   * @return {Promise<void>} A promise that resolves on successful addition.
+   * @param tenantId The tenant to add.
+   * @return A promise that resolves on successful addition.
    */
   public addTenant(tenantId: string): Promise<void> {
     return this.addToQueue(() => {
@@ -82,7 +81,7 @@ export class AuthTenantsStorageManager {
   /**
    * Clears list of stored authenticated tenants.
    *
-   * @return {Promise<void>} A promise that resolves on successful clearing of all authenticated tenants.
+   * @return A promise that resolves on successful clearing of all authenticated tenants.
    */
   public clearTenants(): Promise<void> {
     return this.addToQueue(() => {
@@ -94,7 +93,7 @@ export class AuthTenantsStorageManager {
     });
   }
 
-  /** @return {Promise<void>} A promise that resolves when current state is saved to storage. */
+  /** @return A promise that resolves when current state is saved to storage. */
   private save(): Promise<void> {
     if (this.tenantList.length) {
       return this.storageManager.set(AUTH_TENANTS_DATA_STORAGE_INFO, this.tenantList, this.appId);
@@ -108,8 +107,8 @@ export class AuthTenantsStorageManager {
    * Adds a callback function to a queue which will trigger when the queue is ready and
    * returns a promise that resolves when the callback promise resolves.
    *
-   * @param {function(): Promise<any>} promiseCallback A callback that returns a promise.
-   * @return {Promise<any>} A promise that resolves after the queue is cleared and the callback function resolves.
+   * @param promiseCallback A callback that returns a promise.
+   * @return A promise that resolves after the queue is cleared and the callback function resolves.
    */
   private addToQueue(promiseCallback: () => Promise<any>): Promise<any> {
     const promise = this.queue.then(promiseCallback);

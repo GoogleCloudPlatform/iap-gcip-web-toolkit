@@ -56,8 +56,8 @@ export interface AuthenticationHandler {
 /**
  * Checks whether the supplied handler complies with the AuthenticationHandler interface.
  *
- * @param {any} handler The handler to confirm.
- * @return {boolean} Whether the handler complies with the AuthenticationHandler interface.
+ * @param handler The handler to confirm.
+ * @return Whether the handler complies with the AuthenticationHandler interface.
  */
 export function isAuthenticationHandler(handler: any): handler is AuthenticationHandler {
   if (isNonNullObject(handler) &&

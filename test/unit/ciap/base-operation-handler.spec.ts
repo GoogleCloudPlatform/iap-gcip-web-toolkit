@@ -42,9 +42,8 @@ import { SharedSettings } from '../../../src/ciap/shared-settings';
  */
 class ConcreteOperationHandler extends BaseOperationHandler {
    /**
-    * @param {Config} config The current operation configuration.
-    * @param {AuthenticationHandler} handler The Authentication handler instance.
-    * @constructor
+    * @param config The current operation configuration.
+    * @param handler The Authentication handler instance.
     */
   constructor(
       config: Config,
@@ -55,16 +54,14 @@ class ConcreteOperationHandler extends BaseOperationHandler {
   }
 
   /**
-   * @return {OperationType} The corresponding operation type.
-   * @override
+   * @return The corresponding operation type.
    */
   public get type(): OperationType {
     return OperationType.SignIn;
   }
 
   /**
-   * @return {Promise<void>} A promise that resolves when the operation handler is initialized.
-   * @override
+   * @return A promise that resolves when the operation handler is initialized.
    */
   public process(): Promise<void> {
     return this.processor();
@@ -73,8 +70,8 @@ class ConcreteOperationHandler extends BaseOperationHandler {
   /**
    * Runs all tests to assert expected behavior.
    *
-   * @param {FirebaseAuth} auth The FirebaseAuth instance to assert.
-   * @param {Config} config The operation configuration to assert.
+   * @param auth The FirebaseAuth instance to assert.
+   * @param config The operation configuration to assert.
    */
   public runTests(auth: FirebaseAuth, config: Config): void {
     expect(this.gcipRequest).to.be.instanceOf(GCIPRequestHandler);
@@ -117,9 +114,8 @@ class ConcreteOperationHandler extends BaseOperationHandler {
 
   /**
    * Runs all Auth tenants storage related tests.
-   * @param {authTenantsStorage.AuthTenantsStorageManager} authTenantsStorageManager The expected
-   *     authTenantsStorageManager to compare with.
-   * @return {Promise<any>} A promise that resolves on test completion.
+   * @param authTenantsStorageManager The expected authTenantsStorageManager to compare with.
+   * @return A promise that resolves on test completion.
    */
   public runAuthTenantsStorageTests(
       authTenantsStorageManager: authTenantsStorage.AuthTenantsStorageManager): Promise<any> {

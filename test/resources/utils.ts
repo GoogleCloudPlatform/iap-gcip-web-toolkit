@@ -28,13 +28,13 @@ import { StorageManager } from '../../src/storage/manager';
  /**
   * Creates the mock URL for testing configuration URLs.
   *
-  * @param {string|undefined} mode The optional operation mode.
-  * @param {string|undefined} apiKey The optional API key.
-  * @param {string|undefined} tid The optional tenant ID.
-  * @param {string|undefined} redirectUri The optional redirect URL.
-  * @param {string|undefined} state The optional state.
-  * @param {string|undefined} hl The optional language code.
-  * @return {string} A mock configuration URL built with requested parameters.
+  * @param mode The optional operation mode.
+  * @param apiKey The optional API key.
+  * @param tid The optional tenant ID.
+  * @param redirectUri The optional redirect URL.
+  * @param state The optional state.
+  * @param hl The optional language code.
+  * @return A mock configuration URL built with requested parameters.
   */
 export function createMockUrl(
     mode: string, apiKey?: string, tid?: string, redirectUri?: string,
@@ -57,9 +57,8 @@ export class MockStorage {
   private map: {[key: string]: string};
   /**
    * Initializes a mock Storage instance.
-   * @param {boolean=} isAvailable Whether storage is available. Throws an error on access if not.
-   * @param {boolean=} noop Whether storage operations are no-ops.
-   * @constructor
+   * @param isAvailable Whether storage is available. Throws an error on access if not.
+   * @param noop Whether storage operations are no-ops.
    */
   constructor(private readonly isAvailable: boolean = true, private readonly noop: boolean = false) {
     this.map = {};
@@ -67,8 +66,8 @@ export class MockStorage {
 
   /**
    * Returns the value corresponding to the key provided.
-   * @param {string} key The key whose value is to be returned.
-   * @return {string} The value corresponding to the key.
+   * @param key The key whose value is to be returned.
+   * @return The value corresponding to the key.
    */
   public getItem(key: string): string {
     this.checkIsAvailable();
@@ -77,8 +76,8 @@ export class MockStorage {
 
   /**
    * Saves the key/value pair in storage.
-   * @param {string} key The key of the entry to save.
-   * @param {string} value The value corresponding to the entry.
+   * @param key The key of the entry to save.
+   * @param value The value corresponding to the entry.
    */
   public setItem(key: string, value: string) {
     this.checkIsAvailable();
@@ -90,7 +89,7 @@ export class MockStorage {
 
   /**
    * Removes the item associated with the provided key.
-   * @param {string} key The key whose entry is to be removed.
+   * @param key The key whose entry is to be removed.
    */
   public removeItem(key: string) {
     this.checkIsAvailable();
@@ -103,15 +102,15 @@ export class MockStorage {
     this.map = {};
   }
 
-  /** @return {number} The number of entries currently stored. */
+  /** @return The number of entries currently stored. */
   public get length() {
     return Object.keys(this.map).length;
   }
 
   /**
    * Returns the value associated with the entry index.
-   * @param {number} index The index of the entry whose value is to be returned.
-   * @return {string} The value corresponding to the entry identified by the index.
+   * @param index The index of the entry whose value is to be returned.
+   * @return The value corresponding to the entry identified by the index.
    */
   public key(index: number): string {
     this.checkIsAvailable();
@@ -119,7 +118,7 @@ export class MockStorage {
   }
 
   /**
-   * @return {Array<string>} The list of keys of the entries stored.
+   * @return The list of keys of the entries stored.
    */
   public get keys() {
     return Object.keys(this.map);
@@ -153,9 +152,8 @@ export class MockAuth implements FirebaseAuth {
   /**
    * Initializes the mock Auth instance.
    *
-   * @param {string} apiKey The Auth instance API key.
-   * @param {string=} tenantId The optional tenant ID.
-   * @constructor
+   * @param apiKey The Auth instance API key.
+   * @param tenantId The optional tenant ID.
    */
   constructor(private readonly apiKey: string, public tenantId?: string) {
     this.listeners = [];
@@ -163,7 +161,7 @@ export class MockAuth implements FirebaseAuth {
   }
 
   /**
-   * @return {User|null} The current user instance.
+   * @return The current user instance.
    */
   public get currentUser(): User | null {
     return this.user || null;
@@ -172,7 +170,7 @@ export class MockAuth implements FirebaseAuth {
   /**
    * Subscribes a listener to user state changes on the current Auth instance.
    *
-   * @param {function(User)} cb The listener to trigger on user state change.
+   * @param cb The listener to trigger on user state change.
    */
   public onAuthStateChanged(cb: ((user: User) => void)): Unsubscribe {
     this.listeners.push(cb);
@@ -193,7 +191,7 @@ export class MockAuth implements FirebaseAuth {
   /**
    * Simulates a mock user signing in. This will trigger any existing Auth state listeners.
    *
-   * @param {MockUser} mockUser The mock user signing in.
+   * @param mockUser The mock user signing in.
    */
   public setCurrentMockUser(mockUser: MockUser) {
     // Set Auth instance on the user. This makes it easy for an expired or disabled user to
@@ -210,7 +208,7 @@ export class MockAuth implements FirebaseAuth {
   /**
    * Signs out the current user. This will trigger any existing Auth state listeners.
    *
-   * @return {Promise<void>} A promise that resolves on user sign out.
+   * @return A promise that resolves on user sign out.
    */
   public signOut(): Promise<void> {
     if (this.user !== null) {
@@ -233,10 +231,9 @@ export class MockUser {
   /**
    * Initializes the mock user.
    *
-   * @param {string} uid The mock user's uid.
-   * @param {string} idToken The mock user's ID token.
-   * @param {?string=} tenantId The optional mock user's tenant ID.
-   * @constructor
+   * @param uid The mock user's uid.
+   * @param idToken The mock user's ID token.
+   * @param tenantId The optional mock user's tenant ID.
    */
   constructor(
       public readonly uid: string,
@@ -250,14 +247,14 @@ export class MockUser {
   /**
    * Updates the user's current ID token.
    *
-   * @param {string} newIdToken The new ID token to return on getIdToken().
+   * @param newIdToken The new ID token to return on getIdToken().
    */
   public updateIdToken(newIdToken: string) {
     this.idToken = newIdToken;
   }
 
   /**
-   * @return {Promise<string>} A promise that resolves with the ID token
+   * @return A promise that resolves with the ID token
    */
   public getIdToken(): Promise<string> {
     const error = new Error('message');
@@ -307,7 +304,6 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
    * @param onStartSignIn The optional callback to run when startSignIn is triggered.
    * @param selectedTenantInfo The optional SelectedTenantInfo to return on selectProvider call. If
    *     not provided, the first option in the list of tenant IDs is returned.
-   * @constructor
    */
   constructor(
       private readonly tenant2Auth: {[key: string]: FirebaseAuth},
@@ -319,10 +315,10 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
   /**
    * Returns the FirebaseAuth instance corresponding to the requested API key and tenant ID.
    *
-   * @param {string} apiKey The API key whose FirebaseAuth instance is to be returned.
-   * @param {?string} tenantId the tenant identifier whose FirebaseAuth instance is to be
+   * @param apiKey The API key whose FirebaseAuth instance is to be returned.
+   * @param tenantId the tenant identifier whose FirebaseAuth instance is to be
    *     returned.
-   * @return {FirebaseAuth|null} The Auth instance for the corresponding tenant.
+   * @return The Auth instance for the corresponding tenant.
    */
   public getAuth(apiKey: string, tenantId: string | null): FirebaseAuth | null {
     // Simulate agent configuration identifier by underscore key.
@@ -333,8 +329,8 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
    * Starts sign in with the corresponding Auth instance. Developer is expected to show
    * the corresponding sign in options based on auth.tenantId.
    *
-   * @param {FirebaseAuth} auth The Auth instance to sign in with.
-   * @return {Promise<UserCredential>} A promise that resolves with the UserCredential on sign-in success.
+   * @param auth The Auth instance to sign in with.
+   * @return A promise that resolves with the UserCredential on sign-in success.
    */
   public startSignIn(auth: FirebaseAuth): Promise<UserCredential> {
     return new Promise((resolve, reject) => {
@@ -349,7 +345,7 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
     });
   }
 
-  /** @return {Promise<void>} A promise that resolves on developer sign out completion handling. */
+  /** @return A promise that resolves on developer sign out completion handling. */
   public completeSignOut(): Promise<void> {
     return Promise.resolve();
   }
@@ -367,7 +363,7 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
   /**
    * Handler for any error thrown by Authentication object.
    *
-   * @param {Error} error The error thrown and passed to handler.
+   * @param error The error thrown and passed to handler.
    */
   public handleError(error: Error): void {
     this.lastHandledError = error;
@@ -376,8 +372,8 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
   /**
    * Applies additional processing to the signed in user if necessary.
    *
-   * @param {User} user The signed in user that may need additional processing.
-   * @return {Promise<User>} A promise that resolves with the processed user.
+   * @param user The signed in user that may need additional processing.
+   * @return A promise that resolves with the processed user.
    */
   public processUser(user: User): Promise<User> {
     (user as MockUser).processed = true;
@@ -400,12 +396,12 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
     });
   }
 
-  /** @return {boolean} Whether the progress bar is visible or not. */
+  /** @return Whether the progress bar is visible or not. */
   public isProgressBarVisible(): boolean {
     return this.progressBarVisible;
   }
 
-  /** @return {?Error} The last handled error if available. */
+  /** @return The last handled error if available. */
   public getLastHandledError(): Error | null {
     return this.lastHandledError || null;
   }
@@ -414,10 +410,10 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
 /**
  * Generates a mock user with the provided properties.
  *
- * @param {string} uid The mock user uid.
- * @param {string} idToken The ID token for the mock user.
- * @param {?string=} tenantId The optional tenant ID for the mock user.
- * @return {User} A mock user instance with the corresponding properties.
+ * @param uid The mock user uid.
+ * @param idToken The ID token for the mock user.
+ * @param tenantId The optional tenant ID for the mock user.
+ * @return A mock user instance with the corresponding properties.
  */
 export function createMockUser(
     uid: string, idToken: string, tenantId?: string | null): MockUser {
@@ -425,9 +421,9 @@ export function createMockUser(
 }
 
 /**
- * @param {string} apiKey The FirebaseAuth instance's API key.
- * @param {string=} tenantId The optional tenant ID to set on the FirebaseAuth instance.
- * @return {FirebaseAuth} A mock FirebaseAuth instance.
+ * @param apiKey The FirebaseAuth instance's API key.
+ * @param tenantId The optional tenant ID to set on the FirebaseAuth instance.
+ * @return A mock FirebaseAuth instance.
  */
 export function createMockAuth(apiKey: string, tenantId?: string): MockAuth {
   return new MockAuth(apiKey, tenantId);
@@ -452,12 +448,12 @@ export function createMockAuthenticationHandler(
 /**
  * Creates a mock LowLevelError using the parameters provided.
  *
- * @param {string} message The error message.
- * @param {number} status The HTTP error code.
- * @param {object|string=} response The low level response.
- * @param {HttpRequestConfig=} config The original HTTP request configuration.
- * @param {Request=} request The original Request object.
- * @return {LowLevelError} The corresponding mock LowLevelError.
+ * @param message The error message.
+ * @param status The HTTP error code.
+ * @param response The low level response.
+ * @param config The original HTTP request configuration.
+ * @param request The original Request object.
+ * @return The corresponding mock LowLevelError.
  */
 export function createMockLowLevelError(
     message: string, status: number, response?: {data: string | object},
@@ -470,7 +466,7 @@ export function createMockLowLevelError(
   return error as LowLevelError;
 }
 
-/** @return {StorageManager} A StorageManager instance with mock localStorage/sessionStorage. */
+/** @return A StorageManager instance with mock localStorage/sessionStorage. */
 export function createMockStorageManager() {
   const mockWin = {
     localStorage: new MockStorage(),
