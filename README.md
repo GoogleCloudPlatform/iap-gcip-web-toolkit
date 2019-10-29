@@ -1,226 +1,268 @@
 # gcip-iap-js for GCIP/IAP integration
 
-This library implements the protocol used to integrate GCIP (Google Cloud's
-Identity Platform) for third party authentication with IAP (Identity Aware
-Proxy).
-The developer will have to host a sign-in UI (or just use FirebaseUI) so
+[Cloud Identity-Aware Proxy (Cloud IAP)](https://cloud.google.com/iap/)
+controls access to your cloud applications and VMs running on Google Cloud Platform (GCP).
+Cloud IAP verifies user identity and the context of the request to determine if a user
+should be allowed to access an application or a VM.
+
+[Google Cloud's Identity Platform (GCIP)]((https://cloud.google.com/identity-platform/))
+aims to provide Developers with Google-grade Authentication and Security for their
+applications, services, APIs, or anything else that requires identity and authentication.
+
+Integrating IAP with GCIP allows the end users to do authentication using any
+identity and identity provider that GCIP supports. This means that developers
+will be able to use IdPs that are supported by GCIP (SAML, OIDC, social etc)
+to authenticate users.
+
+`gcip-iap-js` implements the protocol used to integrate
+GCIP (Google Cloud's Identity Platform) for authenticating external identities
+with IAP (Identity Aware Proxy).
+Developers will have to host a sign-in UI (or just use
+[FirebaseUI](https://github.com/firebase/firebaseui-web)) so
 traffic can be routed to from IAP when a user tries to access a specific IAP
 resource without being authenticated.
 
-This repo is under construction and subject to change.
-
-Refer to the
-[GCIP/IAP design doc](https://docs.google.com/document/d/1Jc8pgZd9Yr_Rg3yRQTiFz8Ole8MfD8Ut8_F8yUr3Alo/)
-for more details.
-
-This implementation will go through multiple phases:
-Phase 1:
-- One IAP resource maps to one GCIP tenant.
-- One IAP resource maps to one GCIP project.
-
-Phase 2:
-- One IAP resource maps to multiple GCIP tenants.
-
-More details will be needed for phase 2 to determine how a user will be routed
-to the appropriate tenant when trying to access a specific resource with
-multiple tenants.
+This repository contains the quick-start samples demonstrating how to integrate
+a GCIP authentication UI with a GAE application gated with Cloud IAP.
+Sample authentication UI pages are provided using Angular and ReactJS frameworks.
 
 ## Table of Contents
 
-1. [Developer Setup](#developer-setup)
-1. [Contributing](#contributing)
-1. [Alpha Package](#alpha-package)
 1. [Usage instructions](#usage-instructions)
-
-## Developer Setup
-
-To set up a development environment to build the sample from source, you must
-have the following installed:
-- Node.js (>= 8.0.0)
-- npm (should be included with Node.js)
-
-```bash
-git clone sso://team/cicp-eng/cicp-iap-js
-cd cicp-iap-js
-npm install
-```
-Note you need to be a member of mdb/cicp-eng in order to contribute to this repo.
-
-## Contributing
-
-If you want to submit CLs to the repo through gerrit, you will want to clone the
-repo with the 'commit message hook' installed:
-
-```bash
-git clone sso://team/cicp-eng/cicp-iap-js && (cd cicp-iap-js && f=`git rev-parse --git-dir`/hooks/commit-msg ; curl -Lo $f https://gerrit-review.googlesource.com/tools/hooks/commit-msg ; chmod +x $f)
-```
-
-To begin code review:
-```bash
-# If this is the first commit of the CL, do:
-git commit -am "Commit message"
-
-# If you are responding to comments, do:
-git commit --amend
-
-# To upload the changes to gerrit:
-git push origin HEAD:refs/for/master
-```
-
-To build the binary, run:
-```bash
-npm run build
-```
-
-This will generate an IIFE browser build (`index.iife.js`), a commonJS
-build (`index.cjs.js`) and an ES6 module browser build (`index.esm.js`)
-via `rollup` under `dist/`. The IIFE version can eventually be deployed via CDN
-for developers who want to consume it this way.
-
-### Unit tests:
-Unit tests: `npm run test:unit`
-Lint and unit tests: `npm test`
-
-Browsers tests are run using karma with `HeadlessChrome`. Additional browsers
-will be added along with future integration with saucelab.
-
-Code coverage is generated with above tests in a summary form and displayed
-in the terminal window at the conclusion of the test.
-Detailed coverage is generated in HTML form accessible from the `/coverage`
-generated folder.
-
-The library is expected to run in browsers only. It will also depend on `URL`,
-`fetch` and `Promise` APIs which are not available in all browsers.
-Developers who want to support these browsers are expected to provide
-polyfills for them as peer dependencies.
-
-### E2E tests
-This will require the following:
-- 2 GCIP projects should be enabled.
-  - Email/password provider enabled on one.
-  - A tenant should be created for the other and email/password enabled on it.
-- Both projects should also have Firebase Hosting and Cloud Resource Manager APIs
-  enabled.
-- The projects have to be manually whitelisted / configured for IAP usage
-  - One project should have a default GAE app configured with project-level IdPs.
-  - Another project should have a default GAE app configured with a single
-    tenant-level IdPs.
-- The service account JSON files need to be provided for both projects in:
-  - For the project-level IdPs project: `test/resources/key.json`.
-  - For the single tenant-level IdPs project: `test/resources/key_single_tenant.json`.
-- The associated sample GAE apps deployed for both projects.
-  This is the one in `sample/app`.
-- Chrome browser installed.
-
-To run E2E tests:
-```bash
-npm run test:e2e
-```
-
-The test is quite fast and normally takes up to a minute to complete.
-There is no mechanism to enforce running the test at the moment but we
-require running it before any change.
-
-It is currently automatically run before new alpha tarballs are generated.
-
-## Alpha Package
-
-Every time changes are made to the sample app or ciap library, the alpha
-package has to be regenerated. However, before that, ensure that the patch or
-minor version of the package version (package.json) is updated.
-
-Before building the package, make sure no sensitive information is leaked in
-the sample folders.
-
-Regenerate the alpha package by running:
-```bash
-npm run build-alpha
-```
-
-This will generate the file `dist/gcip-iap-x.y.z.tar.gz` file. This will then
-need to be uploaded to the shared folder:
-`https://drive.google.com/drive/folders/14LFq6NbbRhxbKUWv5dhJZ7yGp3_kZzb3?usp=sharing`
-Note that sample app READMEs will not be copied to the alpha directory.
-Instructions for using the sample apps are provided in the user guide.
-
-To clean up all intermediate files afterwards, run:
-```bash
-npm run clean
-```
-
-Note that the e2e tests will be run before the latest alpha package is generated.
-It is required that these tests pass before the alpha package is generated.
+1. [Sample app](#sample-app)
+1. [Developer Setup](#developer-setup)
 
 ## Usage Instructions
 
-End to end testing is still not possible as there is no mechamism yet to
-configure the resource to tenant mapping on the IAP side and the IAP
-endpoints have not been created yet.
+In order to use external identities with IAP, an authentication page needs
+to be hosted to handle authentication, tenant selection, token refreshes,
+sign-out and all authentication related operations.
+This page can be hosted anywhere and the same page can be shared for multiple
+IAP resources or ever GCP projects.
 
-When the above is ready, a project with GCIP and IAP will need to be
-configured. A mapping defining the IAP resource to GCIP tenant and the
-corresponding URL where the sign-in UI will be hosted have to be provided via
-the Cloud Console UI.
+The `gcip-iap-js` module is provided to abstract the underlying communication
+between GCIP and IAP on that authentication page. This will expose callbacks
+for UI and authentication related logic.
+You will be able to build your own authentication UI on top of this via
+these callbacks using the GCIP JS library. You can also use the pre-built
+[FirebaseUI](https://github.com/firebase/firebaseui-web)
+library as your authentication UI.
 
-The library can then be used on the sign-in page.
-This can be illustrated as shown, using FirebaseUI.
+This will allow you to use all GCIP supported external providers such as:
+- Email/password
+- OAuth based (Google, Facebook, Twitter, GitHub, Microsoft, etc.)
+- SAML based identity providers
+- OIDC based identity providers
+- Phone number authentication (not supported for multi-tenancy)
+- Custom authentication (not supported for multi-tenancy)
+- Anonymous sign-in (not supported for multi-tenancy)
+
+Learn more on how to
+[build your own authentication UI](### Build your own Authentication UI) or
+[use the pre-built FirebaseUI](### Use pre-built UI with FirebaseUI).
+
+### Build your own Authentication UI
+
+The `gcip-iap-js` library defines an interface that can be implemented to
+handle UI customizations for various scenarios dealing with sign-in and
+sign-out flows:
+
+```typescript
+class Authentication {
+  constructor(handler: AuthenticationHandler);
+  start(): void;
+  getOriginalURL(): Promise<string | null>;
+}
+
+interface SelectedTenantInfo {
+  email?: string;
+  tenantId: string | null;
+  providerIds?: string[];
+}
+
+interface ProjectConfig {
+  projectId: string;
+  apiKey: string;
+}
+
+interface AuthenticationHandler {
+  languageCode?: string | null;
+  getAuth(apiKey: string, tenantId: string | null): FirebaseAuth;
+  startSignIn(auth: FirebaseAuth, match?: SelectedTenantInfo): Promise<UserCredential>;
+  selectProvider(projectConfig: ProjectConfig, tenantIds: string[]): Promise<SelectedTenantInfo>;
+  completeSignOut(): Promise<void>;
+  processUser?(user: User): Promise<User>;
+  showProgressBar?(): void;
+  hideProgressBar?(): void;
+  handleError?(error: Error | CIAPError): void;
+}
+```
+
+When building your own custom authentication UI, you will need to implement
+the AuthenticationHandler interface, and pass an instance of that to
+Authentication constructor:
 
 ```javascript
-// Import Firebase dependencies.
-import firebase from '@firebase/app';
-import '@firebase/auth';
+import * as ciap from 'gcip-iap-js';
+// Implement interface AuthenticationHandler.
+// const authHandlerImplementation = ....
+const ciapInstance = new ciap.Authentication(authHandlerImplementation);
+ciapInstance.start();
+```
 
-// Import FirebaseUI dependencies.
-// firebaseui.auth.FirebaseUiHandler is required to be implemented.
+### Use pre-built UI with FirebaseUI
+
+If you do not want to build your own authentication page. An implementation of the
+above AuthenticationHandler is provided via
+[FirebaseUI](https://github.com/firebase/firebaseui-web).
+
+The pre-built UI can be configured for the following use cases:
+- One tenant configured per IAP resource
+- Project level non-tenant per IAP resource.
+- Multiple tenants per IAP resource
+- One sign-in page hosted for multiple IAP resources.
+
+```javascript
+// Import GCIP/Firebase and FirebaseUI dependencies.
+// These are installed with npm install.
+import * as firebase from 'firebase/app';
+import 'firebase/auth';
 import * as firebaseui from 'firebaseui';
 
 // Import GCIP/IAP module (using local build).
-import * as ciap from './dist/index.esm.js';
+import * as ciap from 'gcip-iap-js';
 
 // The project configuration.
 const configs = {
+  // Configuration for project identified by API key API_KEY1.
   API_KEY1: {
     authDomain: 'project-id1.firebaseapp.com',
+    // Decide whether to ask user for identifier to figure out
+    // what tenant to select or whether to present all the tenants to select from.
+    displayMode: 'optionFirst', // Or identifierFirst
+    // The terms of service URL and privacy policy URL for the page
+    // where the user select tenant or enter email for tenant/provider
+    // matching.
+    tosUrl: 'http://localhost/tos',
+    privacyPolicyUrl: 'http://localhost/privacypolicy',
+    callbacks: {
+      // The callback to trigger when the selection tenant page
+      // or enter email for tenant matching page is shown.
+      selectProviderUiShown: () => {
+        // Show title and additional display info.
+      },
+      // The callback to trigger when the sign-in page
+      // is shown.
+      signInUiShown: (tenantId) => {
+        // Show tenant title and additional display info.
+      },
+      beforeSignInSuccess: (user) => {
+        // Do additional processing on user before sign-in is
+        // complete.
+        return Promise.resolve(user);
+      }
+    },
     tenants: {
+      // Tenant configuration for tenant ID tenantId1.
       tenantId1: {
-        // Tenant1 supports Google and Email sign-in.
+        // Display name, button color and icon URL of the
+        // tenant selection button. Only needed if you are
+        // using the option first option.
+        displayName: 'ACME',
+        buttonColor: '#2F2F2F',
+        iconUrl: '<icon-url-of-sign-in-button>',
+         // Sign-in providers enabled for tenantId1.
         signInOptions: [
-          firebase.auth.GoogleAuthProvider.PROVIDER_ID,
-          firebase.auth.EmailAuthProvider.PROVIDER_ID,
-        ]
+          // Microsoft sign-in.
+          {
+            provider: 'google.com',
+            providerName: 'Microsoft',
+            buttonColor: '#2F2F2F',
+            iconUrl: '<icon-url-of-sign-in-button>',
+            loginHintKey: 'login_hint'
+          },
+          // Email/password sign-in.
+          {
+            provider: firebase.auth.EmailAuthProvider.PROVIDER_ID,
+            // Do not require display name on sign up.
+            requireDisplayName: false
+          },
+          // SAML provider. (multiple SAML providers can be passed)
+          {
+            provider: 'saml.my-provider1',
+            providerName: 'SAML provider',
+            buttonColor: '#4666FF',
+            iconUrl: 'https://www.example.com/photos/my_idp/saml.png'
+          },
+        ],
+        // If there is only one sign-in provider eligible for the user,
+        // whether to show the provider selection page.
+        immediateFederatedRedirect: true,
+        signInFlow: 'redirect', // Or popup
+        // The terms of service URL and privacy policy URL for the sign-in page
+        // specific to each tenant.
+        tosUrl: 'http://localhost/tenant1/tos',
+        privacyPolicyUrl: 'http://localhost/tenant1/privacypolicy'
       },
+      // Tenant configuration for tenant ID tenantId2.
       tenantId2: {
-        // Tenant2 supports OIDC providers.
+        displayName: 'OCP',
+        buttonColor: '#2F2F2F',
+        iconUrl: '<icon-url-of-sign-in-button>',
+        // Tenant2 supports a SAML, OIDC and Email/password sign-in.
         signInOptions: [
-          {provider: 'oidc.myProvider1'},
-          {provider: 'oidc.myProvider2'},
-        ]
+          // Email/password sign-in.
+          {
+            provider: firebase.auth.EmailAuthProvider.PROVIDER_ID,
+            // Do not require display name on sign up.
+            requireDisplayName: false
+          },
+          // SAML provider. (multiple SAML providers can be passed)
+          {
+            provider: 'saml.my-provider2',
+            providerName: 'SAML provider',
+            buttonColor: '#4666FF',
+            iconUrl: 'https://www.example.com/photos/my_idp/saml.png'
+          },
+          // OIDC provider. (multiple OIDC providers can be passed)
+          {
+            provider: 'oidc.my-provider1',
+            providerName: 'OIDC provider',
+            buttonColor: '#4666FF',
+            iconUrl: 'https://www.example.com/photos/my_idp/oidc.png'
+          },
+        ],
       },
-      tenantId3: {
-        // Tenant3 supports SAML providers.
-        signInOptions: [
-          {provider: 'saml.myProvider1'},
-          {provider: 'saml.myProvider2'},
-        ]
-      },
-    }
+    },
   },
+  // Configuration for project identified by API key API_KEY2.
+  // This is useful in case the same URL is used for multiple projects.
   API_KEY2: {
     authDomain: 'project-id2.firebaseapp.com',
-    tenants: {
-      _: {
-        // Agent project supports Google and Email sign-in.
-        signInOptions: [
-          firebase.auth.GoogleAuthProvider.PROVIDER_ID,
-          firebase.auth.EmailAuthProvider.PROVIDER_ID,
-        ]
+    displayMode: 'optionFirst',
+    tosUrl: 'http://localhost/tos',
+    privacyPolicyUrl: 'http://localhost/privacypolicy',
+    callbacks: {
+      // The callback to trigger when the selection tenant page
+      // or enter email for tenant matching page is shown.
+      selectProviderUiShown: () => {
+        // Show title and additional display info.
       },
-      tenantId4: {
-        // Tenant4 supports OIDC providers.
-        signInOptions: [
-          {provider: 'oidc.myProvider1'},
-          {provider: 'oidc.myProvider2'},
-        ]
+      // The callback to trigger when the sign-in page
+      // is shown.
+      signInUiShown: (tenantId) => {
+        // Show tenant title and additional display info.
+      },
+      beforeSignInSuccess: (user) => {
+        // Do additional processing on user before sign-in is
+        // complete.
+        return Promise.resolve(user);
+      }
+    },
+    tenants: {
+      // For project level IdPs, _ is used as an identifier.
+      _: {
+        // ...
       },
     }
   },
@@ -233,3 +275,30 @@ const handler = new firebaseui.auth.FirebaseUiHandler(
 const ciapInstance = new ciap.Authentication(handler);
 ciapInstance.start();
 ```
+
+## Sample App
+
+Please refer to the sample sign-in page in the [sample folder](sample/)
+for a more in-depth example, showcasing how a GAE app can be gated by
+IAP with GCIP authenticated users, for both custom authentication UI and
+using pre-built UI with FirebaseUI.
+
+The sample includes:
+- [The GAE Node.js app gated by IAP](sample/app)
+- [A sample sign-in page built with Angular](sample/authui):
+  - Illustrating how to build your own custom authentication UI
+  - Using pre-built UI with FirebaseUI
+- [A sample sign-in page built with ReactJS](sample/authui-react):
+  - Illustrating how to build your own custom authentication UI
+  - Using pre-built UI with FirebaseUI
+
+## Developer Setup
+
+Before you begin, you need to follow the steps to configure IAP and GCIP.
+
+To set up a development environment to run the sample from source, you must
+have the following installed:
+- Node.js (>= 8.0.0)
+- npm (should be included with Node.js)
+
+Refer to the README files in each samples to build, run and deploy the apps.
