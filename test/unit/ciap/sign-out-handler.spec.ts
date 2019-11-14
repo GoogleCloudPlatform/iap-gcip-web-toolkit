@@ -46,9 +46,7 @@ describe('SignOutOperationHandler', () => {
   const originalUri = 'https://www.example.com/path/main';
   const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
   const agentId = `_${projectId}`;
-  const singleSignOutConfig = new Config(createMockUrl('signout', apiKey, tid1, redirectUri, state, hl));
   const multiSignOutConfig = new Config(createMockUrl('signout', apiKey, null, null, null, hl));
-  const agentConfig = new Config(createMockUrl('signout', apiKey, agentId, redirectUri, state, hl));
   // redirectUrl and state specified. No tenantId is specified.
   const unifiedSignOutConfig = new Config(createMockUrl('signout', apiKey, null, redirectUri, state, hl));
   let auth1: MockAuth;
@@ -113,9 +111,9 @@ describe('SignOutOperationHandler', () => {
     tenant2Auth[tid3] = auth3;
     tenant2Auth._ = agentAuth;
     authenticationHandler = createMockAuthenticationHandler(tenant2Auth);
-    singleSignOutOperationHandler = new SignOutOperationHandler(singleSignOutConfig, authenticationHandler);
+    singleSignOutOperationHandler = new SignOutOperationHandler(unifiedSignOutConfig, authenticationHandler);
     multiSignOutOperationHandler = new SignOutOperationHandler(multiSignOutConfig, authenticationHandler);
-    agentSignOutOperationHandler = new SignOutOperationHandler(agentConfig, authenticationHandler);
+    agentSignOutOperationHandler = new SignOutOperationHandler(unifiedSignOutConfig, authenticationHandler);
     unifiedSignOutOperationHandler = new SignOutOperationHandler(unifiedSignOutConfig, authenticationHandler);
     // Simulate tenant previously signed in and saved in storage.
     return authTenantsStorageManager.addTenant(tid1);
@@ -133,20 +131,13 @@ describe('SignOutOperationHandler', () => {
 
   it('should not throw on initialization', () => {
     expect(() => {
-      return new SignOutOperationHandler(singleSignOutConfig, authenticationHandler);
+      return new SignOutOperationHandler(unifiedSignOutConfig, authenticationHandler);
     }).not.to.throw;
   });
 
-  it('should throw on initialization with invalid tenant ID', () => {
+  it('should throw on redirect initialization with no state', () => {
     expect(() => {
-      const invalidConfig = new Config(createMockUrl('signout', apiKey, 'invalidTenantId', redirectUri, state, hl));
-      return new SignOutOperationHandler(invalidConfig, authenticationHandler);
-    }).to.throw().to.have.property('code', 'invalid-argument');
-  });
-
-  it('should throw on single tenant with redirect initialization with no state', () => {
-    expect(() => {
-      const invalidConfig = new Config(createMockUrl('signout', apiKey, tid1, redirectUri, null, hl));
+      const invalidConfig = new Config(createMockUrl('signout', apiKey, null, redirectUri, null, hl));
       return new SignOutOperationHandler(invalidConfig, authenticationHandler);
     }).to.throw().to.have.property('code', 'invalid-argument');
   });
@@ -165,10 +156,10 @@ describe('SignOutOperationHandler', () => {
           GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').rejects(unauthorizedDomainError);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
-      // Mock getOriginalUrlForSignOut API.
-      const getOriginalUrlForSignOutStub =
-          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
-      stubs.push(getOriginalUrlForSignOutStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo');
+      stubs.push(getSessionInfoStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
       stubs.push(setCurrentUrlStub);
@@ -183,13 +174,13 @@ describe('SignOutOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, singleSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, unifiedSignOutConfig.redirectUrl]);
           // Expected error should be thrown.
           expect(error).to.equal(unauthorizedDomainError);
           // Confirm completeSignOut not called.
           expect(completeSignOutSpy).to.not.have.been.called;
-          // Confirm getOriginalUrlForSignOutStub not called.
-          expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
+          // Confirm getSessionInfoStub not called.
+          expect(getSessionInfoStub).to.not.have.been.called;
           // No redirect should occur.
           expect(setCurrentUrlStub).to.not.have.been.called;
           // On failure, progress bar should be hidden.
@@ -215,10 +206,10 @@ describe('SignOutOperationHandler', () => {
           GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
-      // Mock getOriginalUrlForSignOut API.
-      const getOriginalUrlForSignOutStub =
-          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
-      stubs.push(getOriginalUrlForSignOutStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo');
+      stubs.push(getSessionInfoStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
       stubs.push(setCurrentUrlStub);
@@ -236,11 +227,11 @@ describe('SignOutOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, singleSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, unifiedSignOutConfig.redirectUrl]);
           // Confirm completeSignOut not called.
           expect(completeSignOutSpy).to.not.have.been.called;
-          // Confirm getOriginalUrlForSignOutStub not called.
-          expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
+          // Confirm getSessionInfoStub not called.
+          expect(getSessionInfoStub).to.not.have.been.called;
           // No redirect should occur.
           expect(setCurrentUrlStub).to.not.have.been.called;
           // On failure, progress bar should be hidden.
@@ -259,15 +250,19 @@ describe('SignOutOperationHandler', () => {
     });
 
     it('should sign out from single tenant and redirect when tenant ID and redirectUrl are specified', () => {
+      const sessionInfo = {
+        originalUri,
+        tenantIds: [tid1],
+      };
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
-      // Mock getOriginalUrlForSignOut API.
-      const getOriginalUrlForSignOutStub =
-          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
-      stubs.push(getOriginalUrlForSignOutStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo').resolves(sessionInfo);
+      stubs.push(getSessionInfoStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
       stubs.push(setCurrentUrlStub);
@@ -284,14 +279,14 @@ describe('SignOutOperationHandler', () => {
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
-            .to.deep.equal([[currentUrlOrigin, singleSignOutConfig.redirectUrl]]);
+            .to.deep.equal([[currentUrlOrigin, unifiedSignOutConfig.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
-          // Expect getOriginalUrlForSignOut result to be cached for 5 mins.
+          // Expect getSessionInfo result to be cached for 5 mins.
           expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
-              cacheAndReturnResultSpy.getCalls()[1].args[1].getOriginalUrlForSignOut);
+              cacheAndReturnResultSpy.getCalls()[1].args[1].getSessionInfo);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[1]).to.be.instanceof(IAPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[2])
-            .to.deep.equal([singleSignOutConfig.redirectUrl, singleSignOutConfig.state]);
+            .to.deep.equal([unifiedSignOutConfig.redirectUrl, unifiedSignOutConfig.state]);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[3]).to.equal(CacheDuration.GetOriginalUrl);
 
           // Progress bar should be shown on initialization.
@@ -299,22 +294,22 @@ describe('SignOutOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, singleSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, unifiedSignOutConfig.redirectUrl]);
           // Progress bar should not be hidden.
           expect(hideProgressBarSpy).to.not.have.been.called;
           // Confirm completeSignOut is not called.
           expect(completeSignOutSpy).to.not.have.been.called;
-          // Confirm signOut is called after confirming redirect URL authorization.
+          // Confirm getSessionInfoStub called.
+          expect(getSessionInfoStub)
+            .to.have.been.calledOnce.and.calledBefore(signOutSpy)
+            .and.calledWith(unifiedSignOutConfig.redirectUrl, unifiedSignOutConfig.state);
+          // Confirm signOut is called after getSessionInfo.
           expect(signOutSpy).to.have.been.called
             .and.calledOn(auth1)
-            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
-          // Confirm getOriginalUrlForSignOutStub called.
-          expect(getOriginalUrlForSignOutStub)
-            .to.have.been.calledOnce.and.calledAfter(signOutSpy)
-            .and.calledWith(singleSignOutConfig.redirectUrl, singleSignOutConfig.state);
+            .and.calledAfter(getSessionInfoStub);
           // Confirm redirect to originalUri.
           expect(setCurrentUrlStub)
-            .to.have.been.calledOnce.and.calledAfter(getOriginalUrlForSignOutStub)
+            .to.have.been.calledOnce.and.calledAfter(signOutSpy)
             .and.calledWith(window, originalUri);
           // User should be signed out.
           expect(auth1.currentUser).to.be.null;
@@ -330,20 +325,24 @@ describe('SignOutOperationHandler', () => {
         })
         .then(() => {
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.be.calledOnce;
-          expect(getOriginalUrlForSignOutStub).to.be.calledOnce;
+          expect(getSessionInfoStub).to.be.calledOnce;
         });
     });
 
     it('should sign out from agent and redirect when agent ID and redirectUrl are specified', () => {
+      const sessionInfo = {
+        originalUri,
+        tenantIds: [agentId],
+      };
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
-      // Mock getOriginalUrlForSignOut API.
-      const getOriginalUrlForSignOutStub =
-          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
-      stubs.push(getOriginalUrlForSignOutStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo').resolves(sessionInfo);
+      stubs.push(getSessionInfoStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
       stubs.push(setCurrentUrlStub);
@@ -360,14 +359,14 @@ describe('SignOutOperationHandler', () => {
               cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
-            .to.deep.equal([[currentUrlOrigin, agentConfig.redirectUrl]]);
+            .to.deep.equal([[currentUrlOrigin, unifiedSignOutConfig.redirectUrl]]);
           expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
-          // Expect getOriginalUrlForSignOut result to be cached for 5 mins.
+          // Expect getSessionInfo result to be cached for 5 mins.
           expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
-              cacheAndReturnResultSpy.getCalls()[1].args[1].getOriginalUrlForSignOut);
+              cacheAndReturnResultSpy.getCalls()[1].args[1].getSessionInfo);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[1]).to.be.instanceof(IAPRequestHandler);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[2])
-            .to.deep.equal([agentConfig.redirectUrl, agentConfig.state]);
+            .to.deep.equal([unifiedSignOutConfig.redirectUrl, unifiedSignOutConfig.state]);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[3]).to.equal(CacheDuration.GetOriginalUrl);
 
           // Progress bar should be shown on initialization.
@@ -375,22 +374,22 @@ describe('SignOutOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, agentConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, unifiedSignOutConfig.redirectUrl]);
           // Progress bar should not be hidden.
           expect(hideProgressBarSpy).to.not.have.been.called;
           // Confirm completeSignOut is not called.
           expect(completeSignOutSpy).to.not.have.been.called;
-          // Confirm signOut is called after confirming redirect URL authorization.
+          /// Confirm getSessionInfoStub called.
+          expect(getSessionInfoStub)
+            .to.have.been.calledOnce.and.calledBefore(signOutSpy)
+            .and.calledWith(unifiedSignOutConfig.redirectUrl, unifiedSignOutConfig.state);
+          // Confirm signOut is called after getSessionInfo.
           expect(signOutSpy).to.have.been.called
             .and.calledOn(agentAuth)
-            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
-          // Confirm getOriginalUrlForSignOutStub called.
-          expect(getOriginalUrlForSignOutStub)
-            .to.have.been.calledOnce.and.calledAfter(signOutSpy)
-            .and.calledWith(agentConfig.redirectUrl, agentConfig.state);
+            .and.calledAfter(getSessionInfoStub);
           // Confirm redirect to originalUri.
           expect(setCurrentUrlStub)
-            .to.have.been.calledOnce.and.calledAfter(getOriginalUrlForSignOutStub)
+            .to.have.been.calledOnce.and.calledAfter(signOutSpy)
             .and.calledWith(window, originalUri);
           // Agent user should be signed out.
           expect(agentAuth.currentUser).to.be.null;
@@ -409,7 +408,7 @@ describe('SignOutOperationHandler', () => {
         })
         .then(() => {
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.be.calledOnce;
-          expect(getOriginalUrlForSignOutStub).to.be.calledOnce;
+          expect(getSessionInfoStub).to.be.calledOnce;
         });
     });
 
@@ -419,16 +418,16 @@ describe('SignOutOperationHandler', () => {
           GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
-      // Mock getOriginalUrlForSignOut API.
-      const getOriginalUrlForSignOutStub =
-          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
-      stubs.push(getOriginalUrlForSignOutStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo');
+      stubs.push(getSessionInfoStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
       stubs.push(setCurrentUrlStub);
 
       // Use config with no redirect URL.
-      const config = new Config(createMockUrl('signout', apiKey, tid1, null, state, hl));
+      const config = new Config(createMockUrl('signout', apiKey, null, null, state, hl));
       const operationHandler = new SignOutOperationHandler(config, authenticationHandler);
 
       return operationHandler.start()
@@ -443,8 +442,8 @@ describe('SignOutOperationHandler', () => {
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
             .and.calledWith([currentUrlOrigin])
             .and.calledBefore(signOutSpy);
-          // Confirm getOriginalUrlForSignOutStub not called due to missing redirect URL.
-          expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
+          // Confirm getSessionInfoStub not called due to missing redirect URL.
+          expect(getSessionInfoStub).to.not.have.been.called;
           // No redirect should occur.
           expect(setCurrentUrlStub).to.not.have.been.called;
           // Progress bar should be hidden before handing control back to developer.
@@ -462,56 +461,6 @@ describe('SignOutOperationHandler', () => {
         });
     });
 
-    it('should sign out from agent and not redirect when agent ID and no redirectUrl are specified', () => {
-      // Mock domains are authorized.
-      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          GCIPRequestHandler.prototype,
-          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
-      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
-      // Mock getOriginalUrlForSignOut API.
-      const getOriginalUrlForSignOutStub =
-          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
-      stubs.push(getOriginalUrlForSignOutStub);
-      // Mock redirect.
-      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
-      stubs.push(setCurrentUrlStub);
-
-      // Use config with no redirect URL.
-      const config = new Config(createMockUrl('signout', apiKey, agentId, null, state, hl));
-      const operationHandler = new SignOutOperationHandler(config, authenticationHandler);
-
-      return authTenantsStorageManager.addTenant(agentId)
-        .then(() => operationHandler.start())
-        .then(() => {
-          // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(signOutSpy);
-          // signOut should be called after progress bar is shown.
-          expect(signOutSpy).to.have.been.called
-            .and.calledOn(agentAuth)
-            .and.calledAfter(showProgressBarSpy);
-          // Confirm current URL is checked.
-          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
-            .and.calledWith([currentUrlOrigin])
-            .and.calledBefore(signOutSpy);
-          // Confirm getOriginalUrlForSignOutStub not called due to missing redirect URL.
-          expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
-          // No redirect should occur.
-          expect(setCurrentUrlStub).to.not.have.been.called;
-          // Progress bar should be hidden before handing control back to developer.
-          expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledAfter(signOutSpy);
-          // Confirm completeSignOut called.
-          expect(completeSignOutSpy)
-            .to.have.been.calledOnce.and.calledAfter(hideProgressBarSpy);
-          // User should be signed out.
-          expect(agentAuth.currentUser).to.be.null;
-          // Confirm stored agent ID is cleared from storage.
-          return authTenantsStorageManager.listTenants();
-        })
-        .then((tenantList: string[]) => {
-          expect(tenantList).to.deep.equal([tid1]);
-        });
-    });
-
     it('should reject when isAuthorizedDomain rejects', () => {
       const expectedError = new HttpCIAPError(504);
       // Mock domain authorization check throws an error.
@@ -519,10 +468,10 @@ describe('SignOutOperationHandler', () => {
           GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').rejects(expectedError);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
-      // Mock getOriginalUrlForSignOut API.
-      const getOriginalUrlForSignOutStub =
-          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
-      stubs.push(getOriginalUrlForSignOutStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo');
+      stubs.push(getSessionInfoStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
       stubs.push(setCurrentUrlStub);
@@ -542,13 +491,13 @@ describe('SignOutOperationHandler', () => {
           expect(error).to.equal(expectedError);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, singleSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, unifiedSignOutConfig.redirectUrl]);
           // completeSignOut should not be called.
           expect(completeSignOutSpy).to.not.have.been.called;
           // signOut should not be called.
           expect(signOutSpy).to.not.have.been.called;
-          // getOriginalUrlForSignOutStub should not be called.
-          expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
+          // getSessionInfoStub should not be called.
+          expect(getSessionInfoStub).to.not.have.been.called;
           // No redirect should occur.
           expect(setCurrentUrlStub).to.not.have.been.called;
           // User should still be signed in.
@@ -564,15 +513,20 @@ describe('SignOutOperationHandler', () => {
     });
 
     it('should reject for single tenant signout when auth.signOut() rejects', () => {
+      const sessionInfo = {
+        originalUri,
+        tenantIds: [tid1],
+      };
       const expectedError = new Error('signout error');
       // Mock domain authorization succeeds.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
-      // Mock getOriginalUrlForSignOut API.
-      const getOriginalUrlForSignOutStub =
-          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo').resolves(sessionInfo);
+      stubs.push(getSessionInfoStub);
       // Remove signOut spy and re-stub to reject with an error.
       signOutSpy.restore();
       const signOutStub = sinon.stub(MockAuth.prototype, 'signOut').rejects(expectedError);
@@ -596,14 +550,16 @@ describe('SignOutOperationHandler', () => {
           expect(error).to.equal(expectedError);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, singleSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, unifiedSignOutConfig.redirectUrl]);
+          // Confirm getSessionInfoStub called.
+          expect(getSessionInfoStub)
+            .to.have.been.calledOnce.and.calledBefore(signOutSpy)
+            .and.calledWith(unifiedSignOutConfig.redirectUrl, unifiedSignOutConfig.state);
           // completeSignOut should not be called.
           expect(completeSignOutSpy).to.not.have.been.called;
           // signOut should have been called once.
           expect(signOutStub).to.have.been.calledOnce
-            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
-          // getOriginalUrlForSignOutStub should not be called.
-          expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
+            .and.calledAfter(getSessionInfoStub);
           // No redirect should occur.
           expect(setCurrentUrlStub).to.not.have.been.called;
           // Confirm error passed to handler.
@@ -616,96 +572,16 @@ describe('SignOutOperationHandler', () => {
         });
     });
 
-    it('should reject when getOriginalUrlForSignOutStub rejects', () => {
-      let caughtError: CIAPError;
-      // Simulate recoverable error.
-      const expectedError = new HttpCIAPError(504);
+    it('should sign out from all tenants and agents when no state is specified', () => {
       // Mock domains are authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
-      // Mock getOriginalUrlForSignOut API.
-      const getOriginalUrlForSignOutStub =
-          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut');
-      // Fail on first try and succeed on second.
-      getOriginalUrlForSignOutStub.onFirstCall().rejects(expectedError);
-      getOriginalUrlForSignOutStub.onSecondCall().resolves(originalUri);
-      stubs.push(getOriginalUrlForSignOutStub);
-      // Mock redirect.
-      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
-      stubs.push(setCurrentUrlStub);
-
-      // Simulate another tenant previously signed in and saved in storage.
-      return authTenantsStorageManager.addTenant('OTHER_TENANT_ID')
-        .then(() => {
-          return singleSignOutOperationHandler.start();
-        })
-        .then(() => {
-          throw new Error('Unexpected success');
-        })
-        .catch((error) => {
-          caughtError = error;
-          // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce
-            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
-          // Confirm URLs are checked for authorization.
-          expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, singleSignOutConfig.redirectUrl]);
-          // Confirm completeSignOut is not called.
-          expect(completeSignOutSpy).to.not.have.been.called;
-          // Confirm signOut is called after confirming redirect URL authorization.
-          expect(signOutSpy).to.have.been.called
-            .and.calledOn(auth1)
-            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
-          // Confirm getOriginalUrlForSignOutStub called.
-          expect(getOriginalUrlForSignOutStub)
-            .to.have.been.calledOnce.and.calledAfter(signOutSpy)
-            .and.calledWith(singleSignOutConfig.redirectUrl, singleSignOutConfig.state);
-          // No redirect should occur.
-          expect(setCurrentUrlStub).to.not.have.been.called;
-          // User should be signed out.
-          expect(auth1.currentUser).to.be.null;
-          // Progress bar should be hidden when the error is detected.
-          expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledAfter(getOriginalUrlForSignOutStub);
-          // Confirm error passed to handler.
-          expect(authenticationHandler.getLastHandledError()).to.equal(error);
-          // Confirm stored tenant ID is cleared from storage.
-          return authTenantsStorageManager.listTenants();
-        })
-        .then((tenantList: string[]) => {
-          // Other tenant ID should remain in storage.
-          expect(tenantList).to.deep.equal(['OTHER_TENANT_ID']);
-          expect(startSpy).to.be.calledOnce;
-          expect(caughtError).to.haveOwnProperty('retry');
-          // Try again to confirm caching behavior.
-          return (caughtError as any).retry();
-        })
-        .then(() => {
-          expect(startSpy).to.be.calledTwice;
-          expect(startSpy.getCall(0).thisValue).to.equal(singleSignOutOperationHandler);
-          // Only getOriginalUrlForSignOut call should retry.
-          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce;
-          expect(getOriginalUrlForSignOutStub).to.have.been.calledTwice;
-          expect(getOriginalUrlForSignOutStub.getCalls()[1].args)
-            .to.deep.equal([singleSignOutConfig.redirectUrl, singleSignOutConfig.state]);
-          // Confirm redirect to originalUri.
-          expect(setCurrentUrlStub)
-            .to.have.been.calledOnce.and.calledAfter(getOriginalUrlForSignOutStub)
-            .and.calledWith(window, originalUri);
-        });
-    });
-
-    it('should sign out from all tenants and agents when no tenant ID is specified', () => {
-      // Mock domains are authorized.
-      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          GCIPRequestHandler.prototype,
-          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
-      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
-      // Mock getOriginalUrlForSignOut API.
-      const getOriginalUrlForSignOutStub =
-          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
-      stubs.push(getOriginalUrlForSignOutStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo');
+      stubs.push(getSessionInfoStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
       stubs.push(setCurrentUrlStub);
@@ -737,8 +613,8 @@ describe('SignOutOperationHandler', () => {
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce
             .and.calledWith([currentUrlOrigin])
             .and.calledBefore(signOutSpy);
-          // Confirm getOriginalUrlForSignOutStub not called.
-          expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
+          // Confirm getSessionInfo not called.
+          expect(getSessionInfoStub).to.not.have.been.called;
           // Confirm no redirect to originalUri occurs.
           expect(setCurrentUrlStub).to.not.have.been.called;
           // Users should be signed out.
@@ -754,81 +630,16 @@ describe('SignOutOperationHandler', () => {
         });
     });
 
-    it('should not redirect to redirectUrl on multi-tenant signout', () => {
-      // Mock domain is authorized.
-      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
-          GCIPRequestHandler.prototype,
-          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
-      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
-      // Mock getOriginalUrlForSignOut API.
-      const getOriginalUrlForSignOutStub =
-          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
-      stubs.push(getOriginalUrlForSignOutStub);
-      // Mock redirect.
-      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
-      stubs.push(setCurrentUrlStub);
-      // Simulate 3 tenants signed in and saved in storage.
-      const addTenantsList = [
-        authTenantsStorageManager.addTenant(tid1),
-        authTenantsStorageManager.addTenant(tid2),
-        authTenantsStorageManager.addTenant(tid3),
-        // This should be ignored.
-        authTenantsStorageManager.addTenant('NOT_FOUND_TENANT'),
-      ];
-
-      // Create multi-tenant signout config with redirect URL.
-      const config = new Config(createMockUrl('signout', apiKey, null, redirectUri, null, hl));
-      multiSignOutOperationHandler = new SignOutOperationHandler(config, authenticationHandler);
-
-      return Promise.all(addTenantsList)
-        .then(() => {
-          // Users should be signed in initially.
-          expect(auth1.currentUser.uid).to.equal('UID1');
-          expect(auth2.currentUser.uid).to.equal('UID2');
-          expect(auth3.currentUser.uid).to.equal('UID3');
-          return multiSignOutOperationHandler.start();
-        })
-        .then(() => {
-          // Progress bar should be shown on initialization.
-          expect(showProgressBarSpy).to.have.been.calledOnce
-            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
-          // Confirm URLs are checked for authorization.
-          expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
-          // Confirm signOut is called after confirming redirect URL authorization.
-          expect(signOutSpy).to.have.been.calledThrice
-            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
-          // Progress bar should be hidden before calling completeSignOut.
-          expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledAfter(signOutSpy);
-          // Confirm completeSignOut is called after progress bar is hidden.
-          expect(completeSignOutSpy).to.have.been.calledOnce.and.calledAfter(hideProgressBarSpy);
-          // Confirm getOriginalUrlForSignOutStub not called.
-          expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
-          // Confirm no redirect to originalUri occurs.
-          expect(setCurrentUrlStub).to.not.have.been.called;
-          // Users should be signed out.
-          expect(auth1.currentUser).to.be.null;
-          expect(auth2.currentUser).to.be.null;
-          expect(auth3.currentUser).to.be.null;
-          // Confirm all stored tenants are cleared from storage.
-          return authTenantsStorageManager.listTenants();
-        })
-        .then((tenantList: string[]) => {
-          // All tenants should be cleared.
-          expect(tenantList).to.deep.equal([]);
-        });
-    });
-
     it('should fail on unauthorized redirect URL for multiple tenants', () => {
       // Mock domains are not authorized.
       const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
           GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').rejects(unauthorizedDomainError);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
-      // Mock getOriginalUrlForSignOut API.
-      const getOriginalUrlForSignOutStub =
-          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
-      stubs.push(getOriginalUrlForSignOutStub);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo');
+      stubs.push(getSessionInfoStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
       stubs.push(setCurrentUrlStub);
@@ -859,15 +670,15 @@ describe('SignOutOperationHandler', () => {
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
-            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, singleSignOutConfig.redirectUrl]);
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
           // Expected error should be thrown.
           expect(error).to.equal(unauthorizedDomainError);
           // No signout should occur.
           expect(signOutSpy).to.not.have.been.called;
           // Confirm completeSignOut not called.
           expect(completeSignOutSpy).to.not.have.been.called;
-          // Confirm getOriginalUrlForSignOutStub not called.
-          expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
+          // Confirm getSessionInfoStub not called.
+          expect(getSessionInfoStub).to.not.have.been.called;
           // No redirect should occur.
           expect(setCurrentUrlStub).to.not.have.been.called;
           // On failure, progress bar should be hidden.
@@ -894,9 +705,9 @@ describe('SignOutOperationHandler', () => {
           GCIPRequestHandler.prototype,
           'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
       stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
-      // Mock getOriginalUrlForSignOut API.
-      const getOriginalUrlForSignOutStub =
-          sinon.stub(IAPRequestHandler.prototype, 'getOriginalUrlForSignOut').resolves(originalUri);
+      // Mock getSessionInfo API.
+      const getSessionInfoStub =
+          sinon.stub(IAPRequestHandler.prototype, 'getSessionInfo');
       // Remove signOut spy and re-stub to reject with an error on second call.
       signOutSpy.restore();
       // Simulate second call fails.
@@ -934,8 +745,8 @@ describe('SignOutOperationHandler', () => {
           expect(error).to.equal(expectedError);
           // completeSignOut should not be called.
           expect(completeSignOutSpy).to.not.have.been.called;
-          // getOriginalUrlForSignOutStub should not be called.
-          expect(getOriginalUrlForSignOutStub).to.not.have.been.called;
+          // getSessionInfo should not be called.
+          expect(getSessionInfoStub).to.not.have.been.called;
           // No redirect should occur.
           expect(setCurrentUrlStub).to.not.have.been.called;
           // Confirm error passed to handler.

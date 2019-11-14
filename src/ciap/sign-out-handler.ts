@@ -36,12 +36,8 @@ export class SignOutOperationHandler extends BaseOperationHandler {
    */
   constructor(config: Config, handler: AuthenticationHandler, sharedSettings?: SharedSettings) {
     super(config, handler, sharedSettings);
-    // Single tenant signout but tenant not found.
-    if (this.tenantId && !this.auth) {
-      throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid request');
-    }
-    // Single tenant with redirect but no state.
-    if (this.auth && this.redirectUrl && !this.state) {
+    // redirectUrl should never be specified without the state query parameter.
+    if (this.redirectUrl && !this.state) {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid request');
     }
   }
@@ -69,20 +65,7 @@ export class SignOutOperationHandler extends BaseOperationHandler {
     }
     // Clear internal Auth state.
     return this.signOut().then(() => {
-      // Single tenant sign-out with redirect URL.
-      if (this.auth && this.redirectUrl) {
-        // Redirect back to IAP resource.
-        return this.cache.cacheAndReturnResult<string>(
-            this.iapRequest.getOriginalUrlForSignOut,
-            this.iapRequest,
-            [this.redirectUrl, this.state],
-            CacheDuration.GetOriginalUrl,
-        )
-        .then((originalUrl: string) => {
-          // Redirect to original URI.
-          setCurrentUrl(window, originalUrl);
-        });
-      } else if (this.state && this.redirectUrl && this.originalUri) {
+      if (this.state && this.redirectUrl && this.originalUri) {
         // Used to redirect to original URI when state and redirect URL are provided but
         // no single tenant ID is specified in the URL query string.
         setCurrentUrl(window, this.originalUri);
@@ -99,13 +82,7 @@ export class SignOutOperationHandler extends BaseOperationHandler {
    * @return A promise that resolves after sign out from specified tenant or all tenants are resolved.
    */
   private signOut(): Promise<void> {
-    // Single tenant instance identified.
-    if (this.auth) {
-      return this.auth.signOut().then(() => {
-        // Remove tenant ID from storage.
-        return this.removeAuthTenant(this.tenantId);
-      });
-    } else if (this.state && this.redirectUrl) {
+    if (this.state && this.redirectUrl) {
       // When state and IAP redirect URL are provided, we can determine list of tenants
       // associated with the current resource that needs to be signed out from.
       return this.getSessionInformation().then((sessionInfoResponse) => {

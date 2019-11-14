@@ -219,32 +219,6 @@ export class IAPRequestHandler {
   }
 
   /**
-   * Get the original URI associated with the state JWT used to complete signout.
-   *
-   * @param iapRedirectServerUrl The IAP redirect server URL passed via query string.
-   * @param state The state JWT.
-   * @return A promise that resolves on successful response with the original URI.
-   */
-  public getOriginalUrlForSignOut(
-      iapRedirectServerUrl: string,
-      state: string): Promise<string> {
-    const urlParams = {iapRedirectServerUrl};
-    const requestData = {
-      id_token: 'dummy',
-      state,
-    };
-    // Re-use same API for sign-in with dummy variable passed as ID token.
-    return IAPRequestHandler.EXCHANGE_ID_TOKEN.process(this.httpClient, urlParams, requestData, null, this.timeout)
-        .then((response: HttpResponse) => {
-          // Only original URI is needed.
-          return (response.data as RedirectServerResponse).originalUri;
-        })
-        .catch((error: Error) => {
-          throw this.translateLowLevelCanonicalError(error);
-        });
-  }
-
-  /**
    * Returns the session information (associated resource tenants and original URI) for
    * the provided state JWT.
    *
