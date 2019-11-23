@@ -35,5 +35,5 @@ sample/authui/dist/
 test/resources/key*.json
 
 # Release tarballs should not be checked in
-gcip-iap-js-*.tgz
+gcip-iap-*.tgz
 firebase.tgz

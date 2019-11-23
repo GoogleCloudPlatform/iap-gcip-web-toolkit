@@ -55,7 +55,7 @@ cd sample/authui-react
 npm install
 ```
 
-This will depend on the `gcip-iap-js` module in the root folder `../..` as
+This will depend on the `gcip-iap` module in the root folder `../..` as
 defined in the `authui-react` `package.json` file.
 
 Install the Firebase command line tool with `npm install -g firebase-tools` (See

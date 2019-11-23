@@ -69,7 +69,7 @@ const paths = {
   ],
 };
 
-const banner = `/*! gcip-iap-js v${pkg.version} */\n`;
+const banner = `/*! gcip-iap v${pkg.version} */\n`;
 
 const plugins = [
   typescript({

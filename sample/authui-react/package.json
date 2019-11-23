@@ -13,7 +13,7 @@
     "bootstrap": "4.3.1",
     "firebase": "7.0.0",
     "firebaseui": "../../builds/firebaseui/firebaseui.tgz",
-    "gcip-iap-js": "file:../..",
+    "gcip-iap": "file:../..",
     "jquery": "^3.4.1",
     "react": "^16.9.0",
     "react-dom": "^16.9.0",

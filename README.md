@@ -1,4 +1,4 @@
-# gcip-iap-js for GCIP/IAP integration
+# gcip-iap for GCIP/IAP integration
 
 [Cloud Identity-Aware Proxy (Cloud IAP)](https://cloud.google.com/iap/)
 controls access to your cloud applications and VMs running on Google Cloud Platform (GCP).
@@ -14,7 +14,7 @@ identity and identity provider that GCIP supports. This means that developers
 will be able to use IdPs that are supported by GCIP (SAML, OIDC, social etc)
 to authenticate users.
 
-`gcip-iap-js` implements the protocol used to integrate
+`gcip-iap` implements the protocol used to integrate
 GCIP (Google Cloud's Identity Platform) for authenticating external identities
 with IAP (Identity Aware Proxy).
 Developers will have to host a sign-in UI (or just use
@@ -40,7 +40,7 @@ sign-out and all authentication related operations.
 This page can be hosted anywhere and the same page can be shared for multiple
 IAP resources or ever GCP projects.
 
-The `gcip-iap-js` module is provided to abstract the underlying communication
+The `gcip-iap` module is provided to abstract the underlying communication
 between GCIP and IAP on that authentication page. This will expose callbacks
 for UI and authentication related logic.
 You will be able to build your own authentication UI on top of this via
@@ -63,7 +63,7 @@ Learn more on how to
 
 ### Build your own Authentication UI
 
-The `gcip-iap-js` library defines an interface that can be implemented to
+The `gcip-iap` library defines an interface that can be implemented to
 handle UI customizations for various scenarios dealing with sign-in and
 sign-out flows:
 
@@ -103,7 +103,7 @@ the AuthenticationHandler interface, and pass an instance of that to
 Authentication constructor:
 
 ```javascript
-import * as ciap from 'gcip-iap-js';
+import * as ciap from 'gcip-iap';
 // Implement interface AuthenticationHandler.
 // const authHandlerImplementation = ....
 const ciapInstance = new ciap.Authentication(authHandlerImplementation);
@@ -130,7 +130,7 @@ import 'firebase/auth';
 import * as firebaseui from 'firebaseui';
 
 // Import GCIP/IAP module (using local build).
-import * as ciap from 'gcip-iap-js';
+import * as ciap from 'gcip-iap';
 
 // The project configuration.
 const configs = {

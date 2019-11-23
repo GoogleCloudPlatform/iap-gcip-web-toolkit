@@ -28,7 +28,7 @@ import 'bootstrap/dist/js/bootstrap.min.js'
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { UserCredential, FirebaseAuth } from '@firebase/auth-types';
 // Import GCIP/IAP module.
-import * as ciap from 'gcip-iap-js';
+import * as ciap from 'gcip-iap';
 
 const SAML_PROVIDER_ID = 'saml.okta-cicp-app';
 

@@ -1,4 +1,4 @@
-# gcip-iap-js for GCIP/IAP integration
+# gcip-iap for GCIP/IAP integration
 
 This library implements the protocol used to integrate GCIP (Google Cloud's
 Identity Platform) for third party authentication with IAP (Identity Aware
