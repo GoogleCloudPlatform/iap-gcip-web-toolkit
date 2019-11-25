@@ -30,6 +30,7 @@ tmp/
 # Exclude generated files.
 sample/authui-react/build/
 sample/authui/dist/
+sample/authui-firebaseui/public/script.js
 
 # Real key file and other project information should not be checked in
 test/resources/key*.json
