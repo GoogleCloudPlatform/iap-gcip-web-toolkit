@@ -33,6 +33,9 @@ export interface FirebaseAuth {
   app: FirebaseApp;
   currentUser: User | null;
   tenantId?: string;
+  /* tslint:disable:variable-name */
+  INTERNAL: {logFramework: (string) => void};
+  /* tslint:enable:variable-name */
   onAuthStateChanged(
     nextOrObserver: ((a: User | null) => any),
     error?: (a: Error) => any,

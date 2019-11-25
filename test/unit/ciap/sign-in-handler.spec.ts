@@ -18,7 +18,9 @@ import {expect} from 'chai';
 import * as sinon from 'sinon';
 import { Config } from '../../../src/ciap/config';
 import { SignInOperationHandler } from '../../../src/ciap/sign-in-handler';
-import { OperationType, CacheDuration } from '../../../src/ciap/base-operation-handler';
+import {
+  OperationType, CacheDuration, GCIP_IAP_FRAMEWORK_ID,
+} from '../../../src/ciap/base-operation-handler';
 import {
   createMockUrl, createMockAuth, createMockAuthenticationHandler, MockAuth,
   createMockUser, MockUser, MockAuthenticationHandler, createMockStorageManager,
@@ -171,6 +173,9 @@ describe('SignInOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -203,6 +208,9 @@ describe('SignInOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -246,7 +254,9 @@ describe('SignInOperationHandler', () => {
 
       return operationHandler.start()
         .then(() => {
-          // Progress bar should be shown on initialization.
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           expect(showProgressBarSpy).to.have.been.calledTwice
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
@@ -309,6 +319,9 @@ describe('SignInOperationHandler', () => {
 
       return operationHandler.start()
         .then(() => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledTwice
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -373,6 +386,9 @@ describe('SignInOperationHandler', () => {
 
       return operationHandler.start()
         .then(() => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledTwice
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -414,6 +430,8 @@ describe('SignInOperationHandler', () => {
     });
 
     it('should call authenticationHandler startSignIn when existing user has mismatching agent ID', () => {
+      auth.clearLoggedFrameworks();
+      agentAuth.clearLoggedFrameworks();
       // Agent user.
       const matchingUser = createMockUser('UID_AGENT', 'ID_TOKEN_AGENT', null);
       // Set current user with mismatching tenant ID.
@@ -444,6 +462,9 @@ describe('SignInOperationHandler', () => {
 
       return operationHandler.start()
         .then(() => {
+          // Confirm framework ID set on agentAuth.
+          expect(auth.loggedFrameworks).deep.equal([]);
+          expect(agentAuth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledTwice
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -512,6 +533,9 @@ describe('SignInOperationHandler', () => {
           return operationHandler.start();
         })
         .then(() => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Expect checkAuthorizedDomainsAndGetProjectId result to be cached for 30 mins.
           expect(cacheAndReturnResultSpy).to.be.calledThrice;
           expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
@@ -583,6 +607,8 @@ describe('SignInOperationHandler', () => {
     });
 
     it('should finish sign in when authenticationHandler startSignIn triggers for agent flow', () => {
+      auth.clearLoggedFrameworks();
+      agentAuth.clearLoggedFrameworks();
       // Agent user.
       user = createMockUser('UID_AGENT', 'ID_TOKEN_AGENT', null);
       authenticationHandler = createMockAuthenticationHandler(
@@ -614,6 +640,9 @@ describe('SignInOperationHandler', () => {
           return operationHandler.start();
         })
         .then(() => {
+          // Confirm framework ID set on agentAuth.
+          expect(auth.loggedFrameworks).deep.equal([]);
+          expect(agentAuth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
           // Expect checkAuthorizedDomainsAndGetProjectId result to be cached for 30 mins.
           expect(cacheAndReturnResultSpy).to.be.calledThrice;
           expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
@@ -720,6 +749,9 @@ describe('SignInOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Expected tenant mismatch error should be thrown.
           expect(error).to.have.property('message', 'Mismatching tenant ID');
           expect(error).to.have.property('code', 'invalid-argument');
@@ -781,6 +813,9 @@ describe('SignInOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Expected error should be thrown.
           expect(error).to.have.property('message', 'The page is displayed in a cross origin iframe.');
           expect(error).to.have.property('code', 'permission-denied');
@@ -839,6 +874,9 @@ describe('SignInOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Expected tenant mismatch error should be thrown.
           expect(error).to.have.property('message', 'Mismatching tenant ID');
           expect(error).to.have.property('code', 'invalid-argument');
@@ -896,6 +934,9 @@ describe('SignInOperationHandler', () => {
           return operationHandler.start();
         })
         .then(() => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           expect(hideProgressBarSpy).to.not.have.been.called;
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
@@ -956,6 +997,9 @@ describe('SignInOperationHandler', () => {
           return operationHandler.start();
         })
         .then(() => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           expect(hideProgressBarSpy).to.not.have.been.called;
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
@@ -1042,6 +1086,9 @@ describe('SignInOperationHandler', () => {
           return operationHandler.start();
         })
         .then(() => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           expect(showProgressBarSpy).to.be.calledTwice
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
@@ -1139,6 +1186,9 @@ describe('SignInOperationHandler', () => {
           return operationHandler.start();
         })
         .then(() => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           expect(showProgressBarSpy).to.be.calledTwice
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
           // Confirm URLs are checked for authorization.
@@ -1178,6 +1228,8 @@ describe('SignInOperationHandler', () => {
     });
 
     it('should finish sign in when ID token is already available for agent flow', () => {
+      auth.clearLoggedFrameworks();
+      agentAuth.clearLoggedFrameworks();
       // Set agent user.
       agentAuth.setCurrentMockUser(createMockUser('UID_AGENT', 'ID_TOKEN_AGENT', null));
       // Mock domains are authorized.
@@ -1205,6 +1257,9 @@ describe('SignInOperationHandler', () => {
           return operationHandler.start();
         })
         .then(() => {
+          // Confirm framework ID set on agentAuth.
+          expect(auth.loggedFrameworks).deep.equal([]);
+          expect(agentAuth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
           expect(hideProgressBarSpy).to.not.have.been.called;
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
@@ -1238,6 +1293,8 @@ describe('SignInOperationHandler', () => {
     });
 
     it('should use expected SharedSettings reference', () => {
+      auth.clearLoggedFrameworks();
+      agentAuth.clearLoggedFrameworks();
       // Set agent user.
       agentAuth.setCurrentMockUser(createMockUser('UID_AGENT', 'ID_TOKEN_AGENT', null));
       // Mock domains are authorized.
@@ -1265,6 +1322,9 @@ describe('SignInOperationHandler', () => {
           return operationHandler.start();
         })
         .then(() => {
+          // Confirm framework ID set on agentAuth.
+          expect(auth.loggedFrameworks).deep.equal([]);
+          expect(agentAuth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
           // Confirm SharedSettings cache used.
           expect(cacheAndReturnResultSpy.getCall(0).thisValue)
             .to.equal(sharedSettings.cache);
@@ -1328,6 +1388,9 @@ describe('SignInOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -1389,6 +1452,9 @@ describe('SignInOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           caughtError = error;
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
@@ -1481,6 +1547,9 @@ describe('SignInOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);

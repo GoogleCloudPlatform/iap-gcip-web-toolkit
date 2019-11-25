@@ -76,6 +76,7 @@ function serveContentForUser(template, req, res, decodedClaims) {
     gcipClaims: JSON.stringify(gcipClaims, null, 2),
     iapClaims: JSON.stringify(decodedClaims, null, 2),
     signoutURL: './_gcp_iap/gcip_signout',
+    switchTenantURL: './_gcp_iap/clear_login_cookie',
   }));
 }
 
@@ -105,13 +106,6 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
   extended: true
 }));
-const optionsHandler = (req, res) => {
-  res.header('Access-Control-Allow-Origin', req.get('Origin') || '*');
-  res.header('Access-Control-Allow-Methods', 'GET');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, x-iap-3p-token');
-  res.status(200).end();
-};
 // Show error message if user is not signed in.
 app.use(checkIfSignedIn());
 // Static CSS assets.

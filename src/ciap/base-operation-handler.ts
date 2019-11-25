@@ -53,6 +53,9 @@ export enum CacheDuration {
   SetCookie = 5 * 60 * 1000,
 }
 
+/** GCIP-IAP framework ID to be logged in firebase-auth. */
+export const GCIP_IAP_FRAMEWORK_ID = 'gcip-iap';
+
 /**
  * Base abstract class used for authentication operation handling.
  * All common authentication operation logic and variables are initialized/handled in this class.
@@ -258,6 +261,12 @@ export abstract class BaseOperationHandler implements OperationHandler {
     // possible but can be quite expensive. For now we can use this logic.
     if (auth && auth.app.options.apiKey !== this.config.apiKey) {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'API key mismatch');
+    }
+    // Log framework ID.
+    try {
+      auth.INTERNAL.logFramework(GCIP_IAP_FRAMEWORK_ID);
+    } catch (e) {
+      // Ignore any errors. Developer may be using an old version of the SDK.
     }
     return auth;
   }

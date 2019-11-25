@@ -44,6 +44,11 @@ body {
   width: 80px;
 }
 
+.item-on-same-line {
+  float: left;
+  padding-right: 20px;
+}
+
 @media (max-width: 300px) {
   #photo-container,
   #photo {

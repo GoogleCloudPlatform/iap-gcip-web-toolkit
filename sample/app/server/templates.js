@@ -51,9 +51,10 @@ const main = HandleBars.compile(`
           </div>
           <div class="clearfix"></div>
         </div>
-        <p>
-          <a id="sign-out" href="{{signoutURL}}">Sign Out</a>
-        </p>
+        <div>
+          <div><a id="sign-out" class="item-on-same-line" href="{{signoutURL}}">Sign Out</a></div>
+          <div><a id="switch-tenant" class="item-on-same-line" href="{{switchTenantURL}}">Switch Tenant</a></div>
+        </div>
       </div>
     <div>
     <iframe src="/_gcp_iap/session_refresher" style="width:0;height:0;border:0; border:none;"></iframe>

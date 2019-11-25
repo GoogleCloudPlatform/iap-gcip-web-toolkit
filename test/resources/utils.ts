@@ -146,8 +146,12 @@ class MockApp implements FirebaseApp {
 /** Defines the mock FirebaseAuth class. */
 export class MockAuth implements FirebaseAuth {
   public readonly app: MockApp;
+  /* tslint:disable:variable-name */
+  public readonly INTERNAL: {logFramework: (string) => void};
+  /* tslint:enable:variable-name */
   private user: User;
   private listeners: Array<((user: User) => void)>;
+  private frameworks: string[];
 
   /**
    * Initializes the mock Auth instance.
@@ -156,8 +160,16 @@ export class MockAuth implements FirebaseAuth {
    * @param tenantId The optional tenant ID.
    */
   constructor(private readonly apiKey: string, public tenantId?: string) {
+    this.frameworks = [];
     this.listeners = [];
     this.app = new MockApp(apiKey);
+    this.INTERNAL = {
+      logFramework: (framework: string) => {
+        if (this.frameworks.indexOf(framework) === -1) {
+          this.frameworks.push(framework);
+        }
+      },
+    };
   }
 
   /**
@@ -165,6 +177,18 @@ export class MockAuth implements FirebaseAuth {
    */
   public get currentUser(): User | null {
     return this.user || null;
+  }
+
+  /**
+   * @return The logged frameworks.
+   */
+  public get loggedFrameworks(): string[] {
+    return this.frameworks.slice();
+  }
+
+  /** Clears logged frameworks. */
+  public clearLoggedFrameworks() {
+    this.frameworks = [];
   }
 
   /**

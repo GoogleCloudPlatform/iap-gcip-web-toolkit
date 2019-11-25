@@ -18,7 +18,9 @@ import {expect} from 'chai';
 import * as sinon from 'sinon';
 import { Config } from '../../../src/ciap/config';
 import { SignOutOperationHandler } from '../../../src/ciap/sign-out-handler';
-import { OperationType, CacheDuration } from '../../../src/ciap/base-operation-handler';
+import {
+  OperationType, CacheDuration, GCIP_IAP_FRAMEWORK_ID,
+} from '../../../src/ciap/base-operation-handler';
 import {
   createMockUrl, createMockAuth, createMockAuthenticationHandler, MockAuth,
   createMockUser, MockAuthenticationHandler, createMockStorageManager,
@@ -169,6 +171,11 @@ describe('SignOutOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID not set.
+          expect(auth1.loggedFrameworks).deep.equal([]);
+          expect(auth2.loggedFrameworks).deep.equal([]);
+          expect(auth3.loggedFrameworks).deep.equal([]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -219,6 +226,11 @@ describe('SignOutOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID not set.
+          expect(auth1.loggedFrameworks).deep.equal([]);
+          expect(auth2.loggedFrameworks).deep.equal([]);
+          expect(auth3.loggedFrameworks).deep.equal([]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Expected error should be thrown.
           expect(error).to.have.property('message', 'The page is displayed in a cross origin iframe.');
           expect(error).to.have.property('code', 'permission-denied');
@@ -273,6 +285,11 @@ describe('SignOutOperationHandler', () => {
           return singleSignOutOperationHandler.start();
         })
         .then(() => {
+          // Confirm framework ID set on auth1 only.
+          expect(auth1.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(auth2.loggedFrameworks).deep.equal([]);
+          expect(auth3.loggedFrameworks).deep.equal([]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Expect checkAuthorizedDomainsAndGetProjectId result to be cached for 30 mins.
           expect(cacheAndReturnResultSpy).to.be.calledTwice;
           expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
@@ -353,6 +370,11 @@ describe('SignOutOperationHandler', () => {
           return agentSignOutOperationHandler.start();
         })
         .then(() => {
+          // Confirm framework ID set on agentAuth.
+          expect(auth1.loggedFrameworks).deep.equal([]);
+          expect(auth2.loggedFrameworks).deep.equal([]);
+          expect(auth3.loggedFrameworks).deep.equal([]);
+          expect(agentAuth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
           // Expect checkAuthorizedDomainsAndGetProjectId result to be cached for 30 mins.
           expect(cacheAndReturnResultSpy).to.be.calledTwice;
           expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
@@ -432,6 +454,11 @@ describe('SignOutOperationHandler', () => {
 
       return operationHandler.start()
         .then(() => {
+          // Confirm framework ID set on auth1.
+          expect(auth1.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(auth2.loggedFrameworks).deep.equal([]);
+          expect(auth3.loggedFrameworks).deep.equal([]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(signOutSpy);
           // signOut should be called after progress bar is shown.
@@ -481,6 +508,11 @@ describe('SignOutOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID not set.
+          expect(auth1.loggedFrameworks).deep.equal([]);
+          expect(auth2.loggedFrameworks).deep.equal([]);
+          expect(auth3.loggedFrameworks).deep.equal([]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -540,6 +572,11 @@ describe('SignOutOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID set on auth1.
+          expect(auth1.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(auth2.loggedFrameworks).deep.equal([]);
+          expect(auth3.loggedFrameworks).deep.equal([]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -601,6 +638,12 @@ describe('SignOutOperationHandler', () => {
           return multiSignOutOperationHandler.start();
         })
         .then(() => {
+          // Confirm framework ID set on auth1, auth2 and agentAuth.
+          expect(auth1.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(auth2.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          // auth3 tenant is not saved in storage and thus not retrieved.
+          expect(auth3.loggedFrameworks).deep.equal([]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(signOutSpy);
           // Confirm signOut is called after showing progress bar.
@@ -665,6 +708,11 @@ describe('SignOutOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID not set.
+          expect(auth1.loggedFrameworks).deep.equal([]);
+          expect(auth2.loggedFrameworks).deep.equal([]);
+          expect(auth3.loggedFrameworks).deep.equal([]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -734,6 +782,11 @@ describe('SignOutOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID set on auth1, auth2 and auth3.
+          expect(auth1.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(auth2.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(auth3.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce.and.calledBefore(signOutStub);
           // Confirm current URL checked as no redirect URL is available.
@@ -780,6 +833,11 @@ describe('SignOutOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID not set.
+          expect(auth1.loggedFrameworks).deep.equal([]);
+          expect(auth2.loggedFrameworks).deep.equal([]);
+          expect(auth3.loggedFrameworks).deep.equal([]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
@@ -846,6 +904,12 @@ describe('SignOutOperationHandler', () => {
           return unifiedSignOutOperationHandler.start();
         })
         .then(() => {
+          // Confirm framework ID set on auth1, auth2 and agentAuth which are associated with the resource.
+          expect(auth1.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(auth2.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          // As auth3 is never retrieved, no frameworks should be logged.
+          expect(auth3.loggedFrameworks).deep.equal([]);
           // Expect checkAuthorizedDomainsAndGetProjectId result to be cached for 30 mins.
           expect(cacheAndReturnResultSpy).to.be.calledTwice;
           expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
@@ -945,6 +1009,12 @@ describe('SignOutOperationHandler', () => {
           return unifiedSignOutOperationHandler.start();
         })
         .then(() => {
+          // Confirm framework ID set on auth1, auth2 and agentAuth which are associated with the resource.
+          expect(auth1.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(auth2.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          // As auth3 is never retrieved, no frameworks should be logged.
+          expect(auth3.loggedFrameworks).deep.equal([]);
           // Confirm SharedSettings cache used.
           expect(cacheAndReturnResultSpy.getCall(0).thisValue)
             .to.equal(sharedSettings.cache);
@@ -1016,6 +1086,11 @@ describe('SignOutOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID not set.
+          expect(auth1.loggedFrameworks).deep.equal([]);
+          expect(auth2.loggedFrameworks).deep.equal([]);
+          expect(auth3.loggedFrameworks).deep.equal([]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           caughtError = error;
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
@@ -1117,6 +1192,11 @@ describe('SignOutOperationHandler', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Confirm framework ID set on auth1, auth2 and auth3.
+          expect(auth1.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(auth2.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(auth3.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
           // Progress bar should be shown on initialization.
           expect(showProgressBarSpy).to.have.been.calledOnce
             .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);

@@ -25,7 +25,7 @@ import { GCIPRequestHandler } from '../../../src/ciap/gcip-request';
 import { IAPRequestHandler } from '../../../src/ciap/iap-request';
 import {
   createMockUrl, createMockAuth, createMockAuthenticationHandler, MockAuthenticationHandler,
-  createMockStorageManager, createMockUser,
+  createMockStorageManager, createMockUser, MockAuth,
 } from '../../resources/utils';
 import * as storageManager from '../../../src/storage/manager';
 import * as authTenantsStorage from '../../../src/ciap/auth-tenants-storage';
@@ -179,10 +179,8 @@ describe('BaseOperationHandler', () => {
   const currentUrlOrigin = new URL(getCurrentUrl(window)).origin;
   const redirectUri = `https://iap.googleapis.com/v1alpha1/gcip/resources/RESOURCE_HASH:handleRedirect`;
   // Dummy FirebaseAuth instance.
-  const auth = createMockAuth(apiKey, tid);
+  let auth: MockAuth;
   const tenant2Auth: {[key: string]: FirebaseAuth} = {};
-  tenant2Auth[tid] = auth;
-  tenant2Auth._ = createMockAuth(apiKey, null);
   let checkAuthorizedDomainsAndGetProjectIdStub: sinon.SinonStub;
   let getSessionInfoStub: sinon.SinonStub;
   let showProgressBarSpy: sinon.SinonSpy;
@@ -192,6 +190,9 @@ describe('BaseOperationHandler', () => {
 
   beforeEach(() => {
     sharedSettings = new SharedSettings(apiKey);
+    auth = createMockAuth(apiKey, tid);
+    tenant2Auth[tid] = auth;
+    tenant2Auth._ = createMockAuth(apiKey, null);
     checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
         GCIPRequestHandler.prototype,
         'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
