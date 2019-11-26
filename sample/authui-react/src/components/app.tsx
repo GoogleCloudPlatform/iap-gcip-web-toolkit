@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 import React from 'react';
-import { SelectProvider, SelectProviderParameters } from './selectprovider';
+import { SelectTenant, SelectTenantParameters } from './selecttenant';
 import { SignIn, SignInParameters } from './signin';
 import { SignInWithEmail, SignInWithEmailParameters } from './signinwithemail';
 import { SignUpWithEmail, SignUpWithEmailParameters } from './signupwithemail';
@@ -34,10 +34,10 @@ const SAML_PROVIDER_ID = 'saml.okta-cicp-app';
 
 interface AppState {
   mode?: 'SIGN_IN' | 'SIGN_IN_WITH_EMAIL' | 'SIGN_UP_WITH_EMAIL' |
-      'SIGN_OUT' | 'PROGRESS_BAR' | 'SELECT_PROVIDER' | 'NONE';
+      'SIGN_OUT' | 'PROGRESS_BAR' | 'SELECT_TENANT' | 'NONE';
   navbar: NavbarParameters;
   alertParams?: AlertParameters;
-  selectProvider?: SelectProviderParameters;
+  selectTenant?: SelectTenantParameters;
   signIn?: SignInParameters;
   signInWithEmail?: SignInWithEmailParameters;
   signUpWithEmail?: SignUpWithEmailParameters;
@@ -127,7 +127,7 @@ class App extends React.Component<{}, AppState> implements ciap.AuthenticationHa
     this.updateError(error);
   }
 
-  public selectProvider(
+  public selectTenant(
       projectConfig: {projectId: string}, tenantIds: string[]): Promise<ciap.SelectedTenantInfo> {
     const topLevelProject = `_${projectConfig.projectId}`;
     const tenants: Array<{tenantId: string, tenantDisplayName: string}> = [];
@@ -140,7 +140,7 @@ class App extends React.Component<{}, AppState> implements ciap.AuthenticationHa
       charCode++;
     });
     return new Promise((resolve, reject) => {
-      this.renderSelectProvider(
+      this.renderSelectTenant(
           tenants,
           (selectedTenantId: string | null) => {
             this.updateError(null);
@@ -262,19 +262,19 @@ class App extends React.Component<{}, AppState> implements ciap.AuthenticationHa
       signIn: this.state.signIn,
       signInWithEmail: this.state.signInWithEmail,
       signUpWithEmail: this.state.signUpWithEmail,
-      selectProvider: this.state.selectProvider,
+      selectTenant: this.state.selectTenant,
     };
     this.setState(modifiedState);
   }
 
-  private renderSelectProvider(
+  private renderSelectTenant(
       tenants: Array<{tenantId: string, tenantDisplayName: string}>,
-      onSelectProvider: (tenantId: string) => void) {
+      onSelectTenant: (tenantId: string) => void) {
     this.setState({
-      mode: 'SELECT_PROVIDER',
-      selectProvider: {
+      mode: 'SELECT_TENANT',
+      selectTenant: {
         tenants,
-        onSelectProvider,
+        onSelectTenant,
       },
       navbar: {
         link: this.state.navbar.link,
@@ -390,11 +390,11 @@ class App extends React.Component<{}, AppState> implements ciap.AuthenticationHa
           email={signUpWithEmail.email}
           onSignUpWithEmailAndPassword={signUpWithEmail.onSignUpWithEmailAndPassword}
         />;
-      case 'SELECT_PROVIDER':
-        const selectProvider = this.state.selectProvider as SelectProviderParameters;
-        return <SelectProvider
-          tenants={selectProvider.tenants}
-          onSelectProvider={selectProvider.onSelectProvider}
+      case 'SELECT_TENANT':
+        const selectTenant = this.state.selectTenant as SelectTenantParameters;
+        return <SelectTenant
+          tenants={selectTenant.tenants}
+          onSelectTenant={selectTenant.onSelectTenant}
         />;
       case 'SIGN_OUT':
         return <SignOut />;

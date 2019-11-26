@@ -326,7 +326,7 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
    *
    * @param tenant2Auth The tenant to FirebaseAuth map.
    * @param onStartSignIn The optional callback to run when startSignIn is triggered.
-   * @param selectedTenantInfo The optional SelectedTenantInfo to return on selectProvider call. If
+   * @param selectedTenantInfo The optional SelectedTenantInfo to return on selectTenant call. If
    *     not provided, the first option in the list of tenant IDs is returned.
    */
   constructor(
@@ -411,7 +411,7 @@ export class MockAuthenticationHandler implements AuthenticationHandler {
    * @param tenantIds The list of IDs of the tenants associated with the IAP resource.
    * @return A promise that resolves with the `SelectedTenantInfo` based on the user selection.
    */
-  public selectProvider(projectConfig: ProjectConfig, tenantIds: string[]): Promise<SelectedTenantInfo> {
+  public selectTenant(projectConfig: ProjectConfig, tenantIds: string[]): Promise<SelectedTenantInfo> {
     if (this.selectedTenantInfo) {
       return Promise.resolve(this.selectedTenantInfo);
     }
@@ -458,7 +458,7 @@ export function createMockAuth(apiKey: string, tenantId?: string): MockAuth {
  *
  * @param tenant2Auth The tenant to FirebaseAuth map.
  * @param onStartSignIn The optional callback to run when startSignIn is triggered.
- * @param selectedTenantInfo The optional SelectedTenantInfo to return on selectProvider call. If not
+ * @param selectedTenantInfo The optional SelectedTenantInfo to return on selectTenant call. If not
  *     provided, the first option in the list of tenant IDs is returned.
  * @return The mock AuthenticationHandler instance.
  */

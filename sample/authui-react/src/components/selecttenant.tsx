@@ -13,15 +13,15 @@
  */
 import React from 'react';
 
-export interface SelectProviderParameters {
+export interface SelectTenantParameters {
   tenants: Array<{
     tenantId: string;
     tenantDisplayName: string;
   }>;
-  onSelectProvider: (tenantId: string) => void;
+  onSelectTenant: (tenantId: string) => void;
 }
 
-export class SelectProvider extends React.Component<SelectProviderParameters, {}> {
+export class SelectTenant extends React.Component<SelectTenantParameters, {}> {
   render(): JSX.Element {
     return (
       <div className="card">
@@ -39,7 +39,7 @@ export class SelectProvider extends React.Component<SelectProviderParameters, {}
                       id={'sign-in-' + tenant.tenantId}
                       data-tenant-id={tenant.tenantId}
                       className="sign-in-with-tenant-btn btn btn-primary btn-block"
-                      onClick={() => {this.props.onSelectProvider(tenant.tenantId);}}>
+                      onClick={() => {this.props.onSelectTenant(tenant.tenantId);}}>
                     Sign in with {tenant.tenantDisplayName}
                   </button>
                 );

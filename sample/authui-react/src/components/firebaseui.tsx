@@ -132,7 +132,7 @@ class FirebaseUi extends React.Component<{}, FirebaseUiState> {
         authDomain: config.authDomain,
         callbacks: {
           // The callback to trigger when tenant selection page is shown.
-          selectProviderUiShown: () => {
+          selectTenantUiShown: () => {
             this.setState({
               title: undefined,
             });

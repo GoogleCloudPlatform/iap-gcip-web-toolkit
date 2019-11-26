@@ -36,7 +36,7 @@ describe('isAuthenticationHandler()', () => {
     delete handler.showProgressBar;
     delete handler.hideProgressBar;
     delete handler.processUser;
-    delete handler.selectProvider;
+    delete handler.selectTenant;
     expect(isAuthenticationHandler(handler)).to.be.true;
   });
 
@@ -46,7 +46,7 @@ describe('isAuthenticationHandler()', () => {
     handler.showProgressBar = () => {/** Null function. */};
     handler.hideProgressBar = () => {/** Null function. */};
     handler.processUser = (user) => Promise.resolve(user);
-    handler.selectProvider = (projectConfig, tenantIds) => Promise.resolve(selectedTenantInfo);
+    handler.selectTenant = (projectConfig, tenantIds) => Promise.resolve(selectedTenantInfo);
     expect(isAuthenticationHandler(handler)).to.be.true;
   });
 
@@ -109,9 +109,9 @@ describe('isAuthenticationHandler()', () => {
   });
 
   nonFunctions.forEach((nonFunction) => {
-    it('should return false when provided with an invalid selectProvider: ' + JSON.stringify(nonFunction), () => {
+    it('should return false when provided with an invalid selectTenant: ' + JSON.stringify(nonFunction), () => {
       const handler = mockAuthenticationHandler;
-      handler.selectProvider = nonFunction as any;
+      handler.selectTenant = nonFunction as any;
       expect(isAuthenticationHandler(handler)).to.be.false;
     });
   });

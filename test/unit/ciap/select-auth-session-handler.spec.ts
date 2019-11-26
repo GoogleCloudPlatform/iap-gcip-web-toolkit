@@ -67,7 +67,7 @@ describe('SelectAuthSessionOperationHandler', () => {
   let tenant2Auth: {[key: string]: FirebaseAuth};
   let showProgressBarSpy: sinon.SinonSpy;
   let hideProgressBarSpy: sinon.SinonSpy;
-  let selectProviderSpy: sinon.SinonSpy;
+  let selectTenantSpy: sinon.SinonSpy;
   let cacheAndReturnResultSpy: sinon.SinonSpy;
   const currentUrl = 'https://auth.example.com:8080/signin' +
       `?mode=selectAuthSession&apiKey=${encodeURIComponent(apiKey)}` +
@@ -91,10 +91,10 @@ describe('SelectAuthSessionOperationHandler', () => {
     // Simulate history API is not supported as the default case.
     isHistoryAndCustomEventSupportedStub = sinon.stub(utils, 'isHistoryAndCustomEventSupported').returns(false);
     stubs.push(isHistoryAndCustomEventSupportedStub);
-    // Listen to selectProvider, showProgressBar and hideProgressBar.
+    // Listen to selectTenant, showProgressBar and hideProgressBar.
     showProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'showProgressBar');
     hideProgressBarSpy = sinon.spy(MockAuthenticationHandler.prototype, 'hideProgressBar');
-    selectProviderSpy = sinon.spy(MockAuthenticationHandler.prototype, 'selectProvider');
+    selectTenantSpy = sinon.spy(MockAuthenticationHandler.prototype, 'selectTenant');
     cacheAndReturnResultSpy = sinon.spy(PromiseCache.prototype, 'cacheAndReturnResult');
     startSpy = sinon.spy(SelectAuthSessionOperationHandler.prototype, 'start');
     auth1 = createMockAuth(apiKey, tid1);
@@ -118,7 +118,7 @@ describe('SelectAuthSessionOperationHandler', () => {
     stubs.forEach((s) => s.restore());
     showProgressBarSpy.restore();
     hideProgressBarSpy.restore();
-    selectProviderSpy.restore();
+    selectTenantSpy.restore();
     cacheAndReturnResultSpy.restore();
     startSpy.restore();
   });
@@ -178,8 +178,8 @@ describe('SelectAuthSessionOperationHandler', () => {
             .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
           // Expected error should be thrown.
           expect(error).to.equal(unauthorizedDomainError);
-          // Confirm selectProvider not called.
-          expect(selectProviderSpy).to.not.have.been.called;
+          // Confirm selectTenant not called.
+          expect(selectTenantSpy).to.not.have.been.called;
           // Confirm getSessionInfoStub not called.
           expect(getSessionInfoStub).to.not.have.been.called;
           // No redirect should occur.
@@ -222,8 +222,8 @@ describe('SelectAuthSessionOperationHandler', () => {
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
             .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
-          // Confirm selectProvider not called.
-          expect(selectProviderSpy).to.not.have.been.called;
+          // Confirm selectTenant not called.
+          expect(selectTenantSpy).to.not.have.been.called;
           // Confirm getSessionInfoStub not called.
           expect(getSessionInfoStub).to.not.have.been.called;
           // No redirect should occur.
@@ -263,8 +263,8 @@ describe('SelectAuthSessionOperationHandler', () => {
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
             .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
-          // Confirm selectProvider not called.
-          expect(selectProviderSpy).to.not.have.been.called;
+          // Confirm selectTenant not called.
+          expect(selectTenantSpy).to.not.have.been.called;
           // Confirm getSessionInfoStub called.
           expect(getSessionInfoStub)
             .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
@@ -310,8 +310,8 @@ describe('SelectAuthSessionOperationHandler', () => {
           expect(getSessionInfoStub)
             .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
             .and.calledWith(selectAuthSessionConfig.redirectUrl, selectAuthSessionConfig.state);
-          // Confirm selectProvider is called.
-          expect(selectProviderSpy).to.have.been.calledOnce
+          // Confirm selectTenant is called.
+          expect(selectTenantSpy).to.have.been.calledOnce
             .and.calledWith(projectConfig, [tid1, tid3])
             .and.calledAfter(getSessionInfoStub);
           // No redirect should occur.
@@ -361,7 +361,7 @@ describe('SelectAuthSessionOperationHandler', () => {
           expect(getSessionInfoStub)
             .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
             .and.calledWith(selectAuthSessionConfig.redirectUrl, selectAuthSessionConfig.state);
-          expect(selectProviderSpy).to.have.been.calledOnce
+          expect(selectTenantSpy).to.have.been.calledOnce
             .and.calledWith(projectConfig, sessionInfoResponse.tenantIds)
             .and.calledBefore(setCurrentUrlStub)
             .and.calledAfter(getSessionInfoStub);
@@ -412,19 +412,19 @@ describe('SelectAuthSessionOperationHandler', () => {
           // Progress bar should be shown on initialization and after SelectedTenantInfo is returned.
           expect(showProgressBarSpy).to.have.been.calledTwice;
           expect(showProgressBarSpy).to.have.been.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
-          expect(showProgressBarSpy).to.have.been.calledAfter(selectProviderSpy);
+          expect(showProgressBarSpy).to.have.been.calledAfter(selectTenantSpy);
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
             .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
-          // Progress bar should be hidden after sessionInfoResponse is returned and before selectProvider.
+          // Progress bar should be hidden after sessionInfoResponse is returned and before selectTenant.
           expect(hideProgressBarSpy).to.have.been.calledOnce
             .and.calledAfter(getSessionInfoStub)
-            .and.calledBefore(selectProviderSpy);
+            .and.calledBefore(selectTenantSpy);
           // Confirm getSessionInfoStub called.
           expect(getSessionInfoStub)
             .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
             .and.calledWith(selectAuthSessionConfig.redirectUrl, selectAuthSessionConfig.state);
-          expect(selectProviderSpy).to.have.been.calledOnce
+          expect(selectTenantSpy).to.have.been.calledOnce
             .and.calledWith(projectConfig, sessionInfoResponse.tenantIds)
             .and.calledBefore(setCurrentUrlStub)
             .and.calledAfter(getSessionInfoStub);
@@ -496,15 +496,15 @@ describe('SelectAuthSessionOperationHandler', () => {
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
             .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, selectAuthSessionConfig.redirectUrl]);
-          // Progress bar should be hidden after sessionInfoResponse is returned and before selectProvider.
+          // Progress bar should be hidden after sessionInfoResponse is returned and before selectTenant.
           expect(hideProgressBarSpy).to.have.been.calledOnce
             .and.calledAfter(getSessionInfoStub)
-            .and.calledBefore(selectProviderSpy);
+            .and.calledBefore(selectTenantSpy);
           // Confirm getSessionInfoStub called.
           expect(getSessionInfoStub)
             .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
             .and.calledWith(selectAuthSessionConfig.redirectUrl, selectAuthSessionConfig.state);
-          expect(selectProviderSpy).to.have.been.calledOnce
+          expect(selectTenantSpy).to.have.been.calledOnce
             .and.calledWith(projectConfig, sessionInfoResponse.tenantIds)
             .and.calledBefore(pushHistoryStateStub)
             .and.calledAfter(getSessionInfoStub);
@@ -529,7 +529,7 @@ describe('SelectAuthSessionOperationHandler', () => {
         });
     });
 
-    it('should select first selectedTenantInfo when no selectProvider is provided', () => {
+    it('should select first selectedTenantInfo when no selectTenant is provided', () => {
       const expectedSignInUrl = `https://auth.example.com:8080/signin` +
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
           `&tid=${encodeURIComponent(sessionInfoResponse.tenantIds[0])}` +
@@ -548,16 +548,16 @@ describe('SelectAuthSessionOperationHandler', () => {
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
       stubs.push(setCurrentUrlStub);
 
-      // Initialize a mock authentication handler with no selectProvider method.
+      // Initialize a mock authentication handler with no selectTenant method.
       const mockAuthenticationHandler: AuthenticationHandler = {
         getAuth: (tenantId: string) => null,
         startSignIn: () => Promise.resolve({} as any),
         completeSignOut: () => Promise.resolve(),
       };
-      const noSelectProviderOperationHandler = new SelectAuthSessionOperationHandler(
+      const noSelectTenantOperationHandler = new SelectAuthSessionOperationHandler(
           selectAuthSessionConfig, mockAuthenticationHandler);
 
-      return noSelectProviderOperationHandler.start()
+      return noSelectTenantOperationHandler.start()
         .then(() => {
           // Confirm URLs are checked for authorization.
           expect(checkAuthorizedDomainsAndGetProjectIdStub)
@@ -573,7 +573,7 @@ describe('SelectAuthSessionOperationHandler', () => {
         });
     });
 
-    it('should select _<project-id> when selectProvider resolves with a null tenant ID', () => {
+    it('should select _<project-id> when selectTenant resolves with a null tenant ID', () => {
       const expectedSignInUrl = `https://auth.example.com:8080/signin` +
           `?mode=login&apiKey=${encodeURIComponent(apiKey)}` +
           // _<project-id> tid selected.
@@ -657,8 +657,8 @@ describe('SelectAuthSessionOperationHandler', () => {
           expect(getSessionInfoStub)
             .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
             .and.calledWith(selectAuthSessionConfig.redirectUrl, selectAuthSessionConfig.state);
-          // selectProvider should not have been called.
-          expect(selectProviderSpy).to.not.have.been.called;
+          // selectTenant should not have been called.
+          expect(selectTenantSpy).to.not.have.been.called;
           // Confirm error passed to handler.
           expect(authenticationHandler.getLastHandledError()).to.equal(error);
           expect(startSpy).to.be.calledOnce;
@@ -671,16 +671,16 @@ describe('SelectAuthSessionOperationHandler', () => {
           // Progress bar show before getSessionInfo and after provider is selected.
           expect(showProgressBarSpy).to.have.been.calledThrice;
           expect(showProgressBarSpy).to.have.been.calledBefore(getSessionInfoStub);
-          expect(showProgressBarSpy).to.have.been.calledAfter(selectProviderSpy);
+          expect(showProgressBarSpy).to.have.been.calledAfter(selectTenantSpy);
           // Progress bar is hidden before provider is selected.
           expect(hideProgressBarSpy).to.have.been.calledTwice;
-          expect(hideProgressBarSpy).to.have.been.calledBefore(selectProviderSpy);
+          expect(hideProgressBarSpy).to.have.been.calledBefore(selectTenantSpy);
           // Only getSessionInfo call should retry.
           expect(checkAuthorizedDomainsAndGetProjectIdStub).to.have.been.calledOnce;
           expect(getSessionInfoStub).to.have.been.calledTwice;
           expect(getSessionInfoStub.getCalls()[1].args)
             .to.deep.equal([selectAuthSessionConfig.redirectUrl, selectAuthSessionConfig.state]);
-          expect(selectProviderSpy).to.have.been.calledOnce
+          expect(selectTenantSpy).to.have.been.calledOnce
             .and.calledWith(projectConfig, sessionInfoResponse.tenantIds)
             .and.calledBefore(setCurrentUrlStub)
             .and.calledAfter(getSessionInfoStub);

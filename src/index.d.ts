@@ -55,7 +55,7 @@ declare namespace ciap {
     showProgressBar?(): void;
     hideProgressBar?(): void;
     handleError?(error: Error | CIAPError): void;
-    selectProvider?(
+    selectTenant?(
       projectConfig: ProjectConfig,
       tenantIds: string[],
     ): Promise<SelectedTenantInfo>;

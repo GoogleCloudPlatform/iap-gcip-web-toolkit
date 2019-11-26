@@ -16,7 +16,7 @@ import {
   Component, ComponentFactory, ComponentRef, ComponentFactoryResolver,
   ViewContainerRef, ViewChild,
 } from '@angular/core';
-import {SelectProviderComponent} from './selectprovider.component';
+import {SelectTenantComponent} from './selecttenant.component';
 import {SignInComponent} from './signin.component';
 import {SignInWithEmailComponent} from './signinwithemail.component';
 import {SignUpWithEmailComponent} from './signupwithemail.component';
@@ -97,7 +97,7 @@ export class AppComponent {
     this.updateError(error);
   }
 
-  public selectProvider(projectConfig, tenantIds) {
+  public selectTenant(projectConfig, tenantIds) {
     const topLevelProject = `_${projectConfig.projectId}`;
     const tenants = [];
     let charCode = 'A'.charCodeAt(0);
@@ -109,7 +109,7 @@ export class AppComponent {
       charCode++;
     });
     return new Promise((resolve, reject) => {
-      this.renderSelectProvider(
+      this.renderSelectTenant(
           tenants,
           (selectedTenantId) => {
             this.updateError(null);
@@ -228,11 +228,11 @@ export class AppComponent {
     this.retry = error && error.retry;
   }
 
-  private renderSelectProvider(
+  private renderSelectTenant(
       tenants: Array<{tenantId: string, tenantDisplayName: string}>,
       onclick: (tenantId: string) => void) {
     this.hideContainer();
-    const factory: ComponentFactory<any> = this.resolver.resolveComponentFactory(SelectProviderComponent);
+    const factory: ComponentFactory<any> = this.resolver.resolveComponentFactory(SelectTenantComponent);
 
     this.componentRef = this.container.createComponent(factory);
 

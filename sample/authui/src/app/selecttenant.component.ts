@@ -15,7 +15,7 @@
 import { Component, Input } from '@angular/core';
 
 @Component({
-  selector: 'select-provider',
+  selector: 'select-tenant',
   template: `
     <div class="card">
       <div class="card-header sign-in-header">
@@ -41,7 +41,7 @@ import { Component, Input } from '@angular/core';
     </div>
     `,
 })
-export class SelectProviderComponent {
+export class SelectTenantComponent {
   @Input() public tenants: Array<{tenantId: string, tenantDisplayName: string}>;
   @Input() public onclick: (tenantId: string) => void;
 }

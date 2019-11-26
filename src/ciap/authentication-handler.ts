@@ -47,7 +47,7 @@ export interface AuthenticationHandler {
   // Developer may want to make additional changes to the user before handing ID token to IAP.
   processUser?(user: User): Promise<User>;
   handleError?(error: Error): void;
-  selectProvider?(
+  selectTenant?(
     projectConfig: ProjectConfig,
     tenantIds: string[],
   ): Promise<SelectedTenantInfo>;
@@ -80,8 +80,8 @@ export function isAuthenticationHandler(handler: any): handler is Authentication
         typeof handler.processUser !== 'function') {
       return false;
     }
-    if (typeof handler.selectProvider !== 'undefined' &&
-        typeof handler.selectProvider !== 'function') {
+    if (typeof handler.selectTenant !== 'undefined' &&
+        typeof handler.selectTenant !== 'function') {
       return false;
     }
     return true;

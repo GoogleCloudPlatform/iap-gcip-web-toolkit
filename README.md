@@ -89,7 +89,7 @@ interface AuthenticationHandler {
   languageCode?: string | null;
   getAuth(apiKey: string, tenantId: string | null): FirebaseAuth;
   startSignIn(auth: FirebaseAuth, match?: SelectedTenantInfo): Promise<UserCredential>;
-  selectProvider(projectConfig: ProjectConfig, tenantIds: string[]): Promise<SelectedTenantInfo>;
+  selectTenant(projectConfig: ProjectConfig, tenantIds: string[]): Promise<SelectedTenantInfo>;
   completeSignOut(): Promise<void>;
   processUser?(user: User): Promise<User>;
   showProgressBar?(): void;
@@ -148,7 +148,7 @@ const configs = {
     callbacks: {
       // The callback to trigger when the selection tenant page
       // or enter email for tenant matching page is shown.
-      selectProviderUiShown: () => {
+      selectTenantUiShown: () => {
         // Show title and additional display info.
       },
       // The callback to trigger when the sign-in page
@@ -245,7 +245,7 @@ const configs = {
     callbacks: {
       // The callback to trigger when the selection tenant page
       // or enter email for tenant matching page is shown.
-      selectProviderUiShown: () => {
+      selectTenantUiShown: () => {
         // Show title and additional display info.
       },
       // The callback to trigger when the sign-in page

@@ -140,7 +140,7 @@ export class FirebaseUiComponent {
         callbacks: {
           // The callback to trigger when the provider selection page
           // is shown.
-          selectProviderUiShown: () => {
+          selectTenantUiShown: () => {
             this.title = undefined;
           },
           // The callback to trigger when the sign-in page

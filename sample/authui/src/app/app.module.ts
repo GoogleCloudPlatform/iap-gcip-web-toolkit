@@ -15,7 +15,7 @@
 import {NgModule} from '@angular/core';
 import {RouterModule, Routes} from '@angular/router';
 import {BrowserModule} from '@angular/platform-browser';
-import {SelectProviderComponent} from './selectprovider.component';
+import {SelectTenantComponent} from './selecttenant.component';
 import {SignInComponent} from './signin.component';
 import {SignInWithEmailComponent} from './signinwithemail.component';
 import {SignUpWithEmailComponent} from './signupwithemail.component';
@@ -48,13 +48,13 @@ const appRoutes: Routes = [
     ),
   ],
   declarations: [
-    AppComponent, NavBarComponent, SelectProviderComponent, SignInComponent,
+    AppComponent, NavBarComponent, SelectTenantComponent, SignInComponent,
     SignInWithEmailComponent, SignUpWithEmailComponent, SignOutComponent,
     AlertComponent, ProgressBarComponent, PageNotFoundComponent,
     FirebaseUiComponent, RootComponent, PrivacyPolicyComponent,
   ],
   entryComponents: [
-    AppComponent, NavBarComponent, SelectProviderComponent, SignInComponent,
+    AppComponent, NavBarComponent, SelectTenantComponent, SignInComponent,
     SignInWithEmailComponent, SignUpWithEmailComponent, SignOutComponent,
     AlertComponent, ProgressBarComponent, PageNotFoundComponent,
     FirebaseUiComponent, RootComponent, PrivacyPolicyComponent,

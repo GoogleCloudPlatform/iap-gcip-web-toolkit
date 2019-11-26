@@ -85,10 +85,10 @@ export class SelectAuthSessionOperationHandler extends BaseOperationHandler {
             throw new CIAPError(CLIENT_ERROR_CODES.internal, 'No tenants configured on resource.');
         }
         this.hideProgressBar();
-        return typeof this.handler.selectProvider === 'function' ?
+        return typeof this.handler.selectTenant === 'function' ?
             // Ask the user to select the desired tenant.
-            this.handler.selectProvider(projectConfig, this.tenantIds) :
-            // Select first option if no selectProvider is available.
+            this.handler.selectTenant(projectConfig, this.tenantIds) :
+            // Select first option if no selectTenant is available.
             // This makes it easier to upgrade without breaking apps.
             Promise.resolve({tenantId: sessionInfo.tenantIds[0]});
       })
