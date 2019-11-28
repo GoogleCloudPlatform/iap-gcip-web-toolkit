@@ -27,7 +27,7 @@ import * as ciap from 'gcip-iap';
 // The list of UI configs for each supported tenant.
 const tenantsConfig = {
   // Project level IdPs flow.
-  _: {
+  '*': {
     displayName: 'My Organization',
     signInOptions: [
       firebase.auth.FacebookAuthProvider.PROVIDER_ID,
