@@ -41,6 +41,9 @@
     "type": "git",
     "url": "https://github.com/GoogleCloudPlatform/iap-gcip-web-toolkit"
   },
+  "publishConfig": {
+    "registry": "https://wombat-dressing-room.appspot.com"
+  },
   "main": "dist/index.cjs.js",
   "module": "dist/index.esm.js",
   "files": [
