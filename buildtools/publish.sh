@@ -145,24 +145,36 @@ echo "Moved to temporary directory."
 
 WDIR2=$(pwd)
 
-echo "Cloning repository..."
+echo "Cloning GitHub repository..."
 git clone "${GITHUB_REPOSITORY}.git"
 # Only one directory should exist.
 cd *
-echo "Cloned repository."
+echo "Cloned GitHub repository."
+
+# Copy package.json and README from internal repo to public one.
+echo "Copying package.json and README..."
+cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/package.json" .
+cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/README.md" .
+echo "Copied package.json and README."
+
+# Update sample apps if needed.
+if [[ $PUSH_SAMPLE_APPS = "y" ]] || [[ $PUSH_SAMPLE_APPS = "Y" ]]; then
+  echo "Copying sample apps..."
+  cp -r "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/sample" "./sample"
+  echo "Copied sample apps."
+fi
+
+# Commit the change and create a release tag.
+echo "Creating release commit and tag in GitHub repository..."
+git add -A
+git commit -m "[gcip-iap-release] Pushed v${NEW_VERSION}"
+git tag -a v${NEW_VERSION} -m "[gcip-iap-release] Pushed v${NEW_VERSION}"
+echo "Created release commit and tag in GitHub repository."
+
+# echo "Pushing release commit and tag to GitHub..."
+# git push origin master --tags
+# echo "Pushed release commit and tag GitHub."
 
 # echo "Publishing release notes..."
 # hub release create --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
 # echo "Published release notes."
-
-# Copy package.json and README from internal repo to public one.
-cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/package.json" .
-cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/README.md" .
-# Update sample apps if needed.
-if [[ $PUSH_SAMPLE_APPS = "y" ]] || [[ $PUSH_SAMPLE_APPS = "Y" ]]; then
-  cp -r "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/sample" "./sample"
-fi
-# git commit -am "[gcip-iap-release] Pushed v${NEW_VERSION}"
-# echo "Pushing to GitHub..."
-# git push origin master
-# echo "Pushed to GitHub."
