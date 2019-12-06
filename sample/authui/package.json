@@ -17,6 +17,7 @@
     "zone.js": "^0.9.1"
   },
   "scripts": {
+    "preinstall": "cd ../.. && npm install",
     "ng": "ng",
     "ng-serve": "ng serve",
     "start": "ng build && firebase serve",
@@ -39,6 +40,7 @@
     "codelyzer": "~4.5.0",
     "firebase": "^6.6.0",
     "firebaseui": "../../builds/firebaseui/firebaseui.tgz",
+    "gcip-iap": "file:../..",
     "jasmine-core": "~2.99.1",
     "jasmine-spec-reporter": "~4.2.1",
     "jquery": "^3.4.1",

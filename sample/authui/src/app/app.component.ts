@@ -27,7 +27,7 @@ import {ProgressBarComponent} from './progressbar.component';
 import * as firebase from 'firebase/app';
 import 'firebase/auth';
 // Import GCIP/IAP module.
-import * as ciap from '../../../../builds/ciap/index.esm';
+import * as ciap from '../../node_modules/gcip-iap/dist/index.esm';
 import * as $ from 'jquery';
 import * as bootstrap from 'bootstrap';
 

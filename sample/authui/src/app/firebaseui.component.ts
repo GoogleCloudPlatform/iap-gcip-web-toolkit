@@ -19,7 +19,7 @@ import 'firebase/auth';
 // Import FirebaseUI dependencies.
 import * as firebaseui from 'firebaseui';
 // Import GCIP/IAP module.
-import * as ciap from '../../../../builds/ciap/index.esm';
+import * as ciap from '../../node_modules/gcip-iap/dist/index.esm';
 
 // The list of UI configs for each supported tenant.
 const tenantsConfig = {

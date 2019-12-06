@@ -24,6 +24,7 @@
 INTERNAL_REPOSITORY_TEAM="cicp-eng"
 INTERNAL_REPOSITORY_NAME="cicp-iap-js"
 INTERNAL_REPOSITORY="sso://team/${INTERNAL_REPOSITORY_TEAM}/${INTERNAL_REPOSITORY_NAME}"
+SAMPLE_APPS=( "authui" "authui-react" "authui-firebaseui" )
 set -e
 
 printusage() {
@@ -155,6 +156,8 @@ echo "Cloned GitHub repository."
 echo "Copying package.json and README..."
 cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/package.json" .
 cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/README.md" .
+# Remove scripts from package.json
+jq "del(.scripts)" package.json > tmp.$$.json && mv tmp.$$.json package.json
 echo "Copied package.json and README."
 
 # Update sample apps if needed.
@@ -163,6 +166,14 @@ if [[ $PUSH_SAMPLE_APPS = "y" ]] || [[ $PUSH_SAMPLE_APPS = "Y" ]]; then
   cp -r "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/sample" "./sample"
   echo "Copied sample apps."
 fi
+
+# Updating gcip-iap dependencies in sample apps.
+echo "Updating gcip-iap dependencies in sample apps..."
+for i in ${SAMPLE_APPS[@]}
+do
+  sed -i "s/\"gcip-iap\":\ \"\(.*\)\"/\"gcip-iap\":\ \"${NEW_VERSION}\"/g" ./sample/${i}/package.json
+done
+echo "Updated gcip-iap dependencies in sample apps..."
 
 # Commit the change and create a release tag.
 echo "Creating release commit and tag in GitHub repository..."
