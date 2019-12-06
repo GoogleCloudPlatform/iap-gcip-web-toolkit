@@ -1,4 +1,4 @@
-# GCIP/IAP Authentication UI Quickstart (React)
+# Configuring Authentication UI for IAP External Identities (React)
 
 This sample demonstrates how to integrate a GCIP authentication UI with
 a GAE application gated with Cloud IAP using React JS framework.

@@ -1,4 +1,4 @@
-# GCIP/IAP Authentication UI Quickstart
+# Configuring Authentication UI for IAP External Identities (Angular)
 
 This sample demonstrates how to integrate a GCIP authentication UI with
 a GAE application gated with Cloud IAP. While this sample is hosted with
