@@ -20,6 +20,13 @@
 #
 # Usage:
 # $ buildtools/publish.sh <major|minor|patch> <push_sample_apps>
+#
+# The environment variables SA_KEY_NONE, SA_KEY_SINGLE and SA_KEY_MULTI
+# should be populated with the service account credentials.
+# If running locally, this can be done as follows:
+# export SA_KEY_NONE=`cat ./test/resources/key.json`
+# export SA_KEY_SINGLE=`cat ./test/resources/key_single_tenant.json`
+# export SA_KEY_MULTI=`cat ./test/resources/key_multi_tenant.json`
 
 INTERNAL_REPOSITORY_TEAM="cicp-eng"
 INTERNAL_REPOSITORY_NAME="cicp-iap-js"
@@ -32,7 +39,7 @@ printusage() {
   echo ""
   echo "Arguments:"
   echo "  version: 'patch', 'minor', or 'major'."
-  echo "  push_sample_apps: 'y', 'n'."
+  echo "  push_sample_apps: 'y', 'n'. Default is 'n'."
 }
 
 VERSION=$1
@@ -46,6 +53,19 @@ elif [[ ! ($VERSION == "patch" || \
   printusage
   exit 1
 fi
+
+echo "Checking environment variables..."
+if [[ $SA_KEY_NONE == "" ]]; then
+  echo "SA_KEY_NONE environment variable is not defined."
+  exit 1
+elif [[ $SA_KEY_SINGLE == "" ]]; then
+  echo "SA_KEY_SINGLE environment variable is not defined."
+  exit 1
+elif [[ $SA_KEY_MULTI == "" ]]; then
+  echo "SA_KEY_MULTI environment variable is not defined."
+  exit 1
+fi
+echo "Environment variables checked."
 
 echo "Checking for commands..."
 trap "echo 'Missing hub.'; exit 1" ERR
@@ -62,6 +82,10 @@ trap - ERR
 
 trap "echo 'Missing git.'; exit 1" ERR
 which git &> /dev/null
+trap - ERR
+
+trap "echo 'Missing firebase.'; exit 1" ERR
+which firebase &> /dev/null
 trap - ERR
 
 trap "echo 'Missing Chrome.'; exit 1" ERR
@@ -105,9 +129,15 @@ npm install
 echo "Ran npm install."
 
 echo "Running tests..."
+# Copy key files needed for e2e tests to new directory.
+echo "${SA_KEY_NONE}" > test/resources/key.json
+echo "${SA_KEY_SINGLE}" > test/resources/key_single_tenant.json
+echo "${SA_KEY_MULTI}" > test/resources/key_multi_tenant.json
 trap "echo 'Tests failed'; exit 1" ERR
-# TODO: extend to run e2e tests.
+# Run unit tests.
 npm test
+# Run integration tests.
+npm run test:e2e
 trap - ERR
 echo "Tests passed."
 
@@ -125,7 +155,7 @@ cat CHANGELOG.md >> "${RELEASE_NOTES_FILE}"
 echo "Made the release notes."
 
 echo "Publishing to npm..."
-npm publish --dry-run
+npm publish
 echo "Published to npm."
 
 echo "Cleaning up release notes..."
@@ -183,9 +213,9 @@ git tag -a v${NEW_VERSION} -m "[gcip-iap-release] Pushed v${NEW_VERSION}"
 echo "Created release commit and tag in GitHub repository."
 
 # echo "Pushing release commit and tag to GitHub..."
-# git push origin master --tags
+git push origin master --tags
 # echo "Pushed release commit and tag GitHub."
 
 # echo "Publishing release notes..."
-# hub release create --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
+hub release create --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
 # echo "Published release notes."
