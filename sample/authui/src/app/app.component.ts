@@ -26,8 +26,9 @@ import {ProgressBarComponent} from './progressbar.component';
 // Import Firebase dependencies.
 import * as firebase from 'firebase/app';
 import 'firebase/auth';
+import { UserCredential, FirebaseAuth } from '@firebase/auth-types';
 // Import GCIP/IAP module.
-import * as ciap from '../../node_modules/gcip-iap/dist/index.esm';
+import * as ciap from 'gcip-iap';
 import * as $ from 'jquery';
 import * as bootstrap from 'bootstrap';
 
@@ -77,7 +78,7 @@ export class AppComponent {
     });
   }
 
-  public getAuth(apiKey, tenantId) {
+  public getAuth(apiKey: string, tenantId: string | null): FirebaseAuth {
     let auth = null;
     if (apiKey !== this.config.apiKey) {
       throw new Error('Invalid project!');
@@ -97,7 +98,8 @@ export class AppComponent {
     this.updateError(error);
   }
 
-  public selectTenant(projectConfig, tenantIds) {
+  public selectTenant(
+      projectConfig: {projectId: string}, tenantIds: string[]): Promise<ciap.SelectedTenantInfo> {
     const topLevelProject = `_${projectConfig.projectId}`;
     const tenants = [];
     let charCode = 'A'.charCodeAt(0);
@@ -124,7 +126,7 @@ export class AppComponent {
     });
   }
 
-  public startSignIn(auth, selectedTenantInfo) {
+  public startSignIn(auth: FirebaseAuth, selectedTenantInfo: ciap.SelectedTenantInfo): Promise<UserCredential> {
     return new Promise((resolve, reject) => {
       this.signIn(
           !!auth.tenantId,
