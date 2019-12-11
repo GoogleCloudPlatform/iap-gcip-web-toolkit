@@ -186,6 +186,10 @@ echo "Cloned GitHub repository."
 echo "Copying package.json and README..."
 cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/package.json" .
 cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/README.md" .
+# Copy other required files.
+cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/CONTRIBUTING.md" .
+cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/LICENSE" .
+cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/.gitignore" .
 # Remove scripts from package.json
 jq "del(.scripts)" package.json > tmp.$$.json && mv tmp.$$.json package.json
 echo "Copied package.json and README."
