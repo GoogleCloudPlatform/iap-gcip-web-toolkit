@@ -23,7 +23,7 @@ import * as ciap from 'gcip-iap';
 
 // The list of UI configs for each supported tenant.
 const tenantsConfig = {
-  // Agent flow.
+  // Project-level IdPs flow.
   _: {
     displayName: 'My Organization',
     signInOptions: [
@@ -115,7 +115,7 @@ const tenantsConfig = {
   selector: 'firebaseui',
   template: `
     <div class="main-container">
-      <h3 class="heading-center">FirebaseUI Handler Demo</h3>
+      <h3 class="heading-center">IAP External IDs Auth with FirebaseUI</h3>
       <ng-template [ngIf]="!!title">
         <h5 id="tenant-header" class="heading-center">
           <span>Application:</span>
@@ -138,7 +138,7 @@ export class FirebaseUiComponent {
       configs[config.apiKey] = {
         authDomain: config.authDomain,
         callbacks: {
-          // The callback to trigger when the provider selection page
+          // The callback to trigger when the tenant selection page
           // is shown.
           selectTenantUiShown: () => {
             this.title = undefined;

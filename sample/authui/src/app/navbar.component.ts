@@ -18,40 +18,40 @@ import { Component, Input } from '@angular/core';
   selector: 'navbar',
   template: `
     <nav class="navbar navbar-expand-lg">
-        <ul class="navbar-nav ml-auto">
+      <ul class="navbar-nav ml-auto">
         <li class="nav-item">
-            <a class="nav-link get-original-url" (click)="showModal()" href="javascript:void(0)">
+          <a class="nav-link get-original-url" (click)="showModal()" href="javascript:void(0)">
             Original URL
-            </a>
+          </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link switch-to-firebaseui" href="{{link}}">Switch to FirebaseUI</a>
+          <a class="nav-link switch-to-firebaseui" href="{{link}}">Switch to FirebaseUI</a>
         </li>
-        </ul>
+      </ul>
     </nav>
     <!-- Modal -->
     <div class="modal" id="originalUrlModal" tabindex="-1"
         role="dialog" aria-labelledby="original-url-modal-label"
         aria-hidden="true">
-        <div class="modal-dialog" role="document">
+      <div class="modal-dialog" role="document">
         <div class="modal-content">
-            <div class="modal-header">
+          <div class="modal-header">
             <h5 class="modal-title" id="original-url-modal-label">Original URL</h5>
             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
+              <span aria-hidden="true">&times;</span>
             </button>
-            </div>
-            <div class="modal-body">
-              <div class="original-url">{{originalUrl}}</div>
-            </div>
-            <div class="modal-footer">
+          </div>
+          <div class="modal-body">
+            <div class="original-url">{{originalUrl}}</div>
+          </div>
+          <div class="modal-footer">
             <button type="button" class="close-original-url-modal btn btn-secondary"
                     data-dismiss="modal">
-                Close
+              Close
             </button>
-            </div>
+          </div>
         </div>
-        </div>
+      </div>
     </div>
     `,
 })
@@ -60,7 +60,7 @@ export class NavBarComponent {
   @Input() public link: string;
 
   constructor() {
-      // On get original URL button click, call getOriginalURL() and populate the
+    // On get original URL button click, call getOriginalURL() and populate the
     // result in the opened modal.
   }
 

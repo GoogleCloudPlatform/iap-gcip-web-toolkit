@@ -1,6 +1,6 @@
 {
-  "short_name": "IAP/GCIP Sample App",
-  "name": "IAP/GCIP Sample App",
+  "short_name": "Auth UI for IAP external ids",
+  "name": "Authentication UI for IAP external identities",
   "start_url": ".",
   "display": "standalone",
   "theme_color": "#000000",

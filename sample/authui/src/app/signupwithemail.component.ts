@@ -18,13 +18,13 @@ import { Component, Input } from '@angular/core';
   selector: 'sign-up-with-email',
   template: `
     <div class="card">
-        <div class="card-header sign-in-header">
-          IAP/GCIP Sample App
-        </div>
-        <div class="card-body">
+      <div class="card-header sign-in-header">
+        Authentication UI for IAP external identities
+      </div>
+      <div class="card-body">
         <h5 class="card-title">Sign up</h5>
         <form id="sign-up-form">
-            <div class="form-group">
+          <div class="form-group">
             <p class="card-text">Create account for <b>{{email}}</b></p>
             <label for="displayName">Name</label>
             <input #displayName class="form-control"
@@ -32,21 +32,21 @@ import { Component, Input } from '@angular/core';
                 placeholder="Name"
                 name="displayName"
                 id="displayName">
-            </div>
-            <div class="form-group">
+          </div>
+          <div class="form-group">
             <label for="password">Password</label>
             <input #password class="form-control"
                 type="password"
                 placeholder="Password"
                 name="password"
                 id="password">
-            </div>
-            <button type="submit" class="btn btn-primary mb-2 password-sign-up"
-                (click)="onSignUpWithEmailAndPassword(displayName.value, password.value)">
-              Sign Up
-            </button>
+          </div>
+          <button type="submit" class="btn btn-primary mb-2 password-sign-up"
+              (click)="onSignUpWithEmailAndPassword(displayName.value, password.value)">
+            Sign Up
+          </button>
         </form>
-        </div>
+      </div>
     </div>
     `,
 })

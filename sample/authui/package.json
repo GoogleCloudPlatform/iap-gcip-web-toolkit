@@ -1,8 +1,9 @@
 {
-  "name": "cicp-iap-authentication-ui",
-  "version": "1.0.0",
-  "description": "Sign-in UI for CICP/IAP integration",
+  "name": "iap-external-identities-authentication-ui-angular",
+  "version": "0.0.0",
+  "description": "Angular-based Authentication UI for IAP external identities",
   "author": "Google",
+  "license": "Apache-2.0",
   "dependencies": {
     "@angular/animations": "^8.1.0",
     "@angular/common": "^8.1.0",

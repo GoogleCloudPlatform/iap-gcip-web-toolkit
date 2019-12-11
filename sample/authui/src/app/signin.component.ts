@@ -19,7 +19,7 @@ import { Component, Input } from '@angular/core';
   template: `
     <div class="card">
       <div class="card-header sign-in-header">
-        IAP/GCIP Sample App
+        Authentication UI for IAP external identities
       </div>
       <div class="card-body">
         <h5 class="card-title">Sign in</h5>

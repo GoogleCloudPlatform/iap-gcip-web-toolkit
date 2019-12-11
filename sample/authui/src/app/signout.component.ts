@@ -18,7 +18,7 @@ import { Component } from '@angular/core';
   selector: 'sign-out',
   template: `
     <div class="alert alert-success" role="alert">
-        <strong>Success!</strong> You are now signed out.
+      <strong>Success!</strong> You are now signed out.
     </div>
     `,
 })

@@ -1,9 +1,9 @@
 {
-  "name": "gcip-iap-authentication-quickstart",
-  "version": "1.0.0",
-  "description": "Quickstart for GCIP/IAP authui with FirebaseUI",
+  "name": "iap-external-identities-authentication-quickstart",
+  "version": "0.0.0",
+  "description": "Quickstart for IAP external identities Authentication UI with FirebaseUI",
   "author": "Google",
-  "license": "Apache License Version 2.0",
+  "license": "Apache-2.0",
   "scripts": {
     "preinstall": "cd ../.. && npm install",
     "bundle": "webpack --config webpack.config.js",
@@ -21,7 +21,7 @@
     "bootstrap": "4.3.1",
     "css-loader": "2.1.0",
     "file-loader": "3.0.1",
-    "firebase": "^6.6.0",
+    "firebase": "^7.5.2",
     "firebase-tools": "^7.0.0",
     "firebaseui": "../../builds/firebaseui/firebaseui.tgz",
     "gcip-iap": "file:../..",

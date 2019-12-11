@@ -23,7 +23,7 @@ const main = HandleBars.compile(`
   <link href="/styles/style.css" rel="stylesheet" type="text/css"  media="screen" />
   <body>
     <div id="container">
-      <h3>Welcome to IAP/GCIP integration sample app</h3>
+      <h3>Welcome to the IAP External Identities sample app</h3>
       <div id="main">
         <div id="user-info">
           {{#if photoURL}}

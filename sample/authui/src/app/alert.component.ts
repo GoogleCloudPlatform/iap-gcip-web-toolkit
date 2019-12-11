@@ -18,15 +18,12 @@ import { Component, Input } from '@angular/core';
   selector: 'alert',
   template: `
     <ng-template [ngIf]="!!message">
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
         <strong>Error</strong> {{code}} - {{message}}
         <ng-template [ngIf]="!!retry">
           <a href="#" class="alert-link" (click)="runRetry()">Try again</a>.
         </ng-template>
-        <!--<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-        <span aria-hidden="true">&times;</span>
-        </button>-->
-    </div>
+      </div>
     </ng-template>
     `,
 })

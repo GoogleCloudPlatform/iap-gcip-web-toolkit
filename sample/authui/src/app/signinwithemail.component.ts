@@ -18,13 +18,13 @@ import { Component, Input } from '@angular/core';
   selector: 'sign-in-with-email',
   template: `
     <div class="card">
-        <div class="card-header sign-in-header">
-          IAP/GCIP Sample App
-        </div>
-        <div class="card-body">
+      <div class="card-header sign-in-header">
+        Authentication UI for IAP external identities
+      </div>
+      <div class="card-body">
         <h5 class="card-title">Sign in</h5>
         <form id="sign-in-form">
-            <div class="form-group">
+          <div class="form-group">
             <p class="card-text">Enter password for <b>{{email}}</b></p>
             <label for="password">Password</label>
             <input #password class="form-control"
@@ -32,13 +32,13 @@ import { Component, Input } from '@angular/core';
                 placeholder="Password"
                 name="password"
                 id="password">
-            </div>
-            <button type="submit" class="btn btn-primary mb-2 password-sign-in"
-                (click)="onSignInWithEmailAndPassword(password.value)">
-              Sign in
-            </button>
+          </div>
+          <button type="submit" class="btn btn-primary mb-2 password-sign-in"
+              (click)="onSignInWithEmailAndPassword(password.value)">
+            Sign in
+          </button>
         </form>
-        </div>
+      </div>
     </div>
     `,
 })

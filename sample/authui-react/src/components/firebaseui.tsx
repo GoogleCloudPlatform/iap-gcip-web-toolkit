@@ -23,7 +23,7 @@ import * as ciap from 'gcip-iap';
 
 // The list of UI configs for each supported tenant.
 const tenantsConfig = {
-  // Agent flow.
+  // Project-level IdPs flow.
   _: {
     displayName: 'My Organization',
     signInOptions: [
@@ -165,9 +165,7 @@ class FirebaseUi extends React.Component<{}, FirebaseUiState> {
       const handler = new firebaseui.auth.FirebaseUiHandler(
           '#firebaseui-container', configs);
       try {
-        // Cast to any since there is a typo in FirebaseUiHandler.
-        // completeSignout should be revised to completeSignOut.
-        const ciapInstance = new ciap.Authentication(handler as any);
+        const ciapInstance = new ciap.Authentication(handler);
         ciapInstance.start();
       } catch (e) {
         console.log(e);
@@ -179,7 +177,7 @@ class FirebaseUi extends React.Component<{}, FirebaseUiState> {
   render(): JSX.Element {
     return (
       <div className="main-container">
-        <h3 className="heading-center">FirebaseUI Handler Demo</h3>
+        <h3 className="heading-center">IAP External IDs Auth with FirebaseUI</h3>
         {!!this.state.title &&
           <h5 id="tenant-header" className="heading-center">
             <span>Application:</span>

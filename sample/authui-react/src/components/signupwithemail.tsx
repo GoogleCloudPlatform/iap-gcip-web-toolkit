@@ -54,7 +54,7 @@ export class SignUpWithEmail extends React.Component<SignUpWithEmailParameters, 
     return (
       <div className="card">
         <div className="card-header sign-in-header">
-          IAP/GCIP Sample App
+          Authentication UI for IAP external identities
         </div>
         <div className="card-body">
           <h5 className="card-title">Sign up</h5>

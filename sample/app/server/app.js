@@ -20,10 +20,9 @@ const bodyParser = require('body-parser');
 const templates = require('./templates');
 
 // Useful links:
+// https://cloud.google.com/iap/docs/external-identities
 // https://cloud.google.com/iap/docs/signed-headers-howto
-// https://cloud.google.com/iap/docs/identity-howto
 // https://cloud.google.com/appengine/docs/standard/nodejs/quickstart
-// https://cloud.google.com/iap/docs/app-engine-quickstart
 
 app.enable('trust proxy');
 
@@ -115,13 +114,15 @@ app.get('/', (req, res) => {
   res.redirect('/resource');
 });
 
-/** Get the resource1 endpoint. This will map with one tenant. */
+/**
+ * Get the resource endpoint. This will display the current authenticated user's claims.
+ */
 app.get('/resource', (req, res) => {
   // Serve content for signed in user.
   return serveContentForUser(templates.main, req, res, req.claims);
 });
 
-// Start the server
+// Start the server.
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);
