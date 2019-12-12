@@ -7,7 +7,7 @@ body {
 }
 
 #container {
-  max-width: 600px;
+  max-width: 700px;
   margin: 0 auto;
   text-align: center;
 }
@@ -24,7 +24,7 @@ body {
   border: 1px solid #CCC;
   clear: both;
   margin: 0 auto 20px;
-  max-width: 400px;
+  max-width: 700px;
   padding: 10px;
   text-align: left;
 }
@@ -47,6 +47,10 @@ body {
 .item-on-same-line {
   float: left;
   padding-right: 20px;
+}
+
+.claims {
+  overflow: auto;
 }
 
 @media (max-width: 300px) {

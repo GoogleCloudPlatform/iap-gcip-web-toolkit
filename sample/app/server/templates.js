@@ -20,7 +20,7 @@ const main = HandleBars.compile(`
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tenant {{tenandId}}</title>
-  <link href="/styles/style.css" rel="stylesheet" type="text/css"  media="screen" />
+  <link href="/styles/styles.css" rel="stylesheet" type="text/css"  media="screen" />
   <body>
     <div id="container">
       <h3>Welcome to the IAP External Identities sample app</h3>
@@ -28,7 +28,7 @@ const main = HandleBars.compile(`
         <div id="user-info">
           {{#if photoURL}}
           <div id="photo-container">
-            <imd id="photo" src="{{photoURL}}">
+            <img id="photo" src="{{photoURL}}">
           </div>
           {{/if}}
           <div id="sub">{{sub}}</div>

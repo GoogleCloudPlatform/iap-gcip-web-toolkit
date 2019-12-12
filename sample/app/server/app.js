@@ -18,6 +18,7 @@ const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
 const templates = require('./templates');
+const path = require('path');
 
 // Useful links:
 // https://cloud.google.com/iap/docs/external-identities
@@ -71,7 +72,7 @@ function serveContentForUser(template, req, res, decodedClaims) {
     emailVerifed: !!(gcipClaims && gcipClaims.email_verified),
     photoURL: gcipClaims && gcipClaims.picture,
     displayName: (gcipClaims && gcipClaims.name) || 'N/A',
-    tenandId: gcipClaims && gcipClaims.firebase && gcipClaims.firebase.tenant,
+    tenandId: (gcipClaims && gcipClaims.firebase && gcipClaims.firebase.tenant) || 'N/A',
     gcipClaims: JSON.stringify(gcipClaims, null, 2),
     iapClaims: JSON.stringify(decodedClaims, null, 2),
     signoutURL: './_gcp_iap/gcip_signout',
@@ -108,7 +109,7 @@ app.use(bodyParser.urlencoded({
 // Show error message if user is not signed in.
 app.use(checkIfSignedIn());
 // Static CSS assets.
-app.use('/styles', express.static('styles'));
+app.use('/styles', express.static(path.join(__dirname, '../styles')));
 
 app.get('/', (req, res) => {
   res.redirect('/resource');
