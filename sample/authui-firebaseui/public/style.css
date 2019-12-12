@@ -1,4 +1,22 @@
-.container {
-  max-width: 600px;
-  margin: 0 auto;
+/** Override FirebaseUI styles. */
+.firebaseui-id-page-callback {
+  box-shadow: none;
+  max-width: 100%;
 }
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  90% {
+    opacity: 0%;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.firebaseui-id-page-spinner {
+  animation: 2s fadeIn;
+}
+/** End of overrides. */
