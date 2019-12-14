@@ -134,7 +134,7 @@ class FirebaseUi extends React.Component<{}, FirebaseUiState> {
           // The callback to trigger when tenant selection page is shown.
           selectTenantUiShown: () => {
             this.setState({
-              title: undefined,
+              title: 'Select Employer',
             });
           },
           // The callback to trigger when the sign-in page
@@ -177,10 +177,8 @@ class FirebaseUi extends React.Component<{}, FirebaseUiState> {
   render(): JSX.Element {
     return (
       <div className="main-container">
-        <h3 className="heading-center">IAP External IDs Auth with FirebaseUI</h3>
         {!!this.state.title &&
           <h5 id="tenant-header" className="heading-center">
-            <span>Application:</span>
             <span id="tid">{this.state.title}</span>
           </h5>
         }

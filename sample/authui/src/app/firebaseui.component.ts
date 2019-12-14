@@ -115,10 +115,8 @@ const tenantsConfig = {
   selector: 'firebaseui',
   template: `
     <div class="main-container">
-      <h3 class="heading-center">IAP External IDs Auth with FirebaseUI</h3>
       <ng-template [ngIf]="!!title">
         <h5 id="tenant-header" class="heading-center">
-          <span>Application:</span>
           <span id="tid">{{title}}</span>
         </h5>
       </ng-template>
@@ -141,7 +139,7 @@ export class FirebaseUiComponent {
           // The callback to trigger when the tenant selection page
           // is shown.
           selectTenantUiShown: () => {
-            this.title = undefined;
+            this.title = 'Select Employer';
           },
           // The callback to trigger when the sign-in page
           // is shown.
