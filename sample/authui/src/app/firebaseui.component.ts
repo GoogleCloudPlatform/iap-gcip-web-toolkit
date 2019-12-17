@@ -141,6 +141,11 @@ export class FirebaseUiComponent {
           selectTenantUiShown: () => {
             this.title = 'Select Employer';
           },
+          // The callback to trigger when the tenant selection page
+          // is hidden.
+          selectTenantUiHidden: () => {
+            this.title = null;
+          },
           // The callback to trigger when the sign-in page
           // is shown.
           signInUiShown: (tenantId) => {

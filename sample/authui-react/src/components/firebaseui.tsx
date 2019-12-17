@@ -137,6 +137,12 @@ class FirebaseUi extends React.Component<{}, FirebaseUiState> {
               title: 'Select Employer',
             });
           },
+          // The callback to trigger when tenant selection page is hidden.
+          selectTenantUiHidden: () => {
+            this.setState({
+              title: null,
+            });
+          },
           // The callback to trigger when the sign-in page
           // is shown.
           signInUiShown: (tenantId: string | null) => {
