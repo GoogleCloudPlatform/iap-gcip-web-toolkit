@@ -1,9 +1,4 @@
 /** Override FirebaseUI styles. */
-.firebaseui-id-page-callback {
-  box-shadow: none;
-  max-width: 100%;
-}
-
 @keyframes fadeIn {
   0% {
     opacity: 0;
@@ -14,11 +9,6 @@
   100% {
     opacity: 1;
   }
-}
-
-/** Mimic handler page progress bar height. */
-.firebaseui-callback-indicator-container .mdl-progress {
-  height: 4px;
 }
 
 .firebaseui-id-page-spinner {
