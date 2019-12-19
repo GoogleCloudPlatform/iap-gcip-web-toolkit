@@ -221,5 +221,5 @@ git push origin master --tags
 # echo "Pushed release commit and tag GitHub."
 
 # echo "Publishing release notes..."
-hub release create --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
+hub release create --file="${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
 # echo "Published release notes."
