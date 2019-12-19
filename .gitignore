@@ -1,0 +1,40 @@
+.idea
+.vscode
+.DS_Store
+npm-debug.log
+default.profraw
+
+lib/
+dist/
+.tmp/
+.rpt2_cache/
+typings/
+coverage/
+node_modules/
+builds/ciap/
+tmp/
+.nyc_output/
+.firebase/
+
+# Generated files.
+*.log
+*.pyc
+.DS_Store
+*~
+*.swp
+*.svg
+
+# Do not check in any configuration related data.
+**/.firebaserc
+
+# Exclude generated files.
+sample/authui-react/build/
+sample/authui/dist/
+sample/authui-firebaseui/public/script.js
+
+# Real key file and other project information should not be checked in
+test/resources/key*.json
+
+# Release tarballs should not be checked in
+gcip-iap-*.tgz
+firebase.tgz

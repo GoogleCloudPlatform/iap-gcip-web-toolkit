@@ -1,0 +1,177 @@
+/*
+ * Copyright 2019 Google Inc. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the
+ * License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { Component } from '@angular/core';
+// Import Firebase dependencies.
+import * as firebase from 'firebase/app';
+import 'firebase/auth';
+// Import FirebaseUI dependencies.
+import * as firebaseui from 'firebaseui';
+// Import GCIP/IAP module.
+import * as ciap from 'gcip-iap';
+
+// The list of UI configs for each supported tenant.
+const tenantsConfig = {
+  // Project-level IdPs flow.
+  _: {
+    displayName: 'My Organization',
+    signInOptions: [
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
+      firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+      firebase.auth.FacebookAuthProvider.PROVIDER_ID,
+    ],
+    tosUrl: '/tos',
+    privacyPolicyUrl: '/privacypolicy',
+  },
+  // Single tenant flow.
+  1036546636501: {
+    displayName: 'My Company',
+    signInOptions: [
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
+      {
+        provider: 'saml.okta-cicp-app',
+        providerName: 'SAML',
+        buttonColor: '#4666FF',
+        iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
+      },
+    ],
+    signInFlow: 'redirect',
+    // A boolean which determines whether to immediately redirect to the provider's site or
+    // instead show the default 'Sign in with Provider' button when there is only a single
+    // federated provider in signInOptions. In order for this option to take effect, the
+    // signInOptions must only hold a single federated provider (like 'google.com') and
+    // signInFlow must be set to 'redirect'.
+    immediateFederatedRedirect: false,
+    tosUrl: '/tos',
+    privacyPolicyUrl: '/privacypolicy',
+  },
+  // Multiple tenants flow.
+  'tenant-a-esjtn': {
+    displayName: 'Company A',
+    buttonColor: '#007bff',
+    iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
+    signInOptions: [
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
+      {
+        provider: 'saml.okta-cicp-app',
+        providerName: 'SAML',
+        buttonColor: '#4666FF',
+        iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
+      },
+    ],
+    tosUrl: '/tos',
+    privacyPolicyUrl: '/privacypolicy',
+  },
+  'tenant-b-59ih0': {
+    displayName: 'Company B',
+    buttonColor: '#007bff',
+    iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
+    signInOptions: [
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
+      {
+        provider: 'saml.okta-cicp-app',
+        providerName: 'SAML',
+        buttonColor: '#4666FF',
+        iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
+      },
+    ],
+    tosUrl: '/tos',
+    privacyPolicyUrl: '/privacypolicy',
+  },
+  'tenant-c-iooex': {
+    displayName: 'Company C',
+    buttonColor: '#007bff',
+    iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
+    signInOptions: [
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
+    ],
+    tosUrl: '/tos',
+    privacyPolicyUrl: '/privacypolicy',
+  },
+  'tenant-d-9t831': {
+    displayName: 'Company D',
+    buttonColor: '#007bff',
+    iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
+    signInOptions: [
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
+    ],
+    tosUrl: '/tos',
+    privacyPolicyUrl: '/privacypolicy',
+  },
+};
+
+@Component({
+  selector: 'firebaseui',
+  template: `
+    <div class="main-container">
+      <ng-template [ngIf]="!!title">
+        <h5 id="tenant-header" class="heading-center">
+          <span id="tid">{{title}}</span>
+        </h5>
+      </ng-template>
+      <div id="firebaseui-container"></div>
+    </div>
+    `,
+})
+
+export class FirebaseUiComponent {
+  public title?: string;
+  constructor() {
+    // Fetch configuration via reserved Firebase Hosting URL.
+    fetch('/__/firebase/init.json').then((response) => {
+      return response.json();
+    }).then((config) => {
+      const configs = {};
+      configs[config.apiKey] = {
+        authDomain: config.authDomain,
+        callbacks: {
+          // The callback to trigger when the tenant selection page
+          // is shown.
+          selectTenantUiShown: () => {
+            this.title = 'Select Employer';
+          },
+          // The callback to trigger when the tenant selection page
+          // is hidden.
+          selectTenantUiHidden: () => {
+            this.title = null;
+          },
+          // The callback to trigger when the sign-in page
+          // is shown.
+          signInUiShown: (tenantId) => {
+            const configKey = tenantId ? tenantId : '_';
+            this.title = tenantsConfig[configKey].displayName;
+          },
+          beforeSignInSuccess: (user) => {
+            // Do additional processing on user before sign-in is
+            // complete.
+            return Promise.resolve(user);
+          },
+        },
+        displayMode: 'optionsFirst',
+        // The terms of service URL and privacy policy URL for the page
+        // where the user selects a tenant or enters an email for tenant/provider
+        // matching.
+        tosUrl: '/tos',
+        privacyPolicyUrl: '/privacypolicy',
+        tenants: tenantsConfig,
+      };
+      // This will handle the underlying handshake for sign-in, sign-out,
+      // token refresh, safe redirect to callback URL, etc.
+      const handler = new firebaseui.auth.FirebaseUiHandler(
+          '#firebaseui-container', configs);
+      const ciapInstance = new ciap.Authentication(handler);
+      ciapInstance.start();
+    });
+  }
+}

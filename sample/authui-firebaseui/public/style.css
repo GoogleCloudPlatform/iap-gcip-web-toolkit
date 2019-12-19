@@ -1,0 +1,17 @@
+/** Override FirebaseUI styles. */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  90% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.firebaseui-id-page-spinner {
+  animation: 3s fadeIn;
+}
+/** End of overrides. */

@@ -1,0 +1,56 @@
+{
+  "name": "iap-external-identities-authentication-ui-react",
+  "version": "0.0.0",
+  "description": "React-based Authentication UI for IAP external identities",
+  "author": "Google",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@types/bootstrap": "4.3.1",
+    "@types/jest": "24.0.18",
+    "@types/node": "12.7.8",
+    "@types/react": "16.9.3",
+    "@types/react-dom": "16.9.1",
+    "@types/react-router": "^5.1.0",
+    "@types/react-router-dom": "^5.1.0",
+    "bootstrap": "4.3.1",
+    "firebase": "7.0.0",
+    "firebaseui": "^4.4.0",
+    "gcip-iap": "0.1.0",
+    "jquery": "^3.4.1",
+    "react": "^16.9.0",
+    "react-dom": "^16.9.0",
+    "react-router": "^5.1.0",
+    "react-router-dom": "^5.1.0",
+    "react-scripts": "3.1.2",
+    "typescript": "3.6.3",
+    "url-polyfill": "^1.1.3",
+    "webpack": "4.40.2",
+    "webpack-dev-server": "3.2.1",
+    "whatwg-fetch": "^3.0.0"
+  },
+  "scripts": {
+    "preinstall": "cd ../.. && npm install",
+    "react-start": "react-scripts start",
+    "start": "react-scripts build && firebase serve",
+    "deploy": "react-scripts build && firebase deploy",
+    "build": "react-scripts build"
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "engines": {
+    "node": ">=10"
+  }
+}
