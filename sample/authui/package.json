@@ -40,7 +40,7 @@
     "bootstrap": "4.3.1",
     "codelyzer": "~4.5.0",
     "firebase": "^6.6.0",
-    "firebaseui": "../../builds/firebaseui/firebaseui.tgz",
+    "firebaseui": "^4.4.0",
     "gcip-iap": "file:../..",
     "jasmine-core": "~2.99.1",
     "jasmine-spec-reporter": "~4.2.1",

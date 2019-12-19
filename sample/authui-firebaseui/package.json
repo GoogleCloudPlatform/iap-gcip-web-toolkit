@@ -23,7 +23,7 @@
     "file-loader": "3.0.1",
     "firebase": "^7.5.2",
     "firebase-tools": "^7.0.0",
-    "firebaseui": "../../builds/firebaseui/firebaseui.tgz",
+    "firebaseui": "^4.4.0",
     "gcip-iap": "file:../..",
     "handlebars": "^4.1.2",
     "jquery": "^3.4.1",
