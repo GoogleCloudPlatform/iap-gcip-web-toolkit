@@ -24,6 +24,15 @@ import * as firebaseui from 'firebaseui';
 // Import GCIP/IAP module.
 import * as ciap from 'gcip-iap';
 
+/** @return Whether the current browser is Safari. */
+function isSafari(): boolean {
+  const userAgent = navigator.userAgent.toLowerCase();
+  return userAgent.indexOf('safari/') !== -1 &&
+      userAgent.indexOf('chrome/') === -1 &&
+      userAgent.indexOf('crios/') === -1 &&
+      userAgent.indexOf('android/') === -1;
+}
+
 // The list of UI configs for each supported tenant.
 const tenantsConfig = {
   // Project level IdPs flow.
@@ -32,7 +41,9 @@ const tenantsConfig = {
     signInOptions: [
       firebase.auth.FacebookAuthProvider.PROVIDER_ID,
     ],
-    immediateFederatedRedirect: true,
+    // Do not trigger immediate redirect in Safari without some user
+    // interaction.
+    immediateFederatedRedirect: !isSafari(),
   },
 };
 

@@ -27,7 +27,7 @@ const config = {
     path: path.resolve(__dirname, './public'),
   },
   resolve: {
-    extensions: ['.js'],
+    extensions: ['.js', '.ts'],
     alias: {
       'promise-polyfill': path.resolve(__dirname, './node_modules/promise-polyfill/'),
       'url-polyfill': path.resolve(__dirname, './node_modules/url-polyfill/'),
@@ -44,6 +44,11 @@ const config = {
       {
         test: /\.js$/,
         loader: 'babel-loader',
+        exclude: /node_modules/
+      },
+      {
+        test: /\.ts$/,
+        loader: 'ts-loader',
         exclude: /node_modules/
       },
       {
