@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "noImplicitAny": false,
+    "sourceMap": true,
+    "lib": ["dom", "es2015", "es2015.promise"],
+    "outDir": "lib",
+    // We manually craft typings in src/index.d.ts instead of auto-generating them.
+    // "declaration": true,
+    "rootDir": "."
+  },
+  "files": [
+    "src/script.ts"
+  ],
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
