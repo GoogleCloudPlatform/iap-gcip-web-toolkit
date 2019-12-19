@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "noImplicitAny": false,
+    "sourceMap": true,
+    "lib": ["dom", "es2015", "es2015.promise"],
+    "outDir": "lib",
+    "rootDir": "."
+  },
+  "files": [
+    "src/script.ts"
+  ],
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
