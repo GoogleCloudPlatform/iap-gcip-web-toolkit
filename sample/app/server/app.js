@@ -75,8 +75,9 @@ function serveContentForUser(template, req, res, decodedClaims) {
     tenandId: (gcipClaims && gcipClaims.firebase && gcipClaims.firebase.tenant) || 'N/A',
     gcipClaims: JSON.stringify(gcipClaims, null, 2),
     iapClaims: JSON.stringify(decodedClaims, null, 2),
-    signoutURL: './_gcp_iap/gcip_signout',
-    switchTenantURL: './_gcp_iap/clear_login_cookie',
+    signoutURL: '?gcp-iap-mode=GCIP_SIGNOUT',
+    switchTenantURL: '?gcp-iap-mode=CLEAR_LOGIN_COOKIE',
+    sessionRefreshURL: '?gcp-iap-mode=SESSION_REFRESHER',
   }));
 }
 
