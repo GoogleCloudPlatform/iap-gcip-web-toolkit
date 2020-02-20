@@ -10,6 +10,7 @@
   },
   "include": [
     "server/**/*",
+    "server/api/**/*",
     "src/**/*",
     "utils/**/*"
   ]
