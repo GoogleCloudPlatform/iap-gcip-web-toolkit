@@ -20,6 +20,11 @@ export interface GoogleOAuthAccessToken {
   expires_in: number;
 }
 
+/** Interface defining an OAuth access token manager used to retrieve tokens. */
+export interface AccessTokenManager {
+  getAccessToken(): Promise<string>;
+}
+
 /** Interface defining a credential object used to retrieve access tokens. */
 export interface Credential {
   getAccessToken(): Promise<GoogleOAuthAccessToken>;

@@ -12,8 +12,8 @@
  * limitations under the License.
  */
 
-import {HttpServerRequestHandler, HttpResponse} from '../../utils/http-server-request-handler';
-import {TokenManager} from './token-manager';
+import {HttpServerRequestHandler} from '../../utils/http-server-request-handler';
+import {TokenManager, AccessTokenManager} from './token-manager';
 
 /** Metadata server project number endpoint. */
 const METADATA_SERVER_PROJECT_NUMBER_URL =
@@ -40,7 +40,7 @@ export const DEFAULT_ERROR_MESSAGE_ZONE = 'Unable to retrieve the GCP zone.';
  * Metadata server APIs for retrieving OAuth access tokens, project ID,
  * numeric project ID, current GCP zone, etc.
  */
-export class MetadataServer {
+export class MetadataServer implements AccessTokenManager {
   private readonly tokenManager: TokenManager;
   private readonly projectIdRetriever: HttpServerRequestHandler;
   private readonly projectNumberRetriever: HttpServerRequestHandler;
