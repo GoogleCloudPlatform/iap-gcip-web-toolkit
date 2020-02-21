@@ -164,7 +164,7 @@ describe('HttpServerRequest', () => {
         });
     });
 
-    it('will return expected response for non-200 status code', () => {
+    it('will reject with parsed error for non-200 status code', () => {
       const expectedError = {
         error: {
           message: 'Internal server error',
@@ -203,8 +203,50 @@ describe('HttpServerRequest', () => {
 
       return postHandler.send(requestParams)
         .then((response) => {
-          expect(response.statusCode).to.be.equal(500);
-          expect(response.body).to.deep.equal(expectedError);
+          throw new Error('Unexpected success');
+        }).catch((error) => {
+          expect(error.message).to.deep.equal(expectedError.error.message);
+        });
+    });
+
+    it('will reject with default error message for unexpected non-200 status code', () => {
+      const defaultMessage = 'Unexpected error';
+      const data = {
+        a: 1,
+        b: 2,
+        c: false,
+      };
+      const postHandler = new HttpServerRequestHandler({
+        method: 'POST',
+        url: 'http://www.example.com:5000/path/to/api',
+        headers: {
+          'Metadata-Flavor': 'Google',
+        },
+        timeout: 10,
+      });
+      const scope = nock('http://www.example.com:5000', {
+        reqheaders: {
+          other: 'some-header-value',
+          'more-headers': 'another-value',
+          'metadata-flavor': 'Google',
+        },
+      }).post('/path/to/api', data)
+        .delay(10)
+        .reply(500, 'unexpected');
+      mockedRequests.push(scope);
+      const requestParams = {
+        headers: {
+          other: 'some-header-value',
+          'more-headers': 'another-value',
+        },
+        body: data,
+      };
+
+      return postHandler.send(requestParams, defaultMessage)
+        .then((response) => {
+          throw new Error('Unexpected success');
+        }).catch((error) => {
+          expect(error.message).to.deep.equal(defaultMessage);
         });
     });
 

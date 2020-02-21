@@ -19,6 +19,20 @@ import { isNonNullObject } from '../utils/validator';
 /** HTTP method type definition. */
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD';
 
+/** Default error message to shown when an expected non-200 response is returned. */
+const DEFAULT_ERROR_MESSAGE = 'Unexpected error occurred.'
+
+// Google Cloud standard error response:
+// https://cloud.google.com/apis/design/errors
+interface ErrorResponse {
+  error?: {
+    code?: number;
+    message?: string;
+    status?: string;
+    details?: {[key: string]: string}[];
+  };
+}
+
 /** Interface defining the base request options for an HttpServerRequest. */
 export interface BaseRequestOptions {
   method: HttpMethod;
@@ -70,9 +84,12 @@ export class HttpServerRequestHandler {
   /**
    * Sends the specified request options to the underlying endpoint.
    * @param requestOptions The variable request options to append to base config options.
+   * @param defaultMessage The default error message if none is available in the response.
    * @return A promise that resolves with the full response.
    */
-  send(requestOptions?: RequestOptions): Promise<HttpResponse> {
+  send(
+      requestOptions?: RequestOptions | null,
+      defaultMessage: string = DEFAULT_ERROR_MESSAGE): Promise<HttpResponse> {
     const requestPromiseOptions: RequestPromiseOptions = deepCopy(this.baseRequestPromiseOptions);
     if (requestOptions && requestOptions.body) {
       if (requestPromiseOptions.method === 'GET' || requestPromiseOptions.method === 'HEAD') {
@@ -100,10 +117,36 @@ export class HttpServerRequestHandler {
         }
       }
     }
-    // TODO: add unified non-2xx error handler.
+
     return requestPromise(requestPromiseOptions)
       .catch((reason) => {
         throw reason.error;
+      })
+      .then((httpResponse) => {
+        if (httpResponse.statusCode !== 200) {
+          throw this.getError(httpResponse, defaultMessage);
+        }
+        return httpResponse;
       });
+  }
+
+  /**
+   * Returns the Error objects from the non-200 HTTP response.
+   * @param httpResponse The non-200 HTTP response.
+   * @param defaultMessage The default error message if none is available in the response.
+   * @return The corresponding Error object.
+   */
+  private getError(httpResponse: HttpResponse, defaultMessage: string): Error {
+    let jsonResponse: ErrorResponse;
+    try {
+      jsonResponse = typeof httpResponse.body === 'object' ?
+          httpResponse.body : JSON.parse(httpResponse.body);
+    } catch (e) {
+      throw new Error(defaultMessage);
+    }
+    return new Error(
+        (jsonResponse &&
+         jsonResponse.error &&
+         jsonResponse.error.message) || defaultMessage);
   }
 }

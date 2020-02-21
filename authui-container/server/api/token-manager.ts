@@ -25,17 +25,6 @@ export interface Credential {
   getAccessToken(): Promise<GoogleOAuthAccessToken>;
 }
 
-// Google Cloud standard error response:
-// https://cloud.google.com/apis/design/errors
-interface ErrorResponse {
-  error?: {
-    code?: number;
-    message?: string;
-    status?: string;
-    details?: {[key: string]: string}[];
-  };
-}
-
 /** Metadata server access token endpoint. */
 const METADATA_SERVER_ACCESS_TOKEN_URL =
     'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token';
@@ -45,6 +34,8 @@ const DEFAULT_OAUTH_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
 export const OFFSET = 30000;
 /** Network request timeout duration. */
 const TIMEOUT_DURATION = 10000;
+/** Default error message to show when access token fails to be obtained. */
+const DEFAULT_ERROR_MESSAGE = 'Unable to retrieve an OAuth access tokens.';
 
 /** Utility used to manage OAuth access tokens generated via the metadata server. */
 export class TokenManager implements Credential {
@@ -82,21 +73,16 @@ export class TokenManager implements Credential {
         expires_in: (this.expirationTime - currentTime) / 1000,
       });
     }
-    return this.metadataServerTokenRetriever.send()
+    return this.metadataServerTokenRetriever.send(null, DEFAULT_ERROR_MESSAGE)
       .then((httpResponse) => {
-        if (httpResponse.statusCode === 200) {
+        if (httpResponse.statusCode === 200 && httpResponse.body) {
           const tokenResponse: GoogleOAuthAccessToken = typeof httpResponse.body === 'object' ?
               httpResponse.body : JSON.parse(httpResponse.body);
           this.accessToken = tokenResponse.access_token;
           this.expirationTime = currentTime + (tokenResponse.expires_in * 1000);
           return tokenResponse;
         } else {
-          const jsonResponse: ErrorResponse = typeof httpResponse.body === 'object' ?
-              httpResponse.body : JSON.parse(httpResponse.body);
-          throw new Error(
-              (jsonResponse &&
-               jsonResponse.error &&
-               jsonResponse.error.message) || 'Unable to retrieve an OAuth access tokens.');
+          throw new Error(DEFAULT_ERROR_MESSAGE);
         }
       });
   }
