@@ -35,12 +35,18 @@ export const DEFAULT_ERROR_MESSAGE_PROJECT_NUMBER = 'Unable to retrieve the proj
 /** Default error message to show when GCP zone fails to be determined. */
 export const DEFAULT_ERROR_MESSAGE_ZONE = 'Unable to retrieve the GCP zone.';
 
+/** Interface defining all application related data. */
+export interface ApplicationData {
+  getProjectId(): Promise<string>;
+  getProjectNumber(): Promise<string>;
+  getZone(): Promise<string>
+}
 
 /**
  * Metadata server APIs for retrieving OAuth access tokens, project ID,
  * numeric project ID, current GCP zone, etc.
  */
-export class MetadataServer implements AccessTokenManager {
+export class MetadataServer implements AccessTokenManager, ApplicationData {
   private readonly tokenManager: TokenManager;
   private readonly projectIdRetriever: HttpServerRequestHandler;
   private readonly projectNumberRetriever: HttpServerRequestHandler;

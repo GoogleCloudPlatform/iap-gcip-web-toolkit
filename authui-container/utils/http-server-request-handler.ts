@@ -15,6 +15,7 @@
 import requestPromise = require('request-promise');
 import { deepCopy, deepExtend } from '../utils/deep-copy';
 import { isNonNullObject } from '../utils/validator';
+import { addReadonlyGetter, formatString } from '../utils/index';
 
 /** HTTP method type definition. */
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD';
@@ -44,6 +45,7 @@ export interface BaseRequestOptions {
 
 /** Interface defining the variable HTTP request options to append to request. */
 export interface RequestOptions {
+  urlParams?: {[key: string]: string};
   headers?: {[key: string]: any};
   body?: {[key: string]: any};
 }
@@ -91,6 +93,10 @@ export class HttpServerRequestHandler {
       requestOptions?: RequestOptions | null,
       defaultMessage: string = DEFAULT_ERROR_MESSAGE): Promise<HttpResponse> {
     const requestPromiseOptions: RequestPromiseOptions = deepCopy(this.baseRequestPromiseOptions);
+    // Replace placeholders in the URL with their values if available.
+    if (requestOptions && requestOptions.urlParams) {
+      requestPromiseOptions.url = formatString(requestPromiseOptions.url, requestOptions.urlParams);
+    }
     if (requestOptions && requestOptions.body) {
       if (requestPromiseOptions.method === 'GET' || requestPromiseOptions.method === 'HEAD') {
         if (!isNonNullObject(requestOptions.body)) {
@@ -138,15 +144,23 @@ export class HttpServerRequestHandler {
    */
   private getError(httpResponse: HttpResponse, defaultMessage: string): Error {
     let jsonResponse: ErrorResponse;
+    let error: Error;
     try {
       jsonResponse = typeof httpResponse.body === 'object' ?
           httpResponse.body : JSON.parse(httpResponse.body);
+      error = new Error(
+          (jsonResponse &&
+           jsonResponse.error &&
+           jsonResponse.error.message &&
+           jsonResponse.error.message.toString()) || defaultMessage);
     } catch (e) {
-      throw new Error(defaultMessage);
+      // If the error response body is a string. Use the string as the error message.
+      // This is the case for GCS:
+      // response.body === 'No such object: gcip-iap-bucket-625969875839/config.json'
+      // response.body === 'Not found'
+      error = new Error(typeof httpResponse.body === 'string' ? httpResponse.body : defaultMessage);
     }
-    return new Error(
-        (jsonResponse &&
-         jsonResponse.error &&
-         jsonResponse.error.message) || defaultMessage);
+    addReadonlyGetter(error, 'rawResponse', httpResponse.body);
+    return error;
   }
 }

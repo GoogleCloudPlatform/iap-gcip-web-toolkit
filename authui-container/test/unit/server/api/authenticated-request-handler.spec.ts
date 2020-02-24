@@ -277,7 +277,7 @@ describe('AuthenticatedRequestHandler', () => {
         },
       }).post('/path/to/api', data)
         .delay(10)
-        .reply(500, 'unexpected');
+        .reply(500, {error: 'unexpected'});
       mockedRequests.push(scope);
       const requestParams = {
         headers: {

@@ -88,6 +88,50 @@ describe('HttpServerRequest', () => {
         });
     });
 
+    it('will substitute urlParams for a GET request with parameters', () => {
+      const urlParams = {
+        projectId: 'PROJECT_ID',
+        api: 'process',
+        query: 'QUERY_VAL',
+      };
+      const requestHandler = new HttpServerRequestHandler({
+        method: 'GET',
+        url: 'http://www.example.com:5000/{projectId}/{api}?query={query}',
+        headers: {
+          'Metadata-Flavor': 'Google',
+        },
+        timeout: 10000,
+      });
+      const scope = nock('http://www.example.com:5000', {
+        reqheaders: {
+          other: 'some-header-value',
+          'more-headers': 'another-value',
+          'Metadata-Flavor': 'Google',
+        },
+      }).get('/PROJECT_ID/process?query=QUERY_VAL&a=1&b=2&c=false')
+        .reply(200, expectedResponse);
+      mockedRequests.push(scope);
+      const requestParams = {
+        urlParams,
+        headers: {
+          other: 'some-header-value',
+          'more-headers': 'another-value',
+        },
+        body: {
+          a: 1,
+          b: 2,
+          c: false,
+        },
+      };
+
+      // Send parameters with request.
+      return requestHandler.send(requestParams)
+        .then((response) => {
+          expect(response.statusCode).to.be.equal(200);
+          expect(response.body).to.deep.equal(expectedResponse);
+        });
+    });
+
     it('will reject when given invalid GET parameters', () => {
       const requestParams = {
         headers: {
@@ -164,6 +208,51 @@ describe('HttpServerRequest', () => {
         });
     });
 
+    it('will substitute urlParams for a POST request with parameters', () => {
+      const data = {
+        a: 1,
+        b: 2,
+        c: false,
+      };
+      const urlParams = {
+        projectId: 'PROJECT_ID',
+        api: 'process',
+        query: 'QUERY_VAL',
+      };
+      const requestHandler = new HttpServerRequestHandler({
+        method: 'POST',
+        url: 'http://www.example.com:5000/{projectId}/{api}?query={query}',
+        headers: {
+          'Metadata-Flavor': 'Google',
+        },
+        timeout: 10000,
+      });
+      const scope = nock('http://www.example.com:5000', {
+        reqheaders: {
+          other: 'some-header-value',
+          'more-headers': 'another-value',
+          'Metadata-Flavor': 'Google',
+        },
+      }).post('/PROJECT_ID/process?query=QUERY_VAL', data)
+        .reply(200, expectedResponse);
+      mockedRequests.push(scope);
+      const requestParams = {
+        urlParams,
+        headers: {
+          other: 'some-header-value',
+          'more-headers': 'another-value',
+        },
+        body: data,
+      };
+
+      // Send parameters with request.
+      return requestHandler.send(requestParams)
+        .then((response) => {
+          expect(response.statusCode).to.be.equal(200);
+          expect(response.body).to.deep.equal(expectedResponse);
+        });
+    });
+
     it('will reject with parsed error for non-200 status code', () => {
       const expectedError = {
         error: {
@@ -206,6 +295,7 @@ describe('HttpServerRequest', () => {
           throw new Error('Unexpected success');
         }).catch((error) => {
           expect(error.message).to.deep.equal(expectedError.error.message);
+          expect(error.rawResponse).to.deep.equal(expectedError);
         });
     });
 
@@ -232,7 +322,7 @@ describe('HttpServerRequest', () => {
         },
       }).post('/path/to/api', data)
         .delay(10)
-        .reply(500, 'unexpected');
+        .reply(500, {error: 'unexpected'});
       mockedRequests.push(scope);
       const requestParams = {
         headers: {
@@ -247,6 +337,50 @@ describe('HttpServerRequest', () => {
           throw new Error('Unexpected success');
         }).catch((error) => {
           expect(error.message).to.deep.equal(defaultMessage);
+          expect(error.rawResponse).to.deep.equal({error: 'unexpected'});
+        });
+    });
+
+    it('will reject with response body error message string for non-200 status code', () => {
+      const responseBodyErrorString = 'Internal server error';
+      const defaultMessage = 'Unexpected error';
+      const data = {
+        a: 1,
+        b: 2,
+        c: false,
+      };
+      const postHandler = new HttpServerRequestHandler({
+        method: 'POST',
+        url: 'http://www.example.com:5000/path/to/api',
+        headers: {
+          'Metadata-Flavor': 'Google',
+        },
+        timeout: 10,
+      });
+      const scope = nock('http://www.example.com:5000', {
+        reqheaders: {
+          other: 'some-header-value',
+          'more-headers': 'another-value',
+          'metadata-flavor': 'Google',
+        },
+      }).post('/path/to/api', data)
+        .delay(10)
+        .reply(500, responseBodyErrorString);
+      mockedRequests.push(scope);
+      const requestParams = {
+        headers: {
+          other: 'some-header-value',
+          'more-headers': 'another-value',
+        },
+        body: data,
+      };
+
+      return postHandler.send(requestParams, defaultMessage)
+        .then((response) => {
+          throw new Error('Unexpected success');
+        }).catch((error) => {
+          expect(error.message).to.deep.equal(responseBodyErrorString);
+          expect(error.rawResponse).to.deep.equal(responseBodyErrorString);
         });
     });
 

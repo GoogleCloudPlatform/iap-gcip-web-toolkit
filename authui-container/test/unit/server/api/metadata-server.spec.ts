@@ -169,7 +169,7 @@ describe('MetadataServer', () => {
           'Metadata-Flavor': 'Google',
         },
       }).get('/computeMetadata/v1/project/project-id')
-        .reply(400, 'other');
+        .reply(400, {error: 'other'});
       mockedRequests.push(scope);
 
       return metadataServer.getProjectId()
@@ -237,7 +237,7 @@ describe('MetadataServer', () => {
           'Metadata-Flavor': 'Google',
         },
       }).get('/computeMetadata/v1/project/numeric-project-id')
-        .reply(400, 'other');
+        .reply(400, {error: 'other'});
       mockedRequests.push(scope);
 
       return metadataServer.getProjectNumber()
@@ -327,7 +327,7 @@ describe('MetadataServer', () => {
           'Metadata-Flavor': 'Google',
         },
       }).get('/computeMetadata/v1/instance/zone')
-        .reply(400, 'other');
+        .reply(400, {error: 'other'});
       mockedRequests.push(scope);
 
       return metadataServer.getZone()
