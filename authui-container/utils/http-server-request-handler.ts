@@ -160,6 +160,14 @@ export class HttpServerRequestHandler {
       // response.body === 'Not found'
       error = new Error(typeof httpResponse.body === 'string' ? httpResponse.body : defaultMessage);
     }
+    if (jsonResponse &&
+        jsonResponse.error &&
+        jsonResponse.error.message &&
+        jsonResponse.error.code) {
+      addReadonlyGetter(error, 'cloudCompliant', true);
+    } else {
+      addReadonlyGetter(error, 'cloudCompliant', false);
+    }
     addReadonlyGetter(error, 'rawResponse', httpResponse.body);
     return error;
   }

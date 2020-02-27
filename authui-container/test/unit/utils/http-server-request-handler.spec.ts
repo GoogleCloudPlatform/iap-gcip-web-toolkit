@@ -256,6 +256,7 @@ describe('HttpServerRequest', () => {
     it('will reject with parsed error for non-200 status code', () => {
       const expectedError = {
         error: {
+          code: 500,
           message: 'Internal server error',
         },
       };
@@ -296,6 +297,7 @@ describe('HttpServerRequest', () => {
         }).catch((error) => {
           expect(error.message).to.deep.equal(expectedError.error.message);
           expect(error.rawResponse).to.deep.equal(expectedError);
+          expect(error.cloudCompliant).to.be.true;
         });
     });
 
@@ -338,6 +340,7 @@ describe('HttpServerRequest', () => {
         }).catch((error) => {
           expect(error.message).to.deep.equal(defaultMessage);
           expect(error.rawResponse).to.deep.equal({error: 'unexpected'});
+          expect(error.cloudCompliant).to.be.false;
         });
     });
 
@@ -381,6 +384,7 @@ describe('HttpServerRequest', () => {
         }).catch((error) => {
           expect(error.message).to.deep.equal(responseBodyErrorString);
           expect(error.rawResponse).to.deep.equal(responseBodyErrorString);
+          expect(error.cloudCompliant).to.be.false;
         });
     });
 
