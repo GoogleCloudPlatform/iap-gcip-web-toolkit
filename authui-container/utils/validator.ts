@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { URL } from 'url';
+
 /** Basic IPv4 address regex matcher. */
 const IP_ADDRESS_REGEXP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
 

@@ -16,6 +16,7 @@ import requestPromise = require('request-promise');
 import { deepCopy, deepExtend } from '../utils/deep-copy';
 import { isNonNullObject } from '../utils/validator';
 import { addReadonlyGetter, formatString } from '../utils/index';
+import { URL } from 'url';
 
 /** HTTP method type definition. */
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD';

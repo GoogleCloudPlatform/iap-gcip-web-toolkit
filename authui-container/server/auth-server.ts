@@ -21,6 +21,9 @@ import { MetadataServer } from './api/metadata-server';
 import { CloudStorageHandler } from './api/cloud-storage-handler';
 import { ErrorResponse, ERROR_MAP } from '../utils/error';
 import { isNonNullObject } from '../utils/validator';
+import { UiConfig, DefaultUiConfigBuilder } from './config-builder';
+import { IapSettingsHandler, IapSettings } from './api/iap-settings-handler';
+import { GcipHandler, TenantUiConfig, GcipConfig } from './api/gcip-handler';
 
 // Defines the Auth server OAuth scopes needed for internal usage.
 // This is used to query APIs to determine the default config.
@@ -53,6 +56,10 @@ export class AuthServer {
   private metadataServer: MetadataServer;
   /** Bucket name where custom configurations will be stored. */
   private bucketName: string | null;
+  /** GCIP API handler. */
+  private gcipHandler: GcipHandler;
+  /** IAP settings handler. */
+  private iapSettingsHandler: IapSettingsHandler;
 
   /**
    * Creates an instance of the auth server using the specified express application instance.
@@ -65,6 +72,11 @@ export class AuthServer {
     // For write operations, the admin OAuth access token is used.
     this.metadataServer = new MetadataServer(AUTH_SERVER_SCOPES);
     this.bucketName = null;
+    // GCIP handler used to construct the default configuration file and to populate
+    // the web UI config (apiKey + authDomain).
+    this.gcipHandler = new GcipHandler(this.metadataServer, this.metadataServer);
+    // IAP settings handler used to list all IAP enabled services and their settings.
+    this.iapSettingsHandler = new IapSettingsHandler(this.metadataServer, this.metadataServer);
     this.init();
   }
 
@@ -118,7 +130,18 @@ export class AuthServer {
     // This could be either saved in GCS (custom config), environment variable (custom config)
     // or in memory (default config).
     this.app.get('/get_admin_config', (req: express.Request, res: express.Response) => {
-      // TODO: add this functionality when default config builer is ready.
+      if (!req.headers.authorization ||
+          req.headers.authorization.split(' ').length <= 1) {
+        this.handleErrorResponse(res, ERROR_MAP.UNAUTHENTICATED);
+      } else {
+        const accessToken = req.headers.authorization.split(' ')[1];
+        this.getConfigForAdmin(accessToken).then((config) => {
+          res.set('Content-Type', 'application/json');
+          res.send(JSON.stringify(config || {}));
+        }).catch((err) => {
+          this.handleError(res, err);
+        });
+      }
     });
 
     // Administrative API for writing a custom configuration to.
@@ -145,6 +168,88 @@ export class AuthServer {
       }
     });
 
+    // Used to return the auth configuration (apiKey + authDomain).
+    this.app.get('/gcipConfig', (req: express.Request, res: express.Response) => {
+      this.gcipHandler.getGcipConfig()
+        .then((gcipConfig) => {
+          res.set('Content-Type', 'application/json');
+          res.send(JSON.stringify(gcipConfig));
+        })
+        .catch((err) => {
+          this.handleError(res, err);
+        });
+    });
+  }
+
+  /**
+   * Returns the map of tenant IDs and their TenantUiConfigs.
+   * @param tenantIds The list of tenant IDs whose TenantUiConfigs are to be returend.
+   * @return A promise that resolves with a object containing the mapping of tenant IDs and
+   *     their TenantUiConfigs as retrieved from GCIP.
+   */
+  private getTenantUiConfigForTenants(
+      tenantIds: string[]): Promise<{[key: string]: TenantUiConfig}> {
+    const optionsMap: {[key: string]: TenantUiConfig} = {};
+    const getConfigLocal = (): Promise<{[key: string]: TenantUiConfig}> => {
+      if (tenantIds.length === 0) {
+        return Promise.resolve(optionsMap);
+      }
+      const tenantId = tenantIds.pop();
+      return this.gcipHandler.getTenantUiConfig(tenantId)
+        .then((options) => {
+          if (tenantId.charAt(0) === '_') {
+            optionsMap._ = options;
+          } else {
+            optionsMap[tenantId] = options;
+          }
+          return getConfigLocal();
+        });
+    }
+    return getConfigLocal();
+  }
+
+  /**
+   * @return A promise that resolves with the constructed default UI config if available.
+   *     If IAP is not configured, null is returned instead.
+   */
+  private getDefaultConfig(): Promise<UiConfig | null> {
+    let gcipConfig: GcipConfig;
+    let projectId: string;
+    return this.metadataServer.getProjectId()
+      .then((retrievedProjectId) => {
+        projectId = retrievedProjectId;
+        return this.gcipHandler.getGcipConfig();
+      })
+      .then((retrievedGcipConfig) => {
+        gcipConfig = retrievedGcipConfig
+        return this.iapSettingsHandler.listIapSettings()
+          .catch((error) => {
+            return [] as IapSettings[];
+          });
+      })
+      .then((iapSettings) => {
+        // Get list of all tenants used.
+        const tenantIdsSet = new Set<string>();
+        iapSettings.forEach((iapConfig) => {
+          if (iapConfig &&
+              iapConfig.accessSettings &&
+              iapConfig.accessSettings.gcipSettings &&
+              iapConfig.accessSettings.gcipSettings.tenantIds) {
+            // Add underlying tenant IDs to set.
+            iapConfig.accessSettings.gcipSettings.tenantIds.forEach((tenantId) => {
+              tenantIdsSet.add(tenantId);
+            });
+          }
+        });
+        return Array.from(tenantIdsSet);
+      })
+      .then((tenantIds) => {
+        return this.getTenantUiConfigForTenants(tenantIds);
+      })
+      .then((optionsMap) => {
+        const defaultUiConfig = new DefaultUiConfigBuilder(projectId, gcipConfig, optionsMap);
+        return defaultUiConfig.build();
+      });
   }
 
   /** @return A promise that resolves with the service GCS bucket name. */
@@ -161,6 +266,35 @@ export class AuthServer {
         this.bucketName = `${bucketPrefix}${projectNumber}`;
         return this.bucketName;
       });
+  }
+
+  /**
+   * Returns the current UI config if found in GCS. If not, the default config is
+   * returned instead.
+   * @param accessToken The personal admin user OAuth access token.
+   * @return A promise that resolves with the UI config.
+   */
+  private getConfigForAdmin(accessToken: string): Promise<UiConfig | null> {
+    let bucketName: string;
+    const fileName = CONFIG_FILE_NAME;
+    // Required OAuth scope: https://www.googleapis.com/auth/devstorage.read_write
+    const accessTokenManager = {
+      getAccessToken: () => Promise.resolve(accessToken),
+    };
+    const cloudStorageHandler = new CloudStorageHandler(this.metadataServer, accessTokenManager);
+    // Check bucket exists first.
+    return this.getBucketName()
+      .then((retrievedBucketName) => {
+        bucketName = retrievedBucketName;
+        return cloudStorageHandler.readFile(bucketName, fileName);
+      })
+      .catch((error) => {
+        if (error.message && error.message.toLowerCase().indexOf('not found') !== -1) {
+          // If not found, return default config.
+          return this.getDefaultConfig();
+        }
+        throw error;
+      })
   }
 
   /**
