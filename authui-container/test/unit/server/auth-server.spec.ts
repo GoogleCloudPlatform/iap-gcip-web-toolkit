@@ -70,11 +70,15 @@ describe('AuthServer', () => {
   let authServer: AuthServer;
   const previousKConfiguration = process.env.K_CONFIGURATION;
   const previousGCSBucketName = process.env.GCS_BUCKET_NAME;
+  const previousUiConfig = process.env.UI_CONFIG;
+  const previousAllowAdmin = process.env.ALLOW_ADMIN;
   const METADATA_ACCESS_TOKEN = 'METADATA_ACCESS_TOKEN';
 
   beforeEach(() =>  {
     process.env.K_CONFIGURATION = K_CONFIGURATION;
     delete process.env.GCS_BUCKET_NAME;
+    delete process.env.UI_CONFIG;
+    delete process.env.ALLOW_ADMIN;
     app = express();
     metadataServerSpy = sinon.spy(metadata, 'MetadataServer');
     gcipHandlerSpy = sinon.spy(gcip, 'GcipHandler');
@@ -88,6 +92,8 @@ describe('AuthServer', () => {
     // Restore environment variables modified in tests.
     process.env.K_CONFIGURATION = previousKConfiguration;
     process.env.GCS_BUCKET_NAME = previousGCSBucketName;
+    process.env.UI_CONFIG = previousUiConfig;
+    process.env.ALLOW_ADMIN = previousAllowAdmin;
     metadataServerSpy.restore();
     gcipHandlerSpy.restore();
     iapSettingsHandlerSpy.restore();
@@ -112,14 +118,31 @@ describe('AuthServer', () => {
       });
   });
 
-  it('responds to /admin', () => {
-    return request(authServer.server)
-      .get('/admin')
-      .expect('Content-Type', /html/)
-      .expect(200)
-      .then((response) => {
-        expect(response.text).to.contain(templates.admin({}));
+  describe('responds to /admin', () => {
+    it('returns the expected 200 response', () => {
+      return request(authServer.server)
+        .get('/admin')
+        .expect('Content-Type', /html/)
+        .expect(200)
+        .then((response) => {
+          expect(response.text).to.contain(templates.admin({}));
+        });
+    });
+
+    it('returns 404 when ALLOW_ADMIN environment variable is false', () => {
+      // Restart server with ALLOW_ADMIN variable set to false.
+      authServer.stop();
+      app = express();
+      process.env.ALLOW_ADMIN = 'false';
+      authServer = new AuthServer(app);
+
+      return authServer.start().then(() => {
+        return request(authServer.server)
+          .get('/admin')
+          .expect('Content-Type', /html/)
+          .expect(404);
       });
+    });
   });
 
   describe('responds to /static', () => {
@@ -172,6 +195,24 @@ describe('AuthServer', () => {
         },
       },
     };
+
+    it('returns 404 when ALLOW_ADMIN environment variable is false', () => {
+      const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
+      // Restart server with ALLOW_ADMIN variable set to false.
+      authServer.stop();
+      app = express();
+      process.env.ALLOW_ADMIN = 'false';
+      authServer = new AuthServer(app);
+
+      return authServer.start().then(() => {
+        return request(authServer.server)
+          .post('/set_admin_config')
+          .send(config)
+          .set({'Authorization': `Bearer ${personalAccessToken}`})
+          .expect('Content-Type', /html/)
+          .expect(404);
+      });
+    });
 
     it('creates bucket if not already created', () => {
       const notFoundError = new Error('Not found');
@@ -573,6 +614,376 @@ describe('AuthServer', () => {
     });
   });
 
+  describe('responds to /config', () => {
+    const gcipConfig = {
+      apiKey: API_KEY,
+      authDomain: `${AUTH_SUBDOMAIN}.firebaseapp.com`,
+    };
+    const iapSettings = [
+      {
+        name: 'RESOURCE_NAME1',
+        accessSettings: {
+          gcipSettings: {
+            tenantIds: [`_${PROJECT_NUMBER}`],
+            loginPageUri: 'https://auth.example.com/login',
+          },
+        },
+      },
+      {
+        name: 'RESOURCE_NAME2',
+        accessSettings: {
+          gcipSettings: {
+            tenantIds: ['tenantId1', 'tenantId2'],
+            loginPageUri: 'https://auth.example.com/login',
+          },
+        },
+      },
+      {
+        name: 'RESOURCE_NAME3',
+        accessSettings: {},
+      },
+    ];
+    const tenantUiConfigMap = {
+      _: {
+        displayName: 'ABCD',
+        signInOptions: [
+          {provider: 'facebook.com'},
+          {provider: 'twitter.com'},
+        ],
+      },
+      tenantId1: {
+        displayName: 'Tenant-display-name-1',
+        signInOptions: [
+          {provider: 'password'},
+          {
+            provider: 'saml.idp2',
+            providerName: 'saml-display-name-2',
+          },
+        ],
+      },
+      tenantId2: {
+        displayName: 'Tenant-display-name-2',
+        signInOptions: [
+          {provider: 'microsoft.com'},
+          {
+            provider: 'oidc.idp3',
+            providerName: 'oidc-display-name-3',
+          },
+        ],
+      },
+    };
+    const expectedUiConfig =
+        new DefaultUiConfigBuilder(PROJECT_ID, gcipConfig, tenantUiConfigMap).build();
+
+    it('returns config from UI_CONFIG environment variable', () => {
+      process.env.UI_CONFIG = JSON.stringify(expectedUiConfig);
+
+      return request(authServer.server)
+        .get('/config')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .then((response) => {
+          expect(response.text).to.equal(JSON.stringify(expectedUiConfig));
+        });
+    });
+
+    it('returns config from GCS using default location if available', () => {
+      const fileName = 'config.json';
+      const bucketName = `gcip-iap-bucket-${K_CONFIGURATION}-${PROJECT_NUMBER}`;
+      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
+        .resolves(METADATA_ACCESS_TOKEN);
+      stubs.push(getAccessToken);
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .resolves(expectedUiConfig);
+      stubs.push(readFileStub);
+
+      return request(authServer.server)
+        .get('/config')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .then((response) => {
+          // CloudStorageHandler initialized with expected metadata OAuth access token.
+          expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
+          expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
+            .to.eventually.equal(METADATA_ACCESS_TOKEN);
+          // Metadata server initialized with expected OAuth scopes.
+          expect(metadataServerSpy).to.have.been.calledOnce
+            .and.calledWith(AUTH_SERVER_SCOPES);
+          // readFile called.
+          expect(readFileStub).to.have.been.calledOnce.and.calledWith(bucketName, fileName);
+          expect(response.text).to.equal(JSON.stringify(expectedUiConfig));
+        });
+    });
+
+    it('returns config from GCS using GCS_BUCKET_NAME environment variable if available', () => {
+      process.env.GCS_BUCKET_NAME = 'custom-bucket-name';
+      const fileName = 'config.json';
+      const bucketName = process.env.GCS_BUCKET_NAME;
+      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
+        .resolves(METADATA_ACCESS_TOKEN);
+      stubs.push(getAccessToken);
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .resolves(expectedUiConfig);
+      stubs.push(readFileStub);
+
+      return request(authServer.server)
+        .get('/config')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .then((response) => {
+          // CloudStorageHandler initialized with expected metadata OAuth access token.
+          expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
+          expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
+            .to.eventually.equal(METADATA_ACCESS_TOKEN);
+          // Metadata server initialized with expected OAuth scopes.
+          expect(metadataServerSpy).to.have.been.calledOnce
+            .and.calledWith(AUTH_SERVER_SCOPES);
+          // readFile called.
+          expect(readFileStub).to.have.been.calledOnce.and.calledWith(bucketName, fileName);
+          expect(response.text).to.equal(JSON.stringify(expectedUiConfig));
+        });
+    });
+
+    it('returns config from default config when not found in GCS and caches it', () => {
+      const fileName = 'config.json';
+      const bucketName = `gcip-iap-bucket-${K_CONFIGURATION}-${PROJECT_NUMBER}`;
+      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
+        .resolves(METADATA_ACCESS_TOKEN);
+      stubs.push(getAccessToken);
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(new Error('Not found'));
+      stubs.push(readFileStub);
+      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
+        .resolves(gcipConfig);
+      stubs.push(getGcipConfigStub);
+      const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
+      getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
+      getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
+      getTenantUiConfigStub.withArgs('tenantId2').resolves(tenantUiConfigMap.tenantId2);
+      stubs.push(getTenantUiConfigStub);
+      const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
+        .resolves(iapSettings);
+      stubs.push(listIapSettingsStub);
+
+      return request(authServer.server)
+        .get('/config')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .then((response) => {
+          // CloudStorageHandler initialized with expected metadata OAuth access token.
+          expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
+          expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
+            .to.eventually.equal(METADATA_ACCESS_TOKEN);
+          // Metadata server initialized with expected OAuth scopes.
+          expect(metadataServerSpy).to.have.been.calledOnce
+            .and.calledWith(AUTH_SERVER_SCOPES);
+          // gcipHandler and iapSettingsHandler initialized with expected Matadata OAuth access token.
+          expect(gcipHandlerSpy).to.have.been.calledOnce;
+          expect(gcipHandlerSpy.getCall(0).args[1].getAccessToken())
+            .to.eventually.equal(METADATA_ACCESS_TOKEN);
+          expect(iapSettingsHandlerSpy).to.have.been.calledOnce;
+          expect(iapSettingsHandlerSpy.getCall(0).args[1].getAccessToken())
+            .to.eventually.equal(METADATA_ACCESS_TOKEN);
+          // readFile called.
+          expect(readFileStub).to.have.been.calledOnce.and.calledWith(bucketName, fileName);
+          // getGcipConfig called next.
+          expect(getGcipConfigStub).to.have.been.calledOnce.and.calledAfter(readFileStub);
+          // listIapSettings called next.
+          expect(listIapSettingsStub).to.have.been.calledOnce.and.calledAfter(getGcipConfigStub);
+          // getTenantUiConfig called thrice.
+          expect(getTenantUiConfigStub).to.have.been.calledThrice.and.calledAfter(listIapSettingsStub);
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+
+          // Try again. Cached result should be returned.
+          return request(authServer.server)
+            .get('/config')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(readFileStub).to.have.been.calledTwice;
+          // No additional calls to build default config.
+          expect(getGcipConfigStub).to.have.been.calledOnce;
+          expect(listIapSettingsStub).to.have.been.calledOnce;
+          expect(getTenantUiConfigStub).to.have.been.calledThrice;
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+        });
+    });
+
+    it('uses fallback when UI_CONFIG content is invalid', () => {
+      // Invalid UI_CONFIG content.
+      process.env.UI_CONFIG = '{"key": "invalid"';
+      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
+        .resolves(METADATA_ACCESS_TOKEN);
+      stubs.push(getAccessToken);
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(new Error('Not found'));
+      stubs.push(readFileStub);
+      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
+        .resolves(gcipConfig);
+      stubs.push(getGcipConfigStub);
+      const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
+      getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
+      getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
+      getTenantUiConfigStub.withArgs('tenantId2').resolves(tenantUiConfigMap.tenantId2);
+      stubs.push(getTenantUiConfigStub);
+      const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
+        .resolves(iapSettings);
+      stubs.push(listIapSettingsStub);
+
+      return request(authServer.server)
+        .get('/config')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+        });
+    });
+
+    it('returns 404 when fallback fails', () => {
+      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
+        .resolves(METADATA_ACCESS_TOKEN);
+      stubs.push(getAccessToken);
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(new Error('Not found'));
+      stubs.push(readFileStub);
+      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
+        .resolves(gcipConfig);
+      stubs.push(getGcipConfigStub);
+      const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
+      listIapSettingsStub.onFirstCall().resolves([]);
+      listIapSettingsStub.onSecondCall().resolves(iapSettings);
+      stubs.push(listIapSettingsStub);
+      const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
+      getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
+      getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
+      getTenantUiConfigStub.withArgs('tenantId2').resolves(tenantUiConfigMap.tenantId2);
+      stubs.push(getTenantUiConfigStub);
+
+      return request(authServer.server)
+        .get('/config')
+        .expect('Content-Type', /json/)
+        .expect(404)
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(ERROR_MAP.NOT_FOUND);
+          expect(listIapSettingsStub).to.have.been.calledOnce;
+          // Confirm, null default config is not stored.
+          return request(authServer.server)
+            .get('/config')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          expect(listIapSettingsStub).to.have.been.calledTwice;
+          // Result should be cached now.
+          return request(authServer.server)
+            .get('/config')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          // No additional calls.
+          expect(listIapSettingsStub).to.have.been.calledTwice;
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+        });
+    });
+
+    it('returns underlying error on default config construction without caching it', () => {
+      const expectedResponse = {
+        error: {
+          code: 400,
+          status: 'INVALID_ARGUMENT',
+          message: 'Some error occurred',
+        },
+      };
+      const expectedError = createError(expectedResponse);
+      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
+        .resolves(METADATA_ACCESS_TOKEN);
+      stubs.push(getAccessToken);
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(new Error('Not found'));
+      stubs.push(readFileStub);
+      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig');
+      // Simulate first call fails.
+      getGcipConfigStub.onFirstCall().rejects(expectedError);
+      getGcipConfigStub.onSecondCall().resolves(gcipConfig);
+      stubs.push(getGcipConfigStub);
+      const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
+        .resolves(iapSettings);
+      stubs.push(listIapSettingsStub);
+      const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
+      getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
+      getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
+      getTenantUiConfigStub.withArgs('tenantId2').resolves(tenantUiConfigMap.tenantId2);
+      stubs.push(getTenantUiConfigStub);
+
+      return request(authServer.server)
+        .get('/config')
+        .expect('Content-Type', /json/)
+        .expect(400)
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedResponse);
+          expect(listIapSettingsStub).to.not.have.been.called;
+          // Confirm, default config error should not be cached.
+          return request(authServer.server)
+            .get('/config')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          expect(listIapSettingsStub).to.have.been.calledOnce;
+          // Result should be cached now.
+          return request(authServer.server)
+            .get('/config')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          // No additional calls.
+          expect(listIapSettingsStub).to.have.been.calledOnce;
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+        });
+    });
+  });
+
   describe('responds to /get_admin_config', () => {
     const gcipConfig = {
       apiKey: API_KEY,
@@ -633,6 +1044,23 @@ describe('AuthServer', () => {
     };
     const expectedUiConfig =
         new DefaultUiConfigBuilder(PROJECT_ID, gcipConfig, tenantUiConfigMap).build();
+
+    it('returns 404 when ALLOW_ADMIN environment variable is false', () => {
+      const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
+      // Restart server with ALLOW_ADMIN variable set to false.
+      authServer.stop();
+      app = express();
+      process.env.ALLOW_ADMIN = 'false';
+      authServer = new AuthServer(app);
+
+      return authServer.start().then(() => {
+        return request(authServer.server)
+          .get('/get_admin_config')
+          .set({'Authorization': `Bearer ${personalAccessToken}`})
+          .expect('Content-Type', /html/)
+          .expect(404);
+      });
+    });
 
     it('responds with config file from GCS if found', () => {
       const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';

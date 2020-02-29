@@ -60,6 +60,8 @@ export class AuthServer {
   private gcipHandler: GcipHandler;
   /** IAP settings handler. */
   private iapSettingsHandler: IapSettingsHandler;
+  /** Default config promise. This stores the default config in memory. */
+  private defaultConfigPromise: Promise<UiConfig> | null;
 
   /**
    * Creates an instance of the auth server using the specified express application instance.
@@ -120,53 +122,56 @@ export class AuthServer {
       return serveContentForSignIn(req, res);
     });
 
-    // Administrative sign-in UI config customization.
-    this.app.get('/admin', (req: express.Request, res: express.Response) => {
-      res.set('Content-Type', 'text/html');
-      res.end(templates.admin({}));
-    });
+    // Developers can disable admin panel when deploying Cloud Run service.
+    if (this.isAdminAllowed()) {
+      // Administrative sign-in UI config customization.
+      this.app.get('/admin', (req: express.Request, res: express.Response) => {
+        res.set('Content-Type', 'text/html');
+        res.end(templates.admin({}));
+      });
 
-    // Administrative API for reading the current app configuration.
-    // This could be either saved in GCS (custom config), environment variable (custom config)
-    // or in memory (default config).
-    this.app.get('/get_admin_config', (req: express.Request, res: express.Response) => {
-      if (!req.headers.authorization ||
-          req.headers.authorization.split(' ').length <= 1) {
-        this.handleErrorResponse(res, ERROR_MAP.UNAUTHENTICATED);
-      } else {
-        const accessToken = req.headers.authorization.split(' ')[1];
-        this.getConfigForAdmin(accessToken).then((config) => {
-          res.set('Content-Type', 'application/json');
-          res.send(JSON.stringify(config || {}));
-        }).catch((err) => {
-          this.handleError(res, err);
-        });
-      }
-    });
+      // Administrative API for reading the current app configuration.
+      // This could be either saved in GCS (custom config), environment variable (custom config)
+      // or in memory (default config).
+      this.app.get('/get_admin_config', (req: express.Request, res: express.Response) => {
+        if (!req.headers.authorization ||
+            req.headers.authorization.split(' ').length <= 1) {
+          this.handleErrorResponse(res, ERROR_MAP.UNAUTHENTICATED);
+        } else {
+          const accessToken = req.headers.authorization.split(' ')[1];
+          this.getConfigForAdmin(accessToken).then((config) => {
+            res.set('Content-Type', 'application/json');
+            res.send(JSON.stringify(config || {}));
+          }).catch((err) => {
+            this.handleError(res, err);
+          });
+        }
+      });
 
-    // Administrative API for writing a custom configuration to.
-    // This will save the configuration in a predetermined GCS bucket.
-    this.app.post('/set_admin_config', (req: express.Request, res: express.Response) => {
-      if (!req.headers.authorization ||
-          req.headers.authorization.split(' ').length <= 1) {
-        this.handleErrorResponse(res, ERROR_MAP.UNAUTHENTICATED);
-      } else if (!isNonNullObject(req.body) ||
-                 Object.keys(req.body).length === 0) {
-        this.handleErrorResponse(res, ERROR_MAP.INVALID_ARGUMENT);
-      } else {
-        const accessToken = req.headers.authorization.split(' ')[1];
-        // TODO: validate config before saving it.
-        this.setConfigForAdmin(accessToken, req.body).then(() => {
-          res.set('Content-Type', 'application/json');
-          res.send(JSON.stringify({
-            status: 200,
-            message: 'Changes successfully saved.',
-          }));
-        }).catch((err) => {
-          this.handleError(res, err);
-        });
-      }
-    });
+      // Administrative API for writing a custom configuration to.
+      // This will save the configuration in a predetermined GCS bucket.
+      this.app.post('/set_admin_config', (req: express.Request, res: express.Response) => {
+        if (!req.headers.authorization ||
+            req.headers.authorization.split(' ').length <= 1) {
+          this.handleErrorResponse(res, ERROR_MAP.UNAUTHENTICATED);
+        } else if (!isNonNullObject(req.body) ||
+                   Object.keys(req.body).length === 0) {
+          this.handleErrorResponse(res, ERROR_MAP.INVALID_ARGUMENT);
+        } else {
+          const accessToken = req.headers.authorization.split(' ')[1];
+          // TODO: validate config before saving it.
+          this.setConfigForAdmin(accessToken, req.body).then(() => {
+            res.set('Content-Type', 'application/json');
+            res.send(JSON.stringify({
+              status: 200,
+              message: 'Changes successfully saved.',
+            }));
+          }).catch((err) => {
+            this.handleError(res, err);
+          });
+        }
+      });
+    }
 
     // Used to return the auth configuration (apiKey + authDomain).
     this.app.get('/gcipConfig', (req: express.Request, res: express.Response) => {
@@ -179,6 +184,70 @@ export class AuthServer {
           this.handleError(res, err);
         });
     });
+
+    // Returns the custom config (if available) or the defaul config, needed to render
+    // the sign-in UI for IAP.
+    this.app.get('/config', (req: express.Request, res: express.Response) => {
+      this.getFallbackConfig()
+        .then((currentConfig) => {
+          if (!currentConfig) {
+            this.handleErrorResponse(res, ERROR_MAP.NOT_FOUND);
+          } else {
+            res.set('Content-Type', 'application/json');
+            res.send(JSON.stringify(currentConfig));
+          }
+        })
+        .catch((err) => {
+          this.handleError(res, err);
+        });
+    });
+  }
+
+  /** @return Whether admin panel is allowed. */
+  private isAdminAllowed(): boolean {
+    return !(process.env.ALLOW_ADMIN === 'false' || process.env.ALLOW_ADMIN === '0');
+  }
+
+  /**
+   * @return A promise that resolves with the current UI config.
+   */
+  private getFallbackConfig(): Promise<UiConfig | null> {
+    // Parse config from environment variable first.
+    if (process.env.UI_CONFIG) {
+      try {
+        const config: UiConfig = JSON.parse(process.env.UI_CONFIG);
+        return Promise.resolve(config);
+      } catch (e) {
+        // Ignore.
+      }
+    }
+    // Parse config from GCS bucket if available.
+    const cloudStorageHandler = new CloudStorageHandler(this.metadataServer, this.metadataServer);
+    return this.getBucketName()
+      .then((bucketName) => {
+        return cloudStorageHandler.readFile(bucketName, CONFIG_FILE_NAME);
+      })
+      .catch((error) => {
+        // If not available in GCS, use default config.
+        if (!this.defaultConfigPromise) {
+          // Default config should be retrieved once and cached in memory.
+          this.defaultConfigPromise = this.getDefaultConfig();
+        }
+        return this.defaultConfigPromise.then((config) => {
+          if (!config) {
+            // Do not cache config if IAP is not yet enabled.
+            this.defaultConfigPromise = null;
+            // Return default config.
+            return null;
+          }
+          return config;
+        })
+        .catch((err) => {
+          // Do not cache errors in building default config.
+          this.defaultConfigPromise = null;
+          throw err;
+        });
+      });
   }
 
   /**
