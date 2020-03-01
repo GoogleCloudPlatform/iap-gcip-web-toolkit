@@ -302,7 +302,7 @@ export class GcipHandler {
             httpResponse.body : JSON.parse(httpResponse.body);
         const delimiter = 'defaultSupportedIdpConfigs/';
         const signInOptions: SignInOption[] = [];
-        (config.defaultSupportedIdpConfigs || []).forEach((defaultSupportedIdp) => {
+        (config.defaultSupportedIdpConfigs || []).forEach((defaultSupportedIdp: any) => {
           const name = defaultSupportedIdp && defaultSupportedIdp.name;
           if (defaultSupportedIdp && defaultSupportedIdp.enabled) {
             signInOptions.push({
@@ -335,7 +335,7 @@ export class GcipHandler {
             httpResponse.body : JSON.parse(httpResponse.body);
         const delimiter = 'inboundSamlConfigs/';
         const signInOptions: SignInOption[] = [];
-        (config.inboundSamlConfigs || []).forEach((inboundSamlConfig) => {
+        (config.inboundSamlConfigs || []).forEach((inboundSamlConfig: any) => {
           if (inboundSamlConfig && inboundSamlConfig.enabled) {
             const name = inboundSamlConfig.name;
             signInOptions.push({
@@ -369,7 +369,7 @@ export class GcipHandler {
             httpResponse.body : JSON.parse(httpResponse.body);
         const delimiter = 'oauthIdpConfigs/';
         const signInOptions: SignInOption[] = [];
-        (config.oauthIdpConfigs || []).forEach((oauthIdpConfig) => {
+        (config.oauthIdpConfigs || []).forEach((oauthIdpConfig: any) => {
           if (oauthIdpConfig && oauthIdpConfig.enabled) {
             const name = oauthIdpConfig.name;
             signInOptions.push({

@@ -23,7 +23,7 @@ const main = handlebars.compile(`
   <body>
     <div class="main-container blend">
       <h4 id="tenant-header" class="heading-center">
-      <span id="tid"></span>
+      <span id="title"></span>
       </h4>
       <div id="separator" style="display:none;">
         <div class="separator"><img id="logo" src="{{logo}}" style="max-width:64px;"></div>

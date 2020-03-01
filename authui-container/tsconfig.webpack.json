@@ -8,7 +8,12 @@
     "outDir": "lib",
     "rootDir": "."
   },
+  "include": [
+    "src/**/*",
+    "src/utils/**/*",
+    "test/unit/src/**/*"
+  ],
   "exclude": [
-    "server/**/*"
+    "node_modules"
   ]
 }

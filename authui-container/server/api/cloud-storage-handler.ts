@@ -74,7 +74,7 @@ export class CloudStorageHandler {
    * @return A promise that resolves on successful creation.
    */
   createBucket(bucketName: string): Promise<void> {
-    let urlParams;
+    let urlParams: any;
     return this.app.getProjectId()
       .then((projectId) => {
         urlParams = {

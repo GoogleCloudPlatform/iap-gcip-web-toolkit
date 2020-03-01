@@ -17,7 +17,9 @@ import '../node_modules/firebaseui/dist/firebaseui.css';
 import '../public/style.css';
 
 // Import Firebase dependencies.
+// tslint:disable-next-line
 import * as firebase from 'firebase/app';
+// tslint:disable-next-line
 import 'firebase/auth';
 import 'bootstrap';
 
