@@ -20,63 +20,14 @@ import { SignInUi, UiConfig } from '../../../src/sign-in-ui';
 import * as ciap from 'gcip-iap';
 import * as firebaseui from 'firebaseui';
 import * as utils from '../../../src/utils/index';
-import {
-  HttpClient, HttpResponse, HttpRequestConfig, LowLevelError,
-} from '../../../src/utils/http-client';
-import { isNonNullObject } from '../../../src/utils/validator';
+import {HttpClient} from '../../../src/utils/http-client';
+import {createMockLowLevelError, createMockHttpResponse} from './test-utils';
 
 interface Callbacks {
   selectTenantUiShown: () => {};
   selectTenantUiHidden: () => {};
   signInUiShown: (tenantId: string | null) => {};
   [key: string]: any;
-}
-
-/**
- * Creates a mock LowLevelError using the parameters provided.
- *
- * @param message The error message.
- * @param status The HTTP error code.
- * @param response The low level response.
- * @param config The original HTTP request configuration.
- * @param request The original Request object.
- * @return The corresponding mock LowLevelError.
- */
-export function createMockLowLevelError(
-  message: string, status: number, response?: {data: string | object},
-  config?: HttpRequestConfig, request?: RequestInit): LowLevelError {
-const error = new Error(message);
-utils.addReadonlyGetter(error, 'status', status);
-utils.addReadonlyGetter(error, 'config', config);
-utils.addReadonlyGetter(error, 'request', request);
-utils.addReadonlyGetter(error, 'response', response);
-return error as LowLevelError;
-}
-
-/**
- * Generates a mock 200 HttpResponse with corresponding headers and data.
- *
- * @param headers The headers to include in the mock HttpResponse.
- * @param response The optional raw HTTP body response.
- * @return The corresponding mock HttpResponse.
- */
-function createMockHttpResponse(headers: object, response?: any): HttpResponse {
-  let data: any;
-  let text: any;
-  if (isNonNullObject(response)) {
-    data = response;
-    text = JSON.stringify(response);
-  } else {
-    text = response;
-  }
-  return {
-    status: 200,
-    headers,
-    text,
-    data,
-    request: {},
-    isJson: () => isNonNullObject(response),
-  };
 }
 
 /**

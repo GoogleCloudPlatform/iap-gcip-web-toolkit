@@ -15,12 +15,21 @@
 import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
 import '../node_modules/firebaseui/dist/firebaseui.css';
 import '../public/style.css';
+import * as $ from 'jquery';
+(window as any).$ = (window as any).jQuery = $;
 
-// Import Firebase dependencies.
-// tslint:disable-next-line
-import * as firebase from 'firebase/app';
-// tslint:disable-next-line
-import 'firebase/auth';
-import 'bootstrap';
+import { AdminUi } from './admin-ui';
+import { onDomReady } from './utils/index';
 
-// TODO
+// The query selector where the admin UI will be rendered.
+const UI_ELEMENT_SELECTOR = '#admin-container';
+
+// When document is ready, initialize and render the AdminUi.
+onDomReady(document)
+  .then(() => {
+    $('.toast').toast('hide');
+    const ui = new AdminUi(UI_ELEMENT_SELECTOR, () => {
+      $('.toast').toast('show');
+    });
+    return ui.render();
+  });

@@ -44,9 +44,8 @@ const admin = handlebars.compile(`
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="/static/admin.js" type="text/javascript"></script>
   <body>
-    <div style="position: fixed; top: 20; right: 20;">
-      <div class="toast" style="position: absolute; top: 0; right: 0;"
-          data-autohide="true" data-delay="5000">
+    <div class="toast-container">
+      <div class="toast" data-autohide="true" data-delay="5000">
         <div class="toast-header">
           <strong class="mr-auto" id="alert-status">Success</strong>
           <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
@@ -56,13 +55,13 @@ const admin = handlebars.compile(`
         <div class="toast-body" id="alert-message"></div>
       </div>
     </div>
-    <div class="main-container2" style="display: none;">
-      <h5 id="tenant-header" class="heading-center">Customize Authentication UI Configuration</h5>
-      <form id="admin-form">
-        <textarea rows="20" cols="70" id="config"> </textarea><br>
+    <div id="admin-container" style="display: none;">
+      <h5 class="heading-center">Customize Authentication UI Configuration</h5>
+      <form class="admin-form">
+        <textarea rows="20" cols="70" class="config"></textarea><br>
         <button type="submit" class="btn btn-primary mb-2">Save</button>
-        <button id="copy-to-clipboard" class="btn btn-primary mb-2">Copy to clipboard</button>
-        <button id="reauth" class="btn btn-primary mb-2" style="display:none;">Reauthenticate</button>
+        <button class="copy-to-clipboard btn btn-primary mb-2">Copy to clipboard</button>
+        <button class="reauth btn btn-primary mb-2" style="display:none;">Reauthenticate</button>
       </form>
     </div>
   </body>

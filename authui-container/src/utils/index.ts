@@ -178,3 +178,12 @@ export function deepExtend(target: any, source: any): any {
 
   return target;
 }
+
+/**
+ * Selects the content within a text area and copies it to clipboard.
+ * @param textAreaElement The text area to select.
+ */
+export function copyTextAreaContent(textAreaElement: HTMLTextAreaElement) {
+  textAreaElement.select();
+  document.execCommand('copy');
+}
