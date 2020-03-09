@@ -19,12 +19,12 @@ import * as sinon from 'sinon';
 import * as testUtils from './test-utils';
 import * as utils from '../../../src/utils/index';
 import {HttpClient} from '../../../src/utils/http-client';
-import {createMockLowLevelError, createMockHttpResponse} from './test-utils';
 import { UiConfig } from '../../../src/sign-in-ui';
 import {
   AdminUi, TIMEOUT_DURATION, OAUTH_SCOPES, MSG_CONFIGURATION_SAVED,
-  MSG_NO_USER_LOGGED_IN,
+  MSG_NO_USER_LOGGED_IN, MSG_INVALID_CONFIGURATION,
 } from '../../../src/admin-ui';
+// tslint:disable-next-line
 import * as firebase from 'firebase/app';
 
 /**
@@ -246,10 +246,10 @@ describe('AdminUi', () => {
       const app = testUtils.createMockApp(
           expectedGcipConfig,
           stubbedAuthMethods);
-      const expectedGcipConfigResp = createMockHttpResponse(
+      const expectedGcipConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedGcipConfig);
-      const expectedGetAdminConfigResp = createMockHttpResponse(
+      const expectedGetAdminConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedUiConfig);
       httpClientSendStub.callsFake((params) => {
@@ -290,7 +290,7 @@ describe('AdminUi', () => {
 
     it('should show unrecoverable error message on /get_admin_config error', () => {
       const expectedMessage = 'Unable to get config';
-      const serverLowLevelError = createMockLowLevelError(
+      const serverLowLevelError = testUtils.createMockLowLevelError(
           'Server responded with status 400',
           400,
           {
@@ -318,7 +318,7 @@ describe('AdminUi', () => {
       const app = testUtils.createMockApp(
           expectedGcipConfig,
           stubbedAuthMethods);
-      const expectedGcipConfigResp = createMockHttpResponse(
+      const expectedGcipConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedGcipConfig);
       httpClientSendStub.callsFake((params) => {
@@ -360,7 +360,7 @@ describe('AdminUi', () => {
 
     it('should show unrecoverable error message on /gcipConfig error', () => {
       const expectedMessage = 'Unable to get config';
-      const serverLowLevelError = createMockLowLevelError(
+      const serverLowLevelError = testUtils.createMockLowLevelError(
           'Server responded with status 400',
           400,
           {
@@ -405,10 +405,10 @@ describe('AdminUi', () => {
       const app = testUtils.createMockApp(
           expectedGcipConfig,
           stubbedAuthMethods);
-      const expectedGcipConfigResp = createMockHttpResponse(
+      const expectedGcipConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedGcipConfig);
-      const expectedGetAdminConfigResp = createMockHttpResponse(
+      const expectedGetAdminConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedUiConfig);
       httpClientSendStub.callsFake((params) => {
@@ -470,10 +470,10 @@ describe('AdminUi', () => {
       const app = testUtils.createMockApp(
           expectedGcipConfig,
           stubbedAuthMethods);
-      const expectedGcipConfigResp = createMockHttpResponse(
+      const expectedGcipConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedGcipConfig);
-      const expectedGetAdminConfigResp = createMockHttpResponse(
+      const expectedGetAdminConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedUiConfig);
       httpClientSendStub.callsFake((params) => {
@@ -499,8 +499,8 @@ describe('AdminUi', () => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${OAUTH_ACCESS_TOKEN}`,
           });
-          expect(params.data).to.deep.equal(JSON.stringify(updatedUiConfig));
-          return Promise.resolve(createMockHttpResponse(
+          expect(params.data).to.deep.equal(updatedUiConfig);
+          return Promise.resolve(testUtils.createMockHttpResponse(
               {'Content-Type': 'application/json'}, {}));
         }
         throw new Error('Unexpected call');
@@ -539,9 +539,89 @@ describe('AdminUi', () => {
         });
     });
 
+    it('should catch invalid provided JSON configuration', () => {
+      const stubbedAuthMethods = {
+        setPersistence: sinon.stub(),
+        getRedirectResult: sinon.stub().callsFake(() => {
+          const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
+          app.auth().setCurrentMockUser(mockUser);
+          return Promise.resolve({
+            user: mockUser,
+            credential: {
+              providerId: 'google.com',
+              accessToken: OAUTH_ACCESS_TOKEN,
+            },
+          });
+        }),
+      };
+      const app = testUtils.createMockApp(
+          expectedGcipConfig,
+          stubbedAuthMethods);
+      const expectedGcipConfigResp = testUtils.createMockHttpResponse(
+          {'Content-Type': 'application/json'},
+          expectedGcipConfig);
+      const expectedGetAdminConfigResp = testUtils.createMockHttpResponse(
+          {'Content-Type': 'application/json'},
+          expectedUiConfig);
+      httpClientSendStub.callsFake((params) => {
+        expect(params.timeout).to.be.equal(TIMEOUT_DURATION);
+        expect(params.mode).to.be.equal('same-origin');
+        expect(params.cache).to.be.equal('no-cache');
+        if (params.url === '/gcipConfig') {
+          expect(params.method).to.be.equal('GET');
+          expect(params.headers).to.deep.equal({
+            'Content-Type': 'application/json',
+          });
+          return Promise.resolve(expectedGcipConfigResp);
+        } else if (params.url === '/get_admin_config') {
+          expect(params.method).to.be.equal('GET');
+          expect(params.headers).to.deep.equal({
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${OAUTH_ACCESS_TOKEN}`,
+          });
+          return Promise.resolve(expectedGetAdminConfigResp);
+        }
+        throw new Error('Unexpected call');
+      });
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
+        expect(config).to.deep.equal(expectedGcipConfig);
+        return app as any;
+      });
+      stubs.push(firebaseStub);
+      const copyTextAreaContentStub = sinon.stub(utils, 'copyTextAreaContent');
+      stubs.push(copyTextAreaContentStub);
+
+      const adminUi = new AdminUi(mainContainer, showToast);
+      return adminUi.render()
+        .then(() => {
+          expect(httpClientSendStub).to.have.been.calledTwice;
+          const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
+          expect(mainContainer.style.display).to.be.equal('block');
+          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 4));
+          // Update textarea content with an invalid JSON input.
+          area.value = '{invalid}';
+          // Test save functionality.
+          const adminFormButton = mainContainer.querySelector('button[type="submit"]');
+          (adminFormButton as HTMLButtonElement).click();
+          // No addition network request.
+          expect(httpClientSendStub).to.have.been.calledTwice;
+          // Add some delay before checking toast message.
+          return Promise.resolve();
+        })
+        .then(() => {
+          // Confirm re-auth button still hidden.
+          const reauthButton = document.getElementsByClassName('reauth')[0];
+          expect((reauthButton as HTMLButtonElement).style.display).to.be.equal('none');
+          // Confirm invalid JSON error displayed.
+          assertToastMessage('Error', MSG_INVALID_CONFIGURATION);
+          expect(showToast).to.have.been.calledOnce;
+        });
+    });
+
     it('should handle save admin config error', () => {
       const expectedMessage = 'Unable to get config';
-      const serverLowLevelError = createMockLowLevelError(
+      const serverLowLevelError = testUtils.createMockLowLevelError(
           'Server responded with status 400',
           400,
           {
@@ -571,10 +651,10 @@ describe('AdminUi', () => {
       const app = testUtils.createMockApp(
           expectedGcipConfig,
           stubbedAuthMethods);
-      const expectedGcipConfigResp = createMockHttpResponse(
+      const expectedGcipConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedGcipConfig);
-      const expectedGetAdminConfigResp = createMockHttpResponse(
+      const expectedGetAdminConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedUiConfig);
       httpClientSendStub.callsFake((params) => {
@@ -600,7 +680,7 @@ describe('AdminUi', () => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${OAUTH_ACCESS_TOKEN}`,
           });
-          expect(params.data).to.deep.equal(JSON.stringify(updatedUiConfig));
+          expect(params.data).to.deep.equal(updatedUiConfig);
           return Promise.reject(serverLowLevelError);
         }
         throw new Error('Unexpected call');
@@ -665,7 +745,7 @@ describe('AdminUi', () => {
       };
       const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1', stubbedUserMethods);
       const UNAUTHORIZED_USER_ERROR = 'Unauthorized user';
-      const serverLowLevelError = createMockLowLevelError(
+      const serverLowLevelError = testUtils.createMockLowLevelError(
           'Server responded with status 401',
           401,
           {
@@ -694,10 +774,10 @@ describe('AdminUi', () => {
       const app = testUtils.createMockApp(
           expectedGcipConfig,
           stubbedAuthMethods);
-      const expectedGcipConfigResp = createMockHttpResponse(
+      const expectedGcipConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedGcipConfig);
-      const expectedGetAdminConfigResp = createMockHttpResponse(
+      const expectedGetAdminConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedUiConfig);
       httpClientSendStub.callsFake((params) => {
@@ -725,7 +805,7 @@ describe('AdminUi', () => {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${OAUTH_ACCESS_TOKEN}`,
             });
-            expect(params.data).to.deep.equal(JSON.stringify(updatedUiConfig));
+            expect(params.data).to.deep.equal(updatedUiConfig);
             // Simulate token expired.
             return Promise.reject(serverLowLevelError);
           } else if (callCounter === 4) {
@@ -734,8 +814,8 @@ describe('AdminUi', () => {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${UPDATED_OAUTH_ACCESS_TOKEN}`,
             });
-            expect(params.data).to.deep.equal(JSON.stringify(updatedUiConfig));
-            return Promise.resolve(createMockHttpResponse(
+            expect(params.data).to.deep.equal(updatedUiConfig);
+            return Promise.resolve(testUtils.createMockHttpResponse(
                 {'Content-Type': 'application/json'}, {}));
           }
         }
@@ -813,7 +893,7 @@ describe('AdminUi', () => {
       };
       const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1', stubbedUserMethods);
       const UNAUTHORIZED_USER_ERROR = 'Unauthorized user';
-      const serverLowLevelError = createMockLowLevelError(
+      const serverLowLevelError = testUtils.createMockLowLevelError(
           'Server responded with status 401',
           401,
           {
@@ -842,10 +922,10 @@ describe('AdminUi', () => {
       const app = testUtils.createMockApp(
           expectedGcipConfig,
           stubbedAuthMethods);
-      const expectedGcipConfigResp = createMockHttpResponse(
+      const expectedGcipConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedGcipConfig);
-      const expectedGetAdminConfigResp = createMockHttpResponse(
+      const expectedGetAdminConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedUiConfig);
       httpClientSendStub.callsFake((params) => {
@@ -871,7 +951,7 @@ describe('AdminUi', () => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${OAUTH_ACCESS_TOKEN}`,
           });
-          expect(params.data).to.deep.equal(JSON.stringify(updatedUiConfig));
+          expect(params.data).to.deep.equal(updatedUiConfig);
           // Simulate token expired.
           return Promise.reject(serverLowLevelError);
         }
@@ -933,7 +1013,7 @@ describe('AdminUi', () => {
       };
       const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1', stubbedUserMethods);
       const UNAUTHORIZED_USER_ERROR = 'Unauthorized user';
-      const serverLowLevelError = createMockLowLevelError(
+      const serverLowLevelError = testUtils.createMockLowLevelError(
           'Server responded with status 401',
           401,
           {
@@ -962,10 +1042,10 @@ describe('AdminUi', () => {
       const app = testUtils.createMockApp(
           expectedGcipConfig,
           stubbedAuthMethods);
-      const expectedGcipConfigResp = createMockHttpResponse(
+      const expectedGcipConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedGcipConfig);
-      const expectedGetAdminConfigResp = createMockHttpResponse(
+      const expectedGetAdminConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedUiConfig);
       httpClientSendStub.callsFake((params) => {
@@ -991,7 +1071,7 @@ describe('AdminUi', () => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${OAUTH_ACCESS_TOKEN}`,
           });
-          expect(params.data).to.deep.equal(JSON.stringify(updatedUiConfig));
+          expect(params.data).to.deep.equal(updatedUiConfig);
           // Simulate token expired.
           return Promise.reject(serverLowLevelError);
         }
@@ -1058,7 +1138,7 @@ describe('AdminUi', () => {
       const app = testUtils.createMockApp(
           expectedGcipConfig,
           stubbedAuthMethods);
-      const expectedGcipConfigResp = createMockHttpResponse(
+      const expectedGcipConfigResp = testUtils.createMockHttpResponse(
           {'Content-Type': 'application/json'},
           expectedGcipConfig);
       httpClientSendStub.callsFake((params) => {

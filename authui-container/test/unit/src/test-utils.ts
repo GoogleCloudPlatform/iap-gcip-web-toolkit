@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import { addReadonlyGetter } from '../../../src/utils/index';
 import { isNonNullObject } from '../../../src/utils/validator';
 import {
   HttpResponse, HttpRequestConfig, LowLevelError,
@@ -102,7 +101,7 @@ export class MockApp implements FirebaseApp {
 export class MockAuth implements FirebaseAuth {
   /* tslint:enable:variable-name */
   private user: User;
-  private listeners: Array<((user: User) => void)>;
+  private listeners: ((user: User) => void)[];
 
   /**
    * Initializes the mock Auth instance.
@@ -118,7 +117,9 @@ export class MockAuth implements FirebaseAuth {
     this.listeners = [];
     this.app = app;
     for (const key in stubbedMethods) {
-      addReadonlyGetter(this, key, stubbedMethods[key]);
+      if (stubbedMethods.hasOwnProperty(key)) {
+        utils.addReadonlyGetter(this, key, stubbedMethods[key]);
+      }
     }
   }
 
@@ -207,7 +208,9 @@ export class MockUser {
     this.expiredToken = false;
     this.disabledUser = false;
     for (const key in stubbedMethods) {
-      addReadonlyGetter(this, key, stubbedMethods[key]);
+      if (stubbedMethods.hasOwnProperty(key)) {
+        utils.addReadonlyGetter(this, key, stubbedMethods[key]);
+      }
     }
   }
 
@@ -226,14 +229,14 @@ export class MockUser {
   public getIdToken(): Promise<string> {
     const error = new Error('message');
     if (this.expiredToken) {
-      addReadonlyGetter(error, 'code', 'auth/user-token-expired');
+      utils.addReadonlyGetter(error, 'code', 'auth/user-token-expired');
       // Auth will auto-signout the user when its refresh token is expired.
       return (this.auth ? this.auth.signOut() : Promise.resolve())
         .then(() => {
           throw error;
         });
     } else if (this.disabledUser) {
-      addReadonlyGetter(error, 'code', 'auth/user-disabled');
+      utils.addReadonlyGetter(error, 'code', 'auth/user-disabled');
       // Auth will auto-signout the user when it is disabled.
       return (this.auth ? this.auth.signOut() : Promise.resolve())
         .then(() => {

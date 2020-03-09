@@ -31,6 +31,8 @@ interface GcipConfig {
 type AlertStatus = 'success' | 'error';
 // The message to show when a configuration is successfully saved.
 export const MSG_CONFIGURATION_SAVED = 'Configuration successfully saved.';
+// The message to show when an invalid configuration is provided.
+export const MSG_INVALID_CONFIGURATION = 'Invalid JSON configuration!';
 // The message to show when no user is signed in.
 export const MSG_NO_USER_LOGGED_IN = 'No user currently logged in. Refresh the page to sign-in.';
 // Alert message title on success.
@@ -257,8 +259,13 @@ export class AdminUi {
   private addSaveConfigClickHandler() {
     this.adminFormElement.addEventListener('submit', (e) => {
       e.preventDefault();
-      const newConfig = this.textAreaElement.value;
-      this.setAdminConfig(newConfig);
+      let newConfig: UiConfig;
+      try {
+        newConfig = JSON.parse(this.textAreaElement.value);
+        this.setAdminConfig(newConfig);
+      } catch (e) {
+        this.showToastMessage('error', MSG_INVALID_CONFIGURATION);
+      }
       return false;
     });
   }
@@ -268,7 +275,7 @@ export class AdminUi {
    * @param newConfig The new configuration to save.
    * @return A promise that resolves on successful write.
    */
-  private setAdminConfig(newConfig: string): Promise<void> {
+  private setAdminConfig(newConfig: UiConfig): Promise<void> {
     return this.sendAuthenticatedRequest(SET_ADMIN_CONFIG_PARAMS, newConfig)
       .then(() => {
         this.showToastMessage('success', MSG_CONFIGURATION_SAVED);

@@ -114,6 +114,7 @@ export class AuthServer {
       extended: true
     }));
     // Static assets.
+    // Note that in production, this is served from dist/server/auth-server.js.
     this.app.use('/static', express.static(path.join(__dirname, '../public')));
 
     // IAP sign-in flow.

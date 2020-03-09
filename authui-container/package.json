@@ -4,8 +4,8 @@
   "description": "Containerized Authentication UI for IAP external identities",
   "main": "dist/app.js",
   "scripts": {
-    "bundle": "webpack --config webpack.config.js && tsc -p tsconfig.server.json",
-    "start": "node dist/app.js",
+    "bundle": "webpack --config webpack.config.js && tsc -p tsconfig.server.json && mkdir -p dist/public && cp public/*.js dist/public",
+    "start": "node dist/server/app.js",
     "lint": "run-p lint:server lint:client lint:unit",
     "lint:server": "tslint --format stylish -p tsconfig.server.json server/*.ts server/**/*.ts utils/*.ts",
     "lint:client": "tslint --format stylish -p tsconfig.webpack.json src/*.ts src/**/*.ts",
