@@ -123,12 +123,12 @@ export class IapSettingsHandler {
       method: 'GET',
       url: LIST_COMPUTE_BACKEND_SERVICE_IDS_URL,
       timeout: TIMEOUT_DURATION,
-    }, this.accessTokenManager);
+    }, this.accessTokenManager, app.log.bind(app));
     this.getIapSettingsHandler = new AuthenticatedRequestHandler({
       method: 'GET',
       url: GET_IAP_SETTINGS_URL,
       timeout: TIMEOUT_DURATION,
-    }, this.accessTokenManager);
+    }, this.accessTokenManager, app.log.bind(app));
   }
 
   /**

@@ -25,6 +25,7 @@ import {
 } from '../../../../server/api/metadata-server';
 
 describe('MetadataServer', () => {
+  let logger: sinon.SinonStub;
   const scopes = [
     'https://www.googleapis.com/auth/cloud-platform',
     'https://www.googleapis.com/auth/identitytoolkit',
@@ -56,6 +57,7 @@ describe('MetadataServer', () => {
   };
 
   beforeEach(() => {
+    logger = sinon.stub();
     tokenManagerSpy = sinon.spy(token, 'TokenManager');
     metadataServer = new MetadataServer(scopes);
   });
@@ -67,6 +69,28 @@ describe('MetadataServer', () => {
     mockedRequests.forEach((mockedRequest) => mockedRequest.done());
     mockedRequests = [];
     nock.cleanAll();
+  });
+
+  describe('log()', () => {
+    it('will be a no-op when no logger is provided', () => {
+      expect(() => {
+        metadataServer.log('hello', 'world');
+        expect(logger).to.not.have.been.called;
+      }).not.to.throw();
+    });
+
+    it('will call logger if provided', () => {
+      expect(() => {
+        const metadataServerWithLogger = new MetadataServer(scopes, logger);
+
+        metadataServerWithLogger.log('hello', 'world');
+        metadataServerWithLogger.log('foo bar');
+
+        expect(logger).to.have.been.calledTwice;
+        expect(logger.firstCall).to.have.been.calledWith('hello', 'world');
+        expect(logger.secondCall).to.have.been.calledWith('foo bar');
+      }).not.to.throw();
+    });
   });
 
   describe('getAccessToken()', () => {
@@ -87,6 +111,20 @@ describe('MetadataServer', () => {
         .then((accessToken) => {
           expect(accessToken).to.be.equal(expectedResponse2.access_token);
           expect(getAccessTokenStub).to.have.been.calledTwice.and.calledWith(true);
+        });
+    });
+
+    it('should not log anything on success', () => {
+      const getAccessTokenStub = sinon.stub(token.TokenManager.prototype, 'getAccessToken')
+        .resolves(expectedResponse);
+      stubs.push(getAccessTokenStub);
+
+      const metadataServerWithLogger = new MetadataServer(scopes, logger);
+
+      return metadataServerWithLogger.getAccessToken()
+        .then((accessToken) => {
+          expect(logger).to.not.have.been.called;
+          expect(accessToken).to.be.equal(expectedResponse.access_token);
         });
     });
 
@@ -111,6 +149,25 @@ describe('MetadataServer', () => {
           expect(getAccessTokenStub).to.have.been.calledTwice.and.calledWith(false);
         });
     });
+
+    it('should log reason when error occurs', () => {
+      const expectedError = new Error('Some error occurred');
+      const getAccessTokenStub = sinon.stub(token.TokenManager.prototype, 'getAccessToken')
+        .rejects(expectedError);
+      stubs.push(getAccessTokenStub);
+
+      const metadataServerWithLogger = new MetadataServer(scopes, logger);
+
+      return metadataServerWithLogger.getAccessToken()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.be.equal(expectedError);
+          expect(logger).to.have.been.calledOnce.and.calledWith(
+            'Error encountered while getting Metadata server access token', expectedError);
+        });
+    });
   });
 
   describe('getProjectId()', () => {
@@ -130,6 +187,27 @@ describe('MetadataServer', () => {
           return metadataServer.getProjectId();
         })
         .then((projectId) => {
+          expect(projectId).to.be.equal(PROJECT_ID);
+        });
+    });
+
+    it('logs expected information', () => {
+      const scope = nock('http://metadata.google.internal', {
+        reqheaders: {
+          'Metadata-Flavor': 'Google',
+        },
+      }).get('/computeMetadata/v1/project/project-id')
+        .reply(200, PROJECT_ID);
+      mockedRequests.push(scope);
+
+      const metadataServerWithLogger = new MetadataServer(scopes, logger);
+
+      return metadataServerWithLogger.getProjectId()
+        .then((projectId) => {
+          expect(logger).to.have.been.calledTwice;
+          expect(logger.firstCall).to.be.calledWith(
+            `GET to http://metadata.google.internal/computeMetadata/v1/project/project-id`);
+          expect(logger.secondCall).to.be.calledWith('200 response');
           expect(projectId).to.be.equal(PROJECT_ID);
         });
     });
@@ -202,6 +280,27 @@ describe('MetadataServer', () => {
         });
     });
 
+    it('logs expected information', () => {
+      const scope = nock('http://metadata.google.internal', {
+        reqheaders: {
+          'Metadata-Flavor': 'Google',
+        },
+      }).get('/computeMetadata/v1/project/numeric-project-id')
+        .reply(200, PROJECT_NUMBER);
+      mockedRequests.push(scope);
+
+      const metadataServerWithLogger = new MetadataServer(scopes, logger);
+
+      return metadataServerWithLogger.getProjectNumber()
+        .then((projectNumber) => {
+          expect(logger).to.have.been.calledTwice;
+          expect(logger.firstCall).to.be.calledWith(
+            `GET to http://metadata.google.internal/computeMetadata/v1/project/numeric-project-id`);
+          expect(logger.secondCall).to.be.calledWith('200 response');
+          expect(projectNumber).to.be.equal(PROJECT_NUMBER);
+        });
+    });
+
     it('rejects with the expected error when underlying error is detected', () => {
       const scope = nock('http://metadata.google.internal', {
         reqheaders: {
@@ -267,6 +366,28 @@ describe('MetadataServer', () => {
           return metadataServer.getZone();
         })
         .then((zone) => {
+          expect(zone).to.be.equal(expectedZone);
+        });
+    });
+
+    it('logs expected information', () => {
+      const expectedZone = 'us-east1';
+      const scope = nock('http://metadata.google.internal', {
+        reqheaders: {
+          'Metadata-Flavor': 'Google',
+        },
+      }).get('/computeMetadata/v1/instance/zone')
+        .reply(200, ZONE_RESOURCE);
+      mockedRequests.push(scope);
+
+      const metadataServerWithLogger = new MetadataServer(scopes, logger);
+
+      return metadataServerWithLogger.getZone()
+        .then((zone) => {
+          expect(logger).to.have.been.calledTwice;
+          expect(logger.firstCall).to.be.calledWith(
+            `GET to http://metadata.google.internal/computeMetadata/v1/instance/zone`);
+          expect(logger.secondCall).to.be.calledWith('200 response');
           expect(zone).to.be.equal(expectedZone);
         });
     });

@@ -14,14 +14,23 @@
  * limitations under the License.
  */
 
-import {expect} from 'chai';
 import * as nock from 'nock';
 import * as sinon from 'sinon';
-import request = require('supertest');
 import {HttpServerRequestHandler} from '../../../utils/http-server-request-handler';
+import {describe, it, beforeEach, afterEach} from 'mocha';
+import * as chai from 'chai';
+import * as sinonChai from 'sinon-chai';
+import * as chaiAsPromised from 'chai-as-promised';
+
+chai.should();
+chai.use(sinonChai);
+chai.use(chaiAsPromised);
+
+const expect = chai.expect;
 
 describe('HttpServerRequest', () => {
   let mockedRequests: nock.Scope[] = [];
+  let logger: sinon.SinonStub;
   const httpServerRequestHandler = new HttpServerRequestHandler({
     method: 'GET',
     url: 'http://www.example.com:5000/path/to/api',
@@ -34,6 +43,10 @@ describe('HttpServerRequest', () => {
     foo: 'bar',
     success: true,
   };
+
+  beforeEach(() => {
+    logger = sinon.stub();
+  });
 
   afterEach(() => {
     mockedRequests.forEach((mockedRequest) => mockedRequest.done());
@@ -170,6 +183,34 @@ describe('HttpServerRequest', () => {
         });
     });
 
+    it('will log expected data for a POST request with no parameters', () => {
+      const postHandler = new HttpServerRequestHandler({
+        method: 'POST',
+        url: 'http://www.example.com:5000/path/to/api',
+        headers: {
+          'Metadata-Flavor': 'Google',
+        },
+        timeout: 10000,
+      }, logger);
+      const scope = nock('http://www.example.com:5000', {
+        reqheaders: {
+          'Metadata-Flavor': 'Google',
+        },
+      }).post('/path/to/api', {})
+        .reply(200, expectedResponse);
+      mockedRequests.push(scope);
+
+      return postHandler.send()
+        .then((response) => {
+          expect(logger).to.have.been.calledTwice;
+          expect(logger.firstCall).to.be.calledWith(
+            'POST to http://www.example.com:5000/path/to/api');
+          expect(logger.secondCall).to.be.calledWith('200 response');
+          expect(response.statusCode).to.be.equal(200);
+          expect(response.body).to.deep.equal(expectedResponse);
+        });
+    });
+
     it('will pass the expected parameters for a POST request with parameters', () => {
       const data = {
         a: 1,
@@ -203,6 +244,50 @@ describe('HttpServerRequest', () => {
 
       return postHandler.send(requestParams)
         .then((response) => {
+          expect(response.statusCode).to.be.equal(200);
+          expect(response.body).to.deep.equal(expectedResponse);
+        });
+    });
+
+    it('will log expected data for a POST request with parameters', () => {
+      const data = {
+        a: 1,
+        b: 2,
+        c: false,
+      };
+      const postHandler = new HttpServerRequestHandler({
+        method: 'POST',
+        url: 'http://www.example.com:5000/path/to/api',
+        headers: {
+          'Metadata-Flavor': 'Google',
+        },
+        timeout: 10000,
+      }, logger);
+      const scope = nock('http://www.example.com:5000', {
+        reqheaders: {
+          other: 'some-header-value',
+          'more-headers': 'another-value',
+          'metadata-flavor': 'Google',
+        },
+      }).post('/path/to/api', data)
+        .reply(200, expectedResponse);
+      mockedRequests.push(scope);
+      const requestParams = {
+        headers: {
+          other: 'some-header-value',
+          'more-headers': 'another-value',
+        },
+        body: data,
+      };
+
+      return postHandler.send(requestParams)
+        .then((response) => {
+          expect(logger).to.have.been.calledThrice;
+          expect(logger.firstCall).to.be.calledWith(
+            'POST to http://www.example.com:5000/path/to/api');
+          expect(logger.secondCall).to.be.calledWith(
+            'Request body:', requestParams.body);
+          expect(logger.thirdCall).to.be.calledWith('200 response');
           expect(response.statusCode).to.be.equal(200);
           expect(response.body).to.deep.equal(expectedResponse);
         });
@@ -295,6 +380,61 @@ describe('HttpServerRequest', () => {
         .then((response) => {
           throw new Error('Unexpected success');
         }).catch((error) => {
+          expect(error.message).to.deep.equal(expectedError.error.message);
+          expect(error.rawResponse).to.deep.equal(expectedError);
+          expect(error.cloudCompliant).to.be.true;
+        });
+    });
+
+    it('will log parsed error for non-200 status code', () => {
+      const expectedError = {
+        error: {
+          code: 500,
+          message: 'Internal server error',
+        },
+      };
+      const data = {
+        a: 1,
+        b: 2,
+        c: false,
+      };
+      const postHandler = new HttpServerRequestHandler({
+        method: 'POST',
+        url: 'http://www.example.com:5000/path/to/api',
+        headers: {
+          'Metadata-Flavor': 'Google',
+        },
+        timeout: 10,
+      }, logger);
+      const scope = nock('http://www.example.com:5000', {
+        reqheaders: {
+          other: 'some-header-value',
+          'more-headers': 'another-value',
+          'metadata-flavor': 'Google',
+        },
+      }).post('/path/to/api', data)
+        .delay(10)
+        .reply(500, expectedError);
+      mockedRequests.push(scope);
+      const requestParams = {
+        headers: {
+          other: 'some-header-value',
+          'more-headers': 'another-value',
+        },
+        body: data,
+      };
+
+      return postHandler.send(requestParams)
+        .then(() => {
+          throw new Error('Unexpected success');
+        }).catch((error) => {
+          expect(logger).to.have.been.calledThrice;
+          expect(logger.firstCall).to.be.calledWith(
+            'POST to http://www.example.com:5000/path/to/api');
+          expect(logger.secondCall).to.be.calledWith(
+            'Request body:', requestParams.body);
+          expect(logger.thirdCall).to.be.calledWith(
+            '500 Response:', expectedError);
           expect(error.message).to.deep.equal(expectedError.error.message);
           expect(error.rawResponse).to.deep.equal(expectedError);
           expect(error.cloudCompliant).to.be.true;
@@ -401,7 +541,7 @@ describe('HttpServerRequest', () => {
           'Metadata-Flavor': 'Google',
         },
         timeout: 10,
-      });
+      }, logger);
       const scope = nock('http://www.example.com:5000', {
         reqheaders: {
           other: 'some-header-value',
@@ -421,7 +561,20 @@ describe('HttpServerRequest', () => {
         body: data,
       };
 
-      return expect(postHandler.send(requestParams)).to.be.rejectedWith('ESOCKETTIMEDOUT');
+      return postHandler.send(requestParams)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(logger).to.have.been.calledThrice;
+          expect(logger.firstCall).to.be.calledWith(
+            'POST to http://www.example.com:5000/path/to/api');
+          expect(logger.secondCall).to.be.calledWith(
+            'Request body:', requestParams.body);
+          expect(logger.thirdCall).to.be.calledWith(
+            'Error encountered:', error);
+          expect(error.message).to.be.equal('ESOCKETTIMEDOUT');
+        });
     });
 
     it('will resolve when request delay does not exceed expected timeout', () => {

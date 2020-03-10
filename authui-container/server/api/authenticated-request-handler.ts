@@ -26,9 +26,14 @@ export class AuthenticatedRequestHandler extends HttpServerRequestHandler {
    * provided.
    * @param baseOptions The base options for the request.
    * @param accessTokenManager The access token manager used to facilitate retrieval of OAuth access tokens.
+   * @param logger The optional logging function used to log request information for debugging purposes.
+   *   This can be accessed via Cloud Run LOGS tab.
    */
-  constructor(baseOptions: BaseRequestOptions, private readonly accessTokenManager: AccessTokenManager) {
-    super(baseOptions);
+  constructor(
+      baseOptions: BaseRequestOptions,
+      private readonly accessTokenManager: AccessTokenManager,
+      logger?: (...args: any[]) => void) {
+    super(baseOptions, logger);
   }
 
   /**

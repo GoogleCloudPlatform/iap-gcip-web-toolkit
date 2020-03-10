@@ -39,7 +39,8 @@ export const DEFAULT_ERROR_MESSAGE_ZONE = 'Unable to retrieve the GCP zone.';
 export interface ApplicationData {
   getProjectId(): Promise<string>;
   getProjectNumber(): Promise<string>;
-  getZone(): Promise<string>
+  getZone(): Promise<string>;
+  log(...args: any[]): void;
 }
 
 /**
@@ -58,8 +59,10 @@ export class MetadataServer implements AccessTokenManager, ApplicationData {
   /**
    * Instantiates an instance of the metadata server APIs handler.
    * @param scopes The OAuth scopes to set on the generated access tokens.
+   * @param logger The optional logging function used to log request information for debugging purposes.
+   *   This can be accessed via Cloud Run LOGS tab.
    */
-  constructor(scopes?: string[]) {
+  constructor(scopes?: string[], private readonly logger?: (...args: any[]) => void) {
     this.tokenManager = new TokenManager(scopes);
     this.projectIdRetriever = new HttpServerRequestHandler({
       method: 'GET',
@@ -68,7 +71,7 @@ export class MetadataServer implements AccessTokenManager, ApplicationData {
         'Metadata-Flavor': 'Google',
       },
       timeout: TIMEOUT_DURATION,
-    });
+    }, logger);
     this.projectNumberRetriever = new HttpServerRequestHandler({
       method: 'GET',
       url: METADATA_SERVER_PROJECT_NUMBER_URL,
@@ -76,7 +79,7 @@ export class MetadataServer implements AccessTokenManager, ApplicationData {
         'Metadata-Flavor': 'Google',
       },
       timeout: TIMEOUT_DURATION,
-    });
+    }, logger);
     this.zoneRetriever = new HttpServerRequestHandler({
       method: 'GET',
       url: METADATA_SERVER_ZONE_URL,
@@ -84,7 +87,17 @@ export class MetadataServer implements AccessTokenManager, ApplicationData {
         'Metadata-Flavor': 'Google',
       },
       timeout: TIMEOUT_DURATION,
-    });
+    }, logger);
+  }
+
+  /**
+   * Used to log underlying operations for debugging purposes, if a logger is available.
+   * @param args The list of arguments to log.
+   */
+  log(...args: any[]) {
+    if (this.logger) {
+      this.logger(...args);
+    }
   }
 
   /**
@@ -95,6 +108,11 @@ export class MetadataServer implements AccessTokenManager, ApplicationData {
     return this.tokenManager.getAccessToken(forceRefresh)
       .then((result) => {
         return result.access_token;
+      })
+      .catch((error) => {
+        // For access token getter, only log errors.
+        this.log('Error encountered while getting Metadata server access token', error);
+        throw error;
       });
   }
 

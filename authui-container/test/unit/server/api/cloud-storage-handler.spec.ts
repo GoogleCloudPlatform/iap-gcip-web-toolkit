@@ -45,6 +45,7 @@ describe('CloudStorageHandler', () => {
       getProjectId: () => Promise.resolve(PROJECT_ID),
       getProjectNumber: () => Promise.resolve(PROJECT_NUMBER),
       getZone: () => Promise.resolve(ZONE),
+      log: sinon.stub(),
     };
     cloudStorageHandler = new CloudStorageHandler(app, accessTokenManager);
   });
@@ -70,10 +71,18 @@ describe('CloudStorageHandler', () => {
           'Authorization': `Bearer ${ACCESS_TOKEN}`,
         },
       }).post(`/storage/v1/b?project=${PROJECT_ID}`, data)
-        .reply(200);
+        .reply(200, expectedResponse);
       mockedRequests.push(scope);
 
-      return expect(cloudStorageHandler.createBucket(bucketName)).to.be.fulfilled;
+      return cloudStorageHandler.createBucket(bucketName)
+        .then(() => {
+          expect(app.log).to.have.been.calledThrice;
+          expect((app.log as sinon.SinonStub).firstCall).to.be.calledWith(
+            `POST to https://storage.googleapis.com/storage/v1/b?project=${PROJECT_ID}`);
+          expect((app.log as sinon.SinonStub).secondCall).to.be.calledWith(
+            'Request body:', data);
+          expect((app.log as sinon.SinonStub).thirdCall).to.be.calledWith('200 response');
+        });
     });
 
     it('should fail with expected error when underlying call fails', () => {
@@ -160,6 +169,10 @@ describe('CloudStorageHandler', () => {
 
       return cloudStorageHandler.readFile(bucketName, fileName)
         .then((content) => {
+          expect(app.log).to.have.been.calledTwice;
+          expect((app.log as sinon.SinonStub).firstCall).to.be.calledWith(
+            `GET to https://storage.googleapis.com/storage/v1/b/${bucketName}/o/${fileName}?alt=media`);
+          expect((app.log as sinon.SinonStub).secondCall).to.be.calledWith('200 response');
           expect(content).to.deep.equal(expectedResponse);
         });
     });
@@ -218,7 +231,16 @@ describe('CloudStorageHandler', () => {
         .reply(200, expectedResponse);
       mockedRequests.push(scope);
 
-      return expect(cloudStorageHandler.writeFile(bucketName, fileName, content)).to.be.fulfilled;
+      return cloudStorageHandler.writeFile(bucketName, fileName, content)
+        .then(() => {
+          expect(app.log).to.have.been.calledThrice;
+          expect((app.log as sinon.SinonStub).firstCall).to.be.calledWith(
+            `POST to https://storage.googleapis.com` +
+            `/upload/storage/v1/b/${bucketName}/o?uploadType=media&name=${fileName}`);
+          expect((app.log as sinon.SinonStub).secondCall).to.be.calledWith(
+            'Request body:', content);
+          expect((app.log as sinon.SinonStub).thirdCall).to.be.calledWith('200 response');
+        });
     });
 
     it('should fail with expected error when underlying call fails', () => {

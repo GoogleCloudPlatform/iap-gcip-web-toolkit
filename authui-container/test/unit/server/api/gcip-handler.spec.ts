@@ -51,6 +51,7 @@ describe('GcipHandler', () => {
       getProjectId: () => Promise.resolve(PROJECT_ID),
       getProjectNumber: () => Promise.resolve(PROJECT_NUMBER),
       getZone: () => Promise.resolve(ZONE),
+      log: sinon.stub(),
     };
     gcipsHandler = new GcipHandler(app, accessTokenManager);
   });
@@ -92,9 +93,13 @@ describe('GcipHandler', () => {
       mockedRequests.push(scope);
 
       return gcipsHandler.getGcipConfig()
-         .then((result) => {
-           expect(result).to.deep.equal(expectedGcipConfig);
-         });
+        .then((result) => {
+          expect(app.log).to.have.been.calledTwice;
+          expect((app.log as sinon.SinonStub).firstCall).to.be.calledWith(
+            `GET to https://identitytoolkit.googleapis.com/admin/v2/projects/${PROJECT_ID}/config`);
+          expect((app.log as sinon.SinonStub).secondCall).to.be.calledWith('200 response');
+          expect(result).to.deep.equal(expectedGcipConfig);
+        });
     });
 
     it('should fail when response is missing required data', () => {
@@ -208,6 +213,32 @@ describe('GcipHandler', () => {
             },
           ],
         };
+        const defaultIdpResponse = {
+          defaultSupportedIdpConfigs: [
+            {
+              name: `projects/${PROJECT_ID}/defaultSupportedIdpConfigs/facebook.com`,
+              enabled: true,
+            }
+          ],
+        };
+        const samlIdpResponse = {
+          inboundSamlConfigs: [
+            {
+              name: `projects/${PROJECT_ID}/inboundSamlConfigs/saml.provider1`,
+              displayName: 'SAMLProvider1',
+              enabled: true,
+            },
+          ],
+        };
+        const oidcIdpResponse = {
+          oauthIdpConfigs: [
+            {
+              name: `projects/${PROJECT_ID}/oauthIdpConfigs/oidc.provider1`,
+              displayName: 'OIDCProvider1',
+              enabled: true,
+            },
+          ],
+        };
 
         // Mock GCIP project level settings.
         mockedRequests.push(nock('https://identitytoolkit.googleapis.com', {
@@ -222,47 +253,42 @@ describe('GcipHandler', () => {
             'Authorization': `Bearer ${ACCESS_TOKEN}`,
           },
         }).get(`/v2/projects/${PROJECT_ID}/defaultSupportedIdpConfigs?pageSize=100`)
-          .reply(200, {
-            defaultSupportedIdpConfigs: [
-              {
-                name: `projects/${PROJECT_ID}/defaultSupportedIdpConfigs/facebook.com`,
-                enabled: true,
-              }
-            ],
-          }));
+          .reply(200, defaultIdpResponse));
         // SAML IdPs for project level settings.
         mockedRequests.push(nock('https://identitytoolkit.googleapis.com', {
           reqheaders: {
             'Authorization': `Bearer ${ACCESS_TOKEN}`,
           },
         }).get(`/v2/projects/${PROJECT_ID}/inboundSamlConfigs?pageSize=100`)
-          .reply(200, {
-            inboundSamlConfigs: [
-              {
-                name: `projects/${PROJECT_ID}/inboundSamlConfigs/saml.provider1`,
-                displayName: 'SAMLProvider1',
-                enabled: true,
-              },
-            ],
-          }));
+          .reply(200, samlIdpResponse));
         // OIDC IdPs for project level settings.
         mockedRequests.push(nock('https://identitytoolkit.googleapis.com', {
           reqheaders: {
             'Authorization': `Bearer ${ACCESS_TOKEN}`,
           },
         }).get(`/v2/projects/${PROJECT_ID}/oauthIdpConfigs?pageSize=100`)
-          .reply(200, {
-            oauthIdpConfigs: [
-            {
-              name: `projects/${PROJECT_ID}/oauthIdpConfigs/oidc.provider1`,
-              displayName: 'OIDCProvider1',
-              enabled: true,
-            },
-          ],
-        }));
+          .reply(200, oidcIdpResponse));
 
         return gcipsHandler.getTenantUiConfig('_')
           .then((tenantUiConfig) => {
+            // Confirm expected information logged.
+            expect(app.log).to.have.callCount(4 * 2);
+            expect((app.log as sinon.SinonStub).getCall(0)).to.be.calledWith(
+              `GET to https://identitytoolkit.googleapis.com` +
+              `/admin/v2/projects/${PROJECT_ID}/config`);
+            expect((app.log as sinon.SinonStub).getCall(1)).to.be.calledWith('200 response');
+            expect((app.log as sinon.SinonStub).getCall(2)).to.be.calledWith(
+              `GET to https://identitytoolkit.googleapis.com` +
+              `/v2/projects/${PROJECT_ID}/defaultSupportedIdpConfigs?pageSize=100`);
+            expect((app.log as sinon.SinonStub).getCall(3)).to.be.calledWith('200 response');
+            expect((app.log as sinon.SinonStub).getCall(4)).to.be.calledWith(
+              `GET to https://identitytoolkit.googleapis.com` +
+              `/v2/projects/${PROJECT_ID}/inboundSamlConfigs?pageSize=100`);
+            expect((app.log as sinon.SinonStub).getCall(5)).to.be.calledWith('200 response');
+            expect((app.log as sinon.SinonStub).getCall(6)).to.be.calledWith(
+              `GET to https://identitytoolkit.googleapis.com` +
+              `/v2/projects/${PROJECT_ID}/oauthIdpConfigs?pageSize=100`);
+            expect((app.log as sinon.SinonStub).getCall(7)).to.be.calledWith('200 response');
             expect(tenantUiConfig).to.deep.equal(expectedTenantUiConfig);
           });
       });
@@ -557,59 +583,34 @@ describe('GcipHandler', () => {
             },
           ],
         };
-
-        // Mock tenant settings.
-        mockedRequests.push(nock('https://identitytoolkit.googleapis.com', {
-          reqheaders: {
-            'Authorization': `Bearer ${ACCESS_TOKEN}`,
-          },
-        }).get(`/v2/projects/${PROJECT_ID}/tenants/tenantId1`)
-          .reply(200, {
-            allowPasswordSignup: true,
-            displayName: 'tenant-display-name1',
-          }));
-        // Default IdPs for tenant level settings.
-        mockedRequests.push(nock('https://identitytoolkit.googleapis.com', {
-          reqheaders: {
-            'Authorization': `Bearer ${ACCESS_TOKEN}`,
-          },
-        }).get(`/v2/projects/${PROJECT_ID}/tenants/tenantId1/defaultSupportedIdpConfigs?pageSize=100`)
-          .reply(200, {
-            defaultSupportedIdpConfigs: [
-              {
-                name: `projects/${PROJECT_ID}/tenants/tenantId1/defaultSupportedIdpConfigs/microsoft.com`,
-                enabled: true,
-              },
-            ],
-          }));
-        // SAML IdPs for tenant level settings.
-        mockedRequests.push(nock('https://identitytoolkit.googleapis.com', {
-          reqheaders: {
-            'Authorization': `Bearer ${ACCESS_TOKEN}`,
-          },
-        }).get(`/v2/projects/${PROJECT_ID}/tenants/tenantId1/inboundSamlConfigs?pageSize=100`)
-          .reply(200, {
-            inboundSamlConfigs: [
-              {
-                name: `projects/${PROJECT_ID}/tenants/tenantId1/inboundSamlConfigs/saml.provider1`,
-                displayName: 'SAMLProvider1',
-                enabled: true,
-              },
-              {
-                name: `projects/${PROJECT_ID}/tenants/tenantId1/inboundSamlConfigs/saml.provider2`,
-                displayName: 'SAMLProvider2',
-                enabled: true,
-              },
-            ],
-          }));
-        // OIDC IdPs for tenant level settings.
-        mockedRequests.push(nock('https://identitytoolkit.googleapis.com', {
-          reqheaders: {
-            'Authorization': `Bearer ${ACCESS_TOKEN}`,
-          },
-        }).get(`/v2/projects/${PROJECT_ID}/tenants/tenantId1/oauthIdpConfigs?pageSize=100`)
-          .reply(200, {
-            oauthIdpConfigs: [
+        const tenantConfig = {
+          allowPasswordSignup: true,
+          displayName: 'tenant-display-name1',
+        };
+        const defaultIdpResponse = {
+          defaultSupportedIdpConfigs: [
+            {
+              name: `projects/${PROJECT_ID}/tenants/tenantId1/defaultSupportedIdpConfigs/microsoft.com`,
+              enabled: true,
+            },
+          ],
+        };
+        const samlIdpResponse = {
+          inboundSamlConfigs: [
+            {
+              name: `projects/${PROJECT_ID}/tenants/tenantId1/inboundSamlConfigs/saml.provider1`,
+              displayName: 'SAMLProvider1',
+              enabled: true,
+            },
+            {
+              name: `projects/${PROJECT_ID}/tenants/tenantId1/inboundSamlConfigs/saml.provider2`,
+              displayName: 'SAMLProvider2',
+              enabled: true,
+            },
+          ],
+        };
+        const oidcIdpResponse = {
+          oauthIdpConfigs: [
             {
               name: `projects/${PROJECT_ID}/tenants/tenantId1/oauthIdpConfigs/oidc.provider1`,
               displayName: 'OIDCProvider1',
@@ -621,10 +622,57 @@ describe('GcipHandler', () => {
               enabled: true,
             },
           ],
-        }));
+        };
+
+        // Mock tenant settings.
+        mockedRequests.push(nock('https://identitytoolkit.googleapis.com', {
+          reqheaders: {
+            'Authorization': `Bearer ${ACCESS_TOKEN}`,
+          },
+        }).get(`/v2/projects/${PROJECT_ID}/tenants/tenantId1`)
+          .reply(200, tenantConfig));
+        // Default IdPs for tenant level settings.
+        mockedRequests.push(nock('https://identitytoolkit.googleapis.com', {
+          reqheaders: {
+            'Authorization': `Bearer ${ACCESS_TOKEN}`,
+          },
+        }).get(`/v2/projects/${PROJECT_ID}/tenants/tenantId1/defaultSupportedIdpConfigs?pageSize=100`)
+          .reply(200, defaultIdpResponse));
+        // SAML IdPs for tenant level settings.
+        mockedRequests.push(nock('https://identitytoolkit.googleapis.com', {
+          reqheaders: {
+            'Authorization': `Bearer ${ACCESS_TOKEN}`,
+          },
+        }).get(`/v2/projects/${PROJECT_ID}/tenants/tenantId1/inboundSamlConfigs?pageSize=100`)
+          .reply(200, samlIdpResponse));
+        // OIDC IdPs for tenant level settings.
+        mockedRequests.push(nock('https://identitytoolkit.googleapis.com', {
+          reqheaders: {
+            'Authorization': `Bearer ${ACCESS_TOKEN}`,
+          },
+        }).get(`/v2/projects/${PROJECT_ID}/tenants/tenantId1/oauthIdpConfigs?pageSize=100`)
+          .reply(200, oidcIdpResponse));
 
         return gcipsHandler.getTenantUiConfig('tenantId1')
           .then((tenantUiConfig) => {
+            // Confirm expected information logged.
+            expect(app.log).to.have.callCount(4 * 2);
+            expect((app.log as sinon.SinonStub).getCall(0)).to.be.calledWith(
+              `GET to https://identitytoolkit.googleapis.com` +
+              `/v2/projects/${PROJECT_ID}/tenants/tenantId1`);
+            expect((app.log as sinon.SinonStub).getCall(1)).to.be.calledWith('200 response');
+            expect((app.log as sinon.SinonStub).getCall(2)).to.be.calledWith(
+              `GET to https://identitytoolkit.googleapis.com` +
+              `/v2/projects/${PROJECT_ID}/tenants/tenantId1/defaultSupportedIdpConfigs?pageSize=100`);
+            expect((app.log as sinon.SinonStub).getCall(3)).to.be.calledWith('200 response');
+            expect((app.log as sinon.SinonStub).getCall(4)).to.be.calledWith(
+              `GET to https://identitytoolkit.googleapis.com` +
+              `/v2/projects/${PROJECT_ID}/tenants/tenantId1/inboundSamlConfigs?pageSize=100`);
+            expect((app.log as sinon.SinonStub).getCall(5)).to.be.calledWith('200 response');
+            expect((app.log as sinon.SinonStub).getCall(6)).to.be.calledWith(
+              `GET to https://identitytoolkit.googleapis.com` +
+              `/v2/projects/${PROJECT_ID}/tenants/tenantId1/oauthIdpConfigs?pageSize=100`);
+            expect((app.log as sinon.SinonStub).getCall(7)).to.be.calledWith('200 response');
             expect(tenantUiConfig).to.deep.equal(expectedTenantUiConfig);
           });
       });

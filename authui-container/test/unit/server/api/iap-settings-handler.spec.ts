@@ -53,6 +53,7 @@ describe('IapSettingsHandler', () => {
       getProjectId: () => Promise.resolve(PROJECT_ID),
       getProjectNumber: () => Promise.resolve(PROJECT_NUMBER),
       getZone: () => Promise.resolve(ZONE),
+      log: sinon.stub(),
     };
     iapSettingsHandler = new IapSettingsHandler(app, accessTokenManager);
   });
@@ -86,9 +87,13 @@ describe('IapSettingsHandler', () => {
       mockedRequests.push(scope);
 
       return iapSettingsHandler.getIapSettings(id)
-         .then((iapSettings) => {
+        .then((iapSettings) => {
+          expect(app.log).to.have.been.calledTwice;
+          expect((app.log as sinon.SinonStub).firstCall).to.be.calledWith(
+            `GET to https://iap.googleapis.com/v1/projects/${PROJECT_NUMBER}/iap_web/${id}:iapSettings`);
+          expect((app.log as sinon.SinonStub).secondCall).to.be.calledWith('200 response');
           expect(iapSettings).to.deep.equal(iapSettingsResponse);
-         });
+        });
     });
 
     it('should fail with expected error when underlying call fails', () => {
@@ -228,6 +233,29 @@ describe('IapSettingsHandler', () => {
 
       return iapSettingsHandler.listIapSettings()
         .then((iapSettingsList) => {
+          // Confirm expected information logged.
+          expect(app.log).to.have.callCount(5 * 2);
+          expect((app.log as sinon.SinonStub).getCall(0)).to.be.calledWith(
+            `GET to https://compute.googleapis.com` +
+            `/compute/v1/projects/${PROJECT_ID}/global/backendServices`);
+          expect((app.log as sinon.SinonStub).getCall(1)).to.be.calledWith('200 response');
+          expect((app.log as sinon.SinonStub).getCall(2)).to.be.calledWith(
+            `GET to https://iap.googleapis.com` +
+            `/v1/projects/${PROJECT_NUMBER}/iap_web/appengine-${PROJECT_ID}:iapSettings`);
+          expect((app.log as sinon.SinonStub).getCall(3)).to.be.calledWith('200 response');
+          expect((app.log as sinon.SinonStub).getCall(4)).to.be.calledWith(
+            `GET to https://iap.googleapis.com` +
+            `/v1/projects/${PROJECT_NUMBER}/iap_web/compute/services/BACKEND_SERVICE_ID1:iapSettings`);
+          expect((app.log as sinon.SinonStub).getCall(5)).to.be.calledWith('200 response');
+          expect((app.log as sinon.SinonStub).getCall(6)).to.be.calledWith(
+            `GET to https://iap.googleapis.com` +
+            `/v1/projects/${PROJECT_NUMBER}/iap_web/compute/services/BACKEND_SERVICE_ID2:iapSettings`);
+          expect((app.log as sinon.SinonStub).getCall(7)).to.be.calledWith(
+            '404 Response:', undefined);
+          expect((app.log as sinon.SinonStub).getCall(8)).to.be.calledWith(
+            `GET to https://iap.googleapis.com` +
+            `/v1/projects/${PROJECT_NUMBER}/iap_web/compute/services/BACKEND_SERVICE_ID3:iapSettings`);
+          expect((app.log as sinon.SinonStub).getCall(9)).to.be.calledWith('200 response');
           expect(iapSettingsList.length).to.be.equal(3);
           expect(iapSettingsList[0]).to.deep.equal(iapSettingsResponse1);
           expect(iapSettingsList[1]).to.deep.equal(iapSettingsResponse2);

@@ -31,7 +31,6 @@ import { addReadonlyGetter } from '../../../utils/index';
 import * as gcip from '../../../server/api/gcip-handler';
 import * as iap from '../../../server/api/iap-settings-handler';
 import {
-  TENANT_ICON_URL, SELECT_TENANT_LOGO_URL, SIGN_IN_UI_LOGO_URL,
   DefaultUiConfigBuilder,
 } from '../../../server/config-builder';
 
@@ -54,15 +53,27 @@ function createError(expectedResponse: ErrorResponse) {
   return expectedError;
 }
 
+/**
+ * Asserts metadata server instance was passed to API handler as app data.
+ * @param apiHandlerConstructor The API handler constructor spy.
+ * @param metadataServerConstructor The metadata server constructor spy.
+ */
+function assertApiHandlerInitializedWithMetadataServer(
+    apiHandlerConstructor: sinon.SinonSpy, metadataServerConstructor: sinon.SinonSpy) {
+  expect(metadataServerConstructor).to.have.been.calledOnce;
+  expect(apiHandlerConstructor.firstCall.args[0])
+    .to.be.equal(metadataServerConstructor.firstCall.returnValue);
+}
+
 describe('AuthServer', () => {
   let metadataServerSpy: sinon.SinonSpy;
   let cloudStorageHandlerSpy: sinon.SinonSpy;
   let gcipHandlerSpy: sinon.SinonSpy;
   let iapSettingsHandlerSpy: sinon.SinonSpy;
   let stubs: sinon.SinonStub[] = [];
+  let consoleStub: sinon.SinonStub;
   const PROJECT_NUMBER = '1234567890';
   const PROJECT_ID = 'project-id';
-  const ZONE_RESOURCE = `projects/${PROJECT_NUMBER}/zones/us-central1-1`;
   const API_KEY = 'API_KEY';
   const AUTH_SUBDOMAIN = 'AUTH_SUBDOMAIN';
   const K_CONFIGURATION = 'service123';
@@ -72,6 +83,7 @@ describe('AuthServer', () => {
   const previousGCSBucketName = process.env.GCS_BUCKET_NAME;
   const previousUiConfig = process.env.UI_CONFIG;
   const previousAllowAdmin = process.env.ALLOW_ADMIN;
+  const previousDebugConsole = process.env.DEBUG_CONSOLE;
   const METADATA_ACCESS_TOKEN = 'METADATA_ACCESS_TOKEN';
 
   beforeEach(() =>  {
@@ -79,11 +91,13 @@ describe('AuthServer', () => {
     delete process.env.GCS_BUCKET_NAME;
     delete process.env.UI_CONFIG;
     delete process.env.ALLOW_ADMIN;
+    delete process.env.DEBUG_CONSOLE;
     app = express();
     metadataServerSpy = sinon.spy(metadata, 'MetadataServer');
     gcipHandlerSpy = sinon.spy(gcip, 'GcipHandler');
     cloudStorageHandlerSpy = sinon.spy(storage, 'CloudStorageHandler');
     iapSettingsHandlerSpy = sinon.spy(iap, 'IapSettingsHandler');
+    consoleStub = sinon.stub(console, 'log');
     authServer = new AuthServer(app);
     return authServer.start();
   });
@@ -94,6 +108,8 @@ describe('AuthServer', () => {
     process.env.GCS_BUCKET_NAME = previousGCSBucketName;
     process.env.UI_CONFIG = previousUiConfig;
     process.env.ALLOW_ADMIN = previousAllowAdmin;
+    process.env.DEBUG_CONSOLE = previousDebugConsole;
+    consoleStub.restore();
     metadataServerSpy.restore();
     gcipHandlerSpy.restore();
     iapSettingsHandlerSpy.restore();
@@ -101,6 +117,42 @@ describe('AuthServer', () => {
     _.forEach(stubs, (stub) => stub.restore());
     stubs = [];
     authServer.stop();
+  });
+
+  describe('logging', () => {
+    it('should not log to console by default', () => {
+      // Metadata server initialized with expected OAuth scopes.
+      expect(metadataServerSpy).to.have.been.calledOnce
+        .and.calledWith(AUTH_SERVER_SCOPES);
+      // Get logger passed to metadataServer initializer.
+      const logger = metadataServerSpy.getCall(0).args[1];
+      logger('hello', 'world');
+      // No data should be logged.
+      expect(consoleStub).to.not.have.been.called;
+    });
+
+    it('should log data when DEBUG_CONSOLE is set', () => {
+      // Restart server with DEBUG_CONSOLE variable enabled.
+      metadataServerSpy.restore();
+      authServer.stop();
+      app = express();
+      process.env.DEBUG_CONSOLE = '1';
+      authServer = new AuthServer(app);
+
+      return authServer.start().then(() => {
+        // Metadata server initialized with expected OAuth scopes.
+        expect(metadataServerSpy).to.have.been.calledOnce
+          .and.calledWith(AUTH_SERVER_SCOPES);
+        // Get logger passed to metadataServer initializer.
+        const logger = metadataServerSpy.getCall(0).args[1];
+        logger('hello', 'world');
+        logger('foo bar');
+        // Data should be logged.
+        expect(consoleStub).to.have.been.calledTwice;
+        expect(consoleStub.firstCall).have.been.calledWith('hello', 'world');
+        expect(consoleStub.secondCall).have.been.calledWith('foo bar');
+      });
+    });
   });
 
   it('responds to /', () => {
@@ -247,6 +299,9 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(200)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -296,6 +351,9 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(200)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -348,6 +406,9 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(200)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -450,6 +511,9 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(500)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -500,6 +564,9 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(400)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -548,6 +615,9 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(400)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -597,6 +667,9 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(400)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -709,6 +782,9 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(200)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected metadata OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -744,6 +820,9 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(200)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected metadata OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -789,6 +868,11 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(200)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
+          assertApiHandlerInitializedWithMetadataServer(gcipHandlerSpy, metadataServerSpy);
+          assertApiHandlerInitializedWithMetadataServer(iapSettingsHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected metadata OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -1086,6 +1170,9 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(200)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected personal OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -1123,6 +1210,9 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(200)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected personal OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -1268,6 +1358,11 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(200)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
+          assertApiHandlerInitializedWithMetadataServer(gcipHandlerSpy, metadataServerSpy);
+          assertApiHandlerInitializedWithMetadataServer(iapSettingsHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -1324,6 +1419,11 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(200)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
+          assertApiHandlerInitializedWithMetadataServer(gcipHandlerSpy, metadataServerSpy);
+          assertApiHandlerInitializedWithMetadataServer(iapSettingsHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -1383,6 +1483,11 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(400)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
+          assertApiHandlerInitializedWithMetadataServer(gcipHandlerSpy, metadataServerSpy);
+          assertApiHandlerInitializedWithMetadataServer(iapSettingsHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -1447,6 +1552,11 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(400)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
+          assertApiHandlerInitializedWithMetadataServer(gcipHandlerSpy, metadataServerSpy);
+          assertApiHandlerInitializedWithMetadataServer(iapSettingsHandlerSpy, metadataServerSpy);
           // CloudStorageHandler initialized with expected OAuth access token.
           expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
           expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -1493,6 +1603,9 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(200)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(gcipHandlerSpy, metadataServerSpy);
           // GcipHandler initialized with expected Metadata server OAuth access token.
           expect(gcipHandlerSpy).to.have.been.calledOnce;
           expect(gcipHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -1527,6 +1640,9 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(500)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(gcipHandlerSpy, metadataServerSpy);
           // GcipHandler initialized with expected OAuth access token.
           expect(gcipHandlerSpy).to.have.been.calledOnce;
           expect(gcipHandlerSpy.getCall(0).args[1].getAccessToken())
@@ -1561,6 +1677,9 @@ describe('AuthServer', () => {
         .expect('Content-Type', /json/)
         .expect(400)
         .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(gcipHandlerSpy, metadataServerSpy);
           // GcipHandler initialized with expected OAuth access token.
           expect(gcipHandlerSpy).to.have.been.calledOnce;
           expect(gcipHandlerSpy.getCall(0).args[1].getAccessToken())

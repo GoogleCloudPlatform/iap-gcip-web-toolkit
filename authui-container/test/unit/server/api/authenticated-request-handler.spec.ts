@@ -22,6 +22,7 @@ import {AuthenticatedRequestHandler} from '../../../../server/api/authenticated-
 import { AccessTokenManager } from '../../../../server/api/token-manager';
 
 describe('AuthenticatedRequestHandler', () => {
+  let logger: sinon.SinonStub;
   let stubs: sinon.SinonStub[] = [];
   const ACCESS_TOKEN = 'ACCESS_TOKEN';
   let accessTokenManager: AccessTokenManager;
@@ -33,6 +34,7 @@ describe('AuthenticatedRequestHandler', () => {
   };
 
   beforeEach(() => {
+    logger = sinon.stub();
     accessTokenManager = {
       getAccessToken: () => Promise.resolve(ACCESS_TOKEN),
     };
@@ -200,6 +202,52 @@ describe('AuthenticatedRequestHandler', () => {
 
       return postHandler.send(requestParams)
         .then((response) => {
+          expect(response.statusCode).to.be.equal(200);
+          expect(response.body).to.deep.equal(expectedResponse);
+        });
+    });
+
+    it('will not log authorization header for a POST request with parameters', () => {
+      const data = {
+        a: 1,
+        b: 2,
+        c: false,
+      };
+      const postHandler = new AuthenticatedRequestHandler({
+        method: 'POST',
+        url: 'http://www.example.com:5000/path/to/api',
+        headers: {
+          // Injected access token.
+          'Authorization': `Bearer ${ACCESS_TOKEN}`,
+          'Metadata-Flavor': 'Google',
+        },
+        timeout: 10000,
+      }, accessTokenManager, logger);
+      const scope = nock('http://www.example.com:5000', {
+        reqheaders: {
+          other: 'some-header-value',
+          'more-headers': 'another-value',
+          'metadata-flavor': 'Google',
+        },
+      }).post('/path/to/api', data)
+        .reply(200, expectedResponse);
+      mockedRequests.push(scope);
+      const requestParams = {
+        headers: {
+          other: 'some-header-value',
+          'more-headers': 'another-value',
+        },
+        body: data,
+      };
+
+      return postHandler.send(requestParams)
+        .then((response) => {
+          expect(logger).to.have.been.calledThrice;
+          expect(logger.firstCall).to.be.calledWith(
+            'POST to http://www.example.com:5000/path/to/api');
+          expect(logger.secondCall).to.be.calledWith(
+            'Request body:', requestParams.body);
+          expect(logger.thirdCall).to.be.calledWith('200 response');
           expect(response.statusCode).to.be.equal(200);
           expect(response.body).to.deep.equal(expectedResponse);
         });

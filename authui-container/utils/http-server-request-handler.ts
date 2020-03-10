@@ -72,8 +72,10 @@ export class HttpServerRequestHandler {
    * Instantiates an HttpServerRequest instance used for sending server side HTTP requests
    * using the provided base configuration.
    * @param baseOptions The base options for the request.
+   * @param logger The optional logging function used to log request information for debugging purposes.
+   *   This can be accessed via Cloud Run LOGS tab.
    */
-  constructor(baseOptions: BaseRequestOptions) {
+  constructor(baseOptions: BaseRequestOptions, private readonly logger?: (...args: any[]) => void) {
     this.baseRequestPromiseOptions = deepExtend({
       // Send request in JSON format.
       json: true,
@@ -125,16 +127,39 @@ export class HttpServerRequestHandler {
       }
     }
 
-    return requestPromise(requestPromiseOptions)
+    // Log requests. Do not log headers as they can contain sensitive OAuth access tokens.
+    this.log(`${requestPromiseOptions.method} to ${requestPromiseOptions.url}`);
+    if (requestPromiseOptions.body) {
+      this.log('Request body:', requestPromiseOptions.body)
+    }
+    return Promise.resolve(requestPromise(requestPromiseOptions))
       .catch((reason) => {
+        this.log('Error encountered:', reason.error);
         throw reason.error;
       })
       .then((httpResponse) => {
+        // To be safe, we will not log successful responses as they may contain
+        // sensitive information like OAuth client secrets, hashing secret keys, etc.
+        // Logging is mainly needed for debugging issues.
         if (httpResponse.statusCode !== 200) {
-          throw this.getError(httpResponse, defaultMessage);
+          this.log(`${httpResponse.statusCode} Response:`, httpResponse.body);
+          const parsedError = this.getError(httpResponse, defaultMessage);
+          throw parsedError;
+        } else {
+          this.log(`${httpResponse.statusCode} response`);
         }
         return httpResponse;
       });
+  }
+
+  /**
+   * Logs the network request operation if a logger is available.
+   * @param args The list of arguments to log.
+   */
+  private log(...args: any[]) {
+    if (this.logger) {
+      this.logger(...args);
+    }
   }
 
   /**

@@ -55,17 +55,17 @@ export class CloudStorageHandler {
       method: 'POST',
       url: GCS_CREATE_BUCKET_URL,
       timeout: TIMEOUT_DURATION,
-    }, this.accessTokenManager);
+    }, this.accessTokenManager, app.log.bind(app));
     this.readFileHandler = new AuthenticatedRequestHandler({
       method: 'GET',
       url: GCS_READ_FILE_URL,
       timeout: TIMEOUT_DURATION,
-    }, this.accessTokenManager);
+    }, this.accessTokenManager, app.log.bind(app));
     this.writeFileHandler = new AuthenticatedRequestHandler({
       method: 'POST',
       url: GCS_WRITE_FILE_URL,
       timeout: TIMEOUT_DURATION,
-    }, this.accessTokenManager);
+    }, this.accessTokenManager, app.log.bind(app));
   }
 
   /**

@@ -283,9 +283,13 @@ export class AdminUi {
       .catch((error) => {
         const resp = error.response;
         const errorData = resp.data;
+        // Seems like the error is being constructed as Invalid Credentials:
+        // {"error":{"code":500,"status":"UNKNOWN","message":"Invalid Credentials"}}
         if (errorData &&
             errorData.error &&
-            (errorData.error.code === 401 || errorData.error.code === 403)) {
+            (errorData.error.code === 401 ||
+             errorData.error.code === 403 ||
+             errorData.error.message.match(/invalid\scredentials/i))) {
           // Show re-auth button.
           this.reauthElement.style.display = 'block';
         }

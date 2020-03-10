@@ -48,6 +48,17 @@ function serveContentForSignIn(req: any, res: any) {
   }));
 }
 
+/**
+ * Depending on the DEBUG_CONSOLE environment variable, this will log the provided arguments to the console.
+ * @param args The list of arguments to log.
+ */
+function log(...args: any[]) {
+  if (process.env.DEBUG_CONSOLE === 'true' || process.env.DEBUG_CONSOLE === '1') {
+    // tslint:disable-next-line:no-console
+    console.log.apply(console, arguments);
+  }
+}
+
 /** Abstracts the express JS server used to handle all authentication related operations. */
 export class AuthServer {
   /** The http.Server instance corresponding to the started server. */
@@ -72,7 +83,7 @@ export class AuthServer {
     // It is also used to call APIs on behalf of the service. This is mostly for read operations.
     // For example to read the default app configuration.
     // For write operations, the admin OAuth access token is used.
-    this.metadataServer = new MetadataServer(AUTH_SERVER_SCOPES);
+    this.metadataServer = new MetadataServer(AUTH_SERVER_SCOPES, log);
     this.bucketName = null;
     // GCIP handler used to construct the default configuration file and to populate
     // the web UI config (apiKey + authDomain).

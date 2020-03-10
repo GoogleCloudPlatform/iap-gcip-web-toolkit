@@ -143,27 +143,27 @@ export class GcipHandler {
       method: 'GET',
       url: GET_GCIP_CONFIG_URL,
       timeout: TIMEOUT_DURATION,
-    }, this.accessTokenManager);
+    }, this.accessTokenManager, app.log.bind(app));
     this.getDefaultIdpsHandler = new AuthenticatedRequestHandler({
       method: 'GET',
       url: GET_DEFAULT_IDPS_URL,
       timeout: TIMEOUT_DURATION,
-    }, this.accessTokenManager);
+    }, this.accessTokenManager, app.log.bind(app));
     this.getSamlIdpsHandler = new AuthenticatedRequestHandler({
       method: 'GET',
       url: GET_SAML_IDPS_URL,
       timeout: TIMEOUT_DURATION,
-    }, this.accessTokenManager);
+    }, this.accessTokenManager, app.log.bind(app));
     this.getOidcIdpsHandler = new AuthenticatedRequestHandler({
       method: 'GET',
       url: GET_OIDC_IDPS_URL,
       timeout: TIMEOUT_DURATION,
-    }, this.accessTokenManager);
+    }, this.accessTokenManager, app.log.bind(app));
     this.getTenantBasicConfigHandler = new AuthenticatedRequestHandler({
       method: 'GET',
       url: GET_TENANT_CONFIG_URL,
       timeout: TIMEOUT_DURATION,
-    }, this.accessTokenManager);
+    }, this.accessTokenManager, app.log.bind(app));
   }
 
   /** @return A promise that resolves with the GCIP web config. */
