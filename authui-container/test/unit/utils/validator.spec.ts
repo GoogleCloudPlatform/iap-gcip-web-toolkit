@@ -22,8 +22,10 @@ import * as chaiAsPromised from 'chai-as-promised';
 import {
   isArray, isNonEmptyArray, isBoolean, isNumber, isString, isNonEmptyString,
   isNonNullObject, isObject, isAuthorizedDomain, isURL, isHttpsURL,
-  isLocalhostOrHttpsURL, isEmail, isProviderId,
+  isLocalhostOrHttpsURL, isEmail, isProviderId, JsonObjectValidator,
+  isEmptyObject, isValidColorString, isSafeString,
 } from '../../../utils/validator';
+import {deepCopy} from '../../../utils/deep-copy';
 
 
 chai.should();
@@ -567,5 +569,306 @@ describe('isProviderId()', () => {
     expect(isProviderId('oidc.my-provider')).to.be.true;
     expect(isProviderId('oidc.123')).to.be.true;
     expect(isProviderId('oidc.ABC12_3d')).to.be.true;
+  });
+});
+
+describe('isSafeString()', () => {
+  it('should return false given no argument', () => {
+    expect(isSafeString(undefined as any)).to.be.false;
+  });
+
+  const nonStrings = [null, NaN, 0, 1, true, false, [], ['a'], {}, { a: 1 }, _.noop];
+  nonStrings.forEach((nonString) => {
+    it('should return false given a non-string argument: ' + JSON.stringify(nonString), () => {
+      expect(isSafeString(nonString as any)).to.be.false;
+    });
+  });
+
+  it('should return false given an empty string', () => {
+    expect(isSafeString('')).to.be.false;
+  });
+
+  it('should return true given a string with only whitespace', () => {
+    expect(isSafeString(' ')).to.be.true;
+  });
+
+  it('should return true given a non-empty string', () => {
+    expect(isSafeString('foo')).to.be.true;
+  });
+
+  const unsafeStrings = ['<', '<a>', '"', '\'', '&', '(', ')', '\\', '/'];
+  unsafeStrings.forEach((unsafeString) => {
+    it(`should return false given a safe string: "${unsafeString}"`, () => {
+      expect(isSafeString(unsafeString)).to.be.false;
+    });
+  });
+
+  it('should return true given a safe string', () => {
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    expect(isSafeString(`${alphabet.toLowerCase()} ${alphabet.toUpperCase()} ${numbers} - _ . , +`)).to.be.true;
+  });
+});
+
+describe('isValidColorString()', () => {
+  it('should return false given no argument', () => {
+    expect(isValidColorString(undefined as any)).to.be.false;
+  });
+
+  const nonStrings = [null, NaN, 0, 1, true, false, [], ['a'], {}, { a: 1 }, _.noop];
+  nonStrings.forEach((nonString) => {
+    it('should return false given a non-string argument: ' + JSON.stringify(nonString), () => {
+      expect(isValidColorString(nonString as any)).to.be.false;
+    });
+  });
+
+  it('should return false given an empty string', () => {
+    expect(isValidColorString('')).to.be.false;
+  });
+
+  const nonColorStrings = ['#aaa', '#', '00ff00', '#p03030'];
+  nonColorStrings.forEach((nonColorString) => {
+    it(`should return false given a non-color string: "${nonColorString}"`, () => {
+      expect(isValidColorString(nonColorString)).to.be.false;
+    });
+  });
+
+  const colorStrings = ['#aaaaaa', '#000000', '#00ff00', '#ffffff', '#123456'];
+  colorStrings.forEach((colorString) => {
+    it(`should return true given a color string: "${colorString}"`, () => {
+      expect(isValidColorString(colorString)).to.be.true;
+    });
+  });
+});
+
+describe('isEmptyObject()', () => {
+  it('should return false given no argument', () => {
+    expect(isEmptyObject(undefined as any)).to.be.false;
+  });
+
+  const nonObjects = [NaN, 0, 1, true, false, '', 'a', _.noop];
+  nonObjects.forEach((nonObject) => {
+    it('should return false given a non-object argument: ' + JSON.stringify(nonObject), () => {
+      expect(isEmptyObject(nonObject as any)).to.be.false;
+    });
+  });
+
+  it('should return false given an empty array', () => {
+    expect(isEmptyObject([])).to.be.false;
+  });
+
+  it('should return false given a non-empty array', () => {
+    expect(isEmptyObject(['a'])).to.be.false;
+  });
+
+  it('should return false given null', () => {
+    expect(isEmptyObject(null)).to.be.false;
+  });
+
+  it('should return false given a non-empty object', () => {
+    expect(isEmptyObject({ a: 1 })).to.be.false;
+  });
+
+  it('should return true given an empty object', () => {
+    expect(isEmptyObject({})).to.be.true;
+  });
+});
+
+describe('JsonObjectValidator', () => {
+  const validationTree = {
+    '*': {
+      nodes: {
+        key1: {
+          validator: (input: any) => {
+            // If input not string, throw.
+            if (!isString(input)) {
+              throw new Error('invalid key1 type');
+            }
+          },
+        },
+        'key2[]': {
+          validator: (input: any) => {
+            // If input not string, throw.
+            if (!isString(input)) {
+              throw new Error('invalid key2[] type');
+            }
+          },
+          nodes: {
+            key6: {
+              validator: (input: any) => {
+                // If input not string, throw.
+                if (!isString(input)) {
+                  throw new Error('invalid key6 type');
+                }
+              },
+            },
+          },
+        },
+        key3: {
+          nodes: {
+            key4: {
+              validator: (input: any) => {
+                // If input not boolean, throw.
+                if (!isBoolean(input)) {
+                  throw new Error('invalid key4 type');
+                }
+              },
+              nodes: {
+                key5: {
+                  validator: (input: any) => {
+                    // If input not number, throw.
+                    if (!isNumber(input)) {
+                      throw new Error('invalid key5 type');
+                    }
+                  },
+                  nodes: {
+                    '*': {
+                      validator: (input: any) => {
+                        // If input not string, throw.
+                        if (!isString(input)) {
+                          throw new Error('invalid key5.* type');
+                        }
+                      },
+                    }
+                  }
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+  const jsonObjectValidator = new JsonObjectValidator(validationTree);
+  const testObject = {
+    a1: {
+      key1: 'some-string',
+      key2: ['str1', 'str2'],
+      key3: {
+        key4: false,
+      },
+    },
+    b2: {
+      key3: {
+        key4: {
+          key5: -1.3,
+        },
+      },
+    },
+    c3: {
+      key2: ['single value'],
+    },
+  }
+
+  describe('validate()', () => {
+    it('should not throw on valid JSON object', () => {
+      expect(() => {
+        jsonObjectValidator.validate(testObject);
+      }).not.to.throw();
+    });
+
+    it('should not throw on valid empty array type', () => {
+      expect(() => {
+        const validObject: any = deepCopy(testObject);
+        validObject.c3.key2 = [];
+        jsonObjectValidator.validate(validObject);
+      }).not.to.throw();
+    });
+
+    it('should not throw on valid empty object type', () => {
+      expect(() => {
+        const validObject: any = deepCopy(testObject);
+        validObject.b2.key3 = {};
+        jsonObjectValidator.validate(validObject);
+      }).not.to.throw();
+    });
+
+    it('should not throw on valid multiple type values', () => {
+      expect(() => {
+        const validObject: any = deepCopy(testObject);
+        validObject.a1.key2 = ['other', {key6: 'str'}];
+        jsonObjectValidator.validate(validObject);
+      }).not.to.throw();
+    });
+
+    it('should not throw on valid nested wildcard object with valid type', () => {
+      expect(() => {
+        const validObject: any = deepCopy(testObject);
+        validObject.b2.key3.key4.key5 = {
+          other: 'valid',
+        };
+        jsonObjectValidator.validate(validObject);
+      }).not.to.throw();
+    });
+
+    it('should throw on invalid JSON object', () => {
+      expect(() => {
+        jsonObjectValidator.validate('invalid object');
+      }).to.throw(`Invalid key or type ""`);
+    });
+
+    it('should throw on null object', () => {
+      expect(() => {
+        jsonObjectValidator.validate(null);
+      }).to.throw('Invalid key or type ""');
+    });
+
+    it('should throw on invalid key', () => {
+      expect(() => {
+        const invalidObject: any = deepCopy(testObject);
+        invalidObject.a1.foo = 'bar';
+        jsonObjectValidator.validate(invalidObject);
+      }).to.throw(`Invalid key or type "a1.foo"`);
+    });
+
+    it('should throw on invalid array value for valid key', () => {
+      expect(() => {
+        const invalidObject: any = deepCopy(testObject);
+        invalidObject.a1.key2[0] = true;
+        jsonObjectValidator.validate(invalidObject);
+      }).to.throw(`invalid key2[] type`);
+    });
+
+    it('should throw on invalid value for valid key', () => {
+      expect(() => {
+        const invalidObject: any = deepCopy(testObject);
+        invalidObject.b2.key3.key4 = 'bar';
+        jsonObjectValidator.validate(invalidObject);
+      }).to.throw(`invalid key4 type`);
+    });
+
+    it('should throw on a key that requires a nested object', () => {
+      expect(() => {
+        const invalidObject: any = deepCopy(testObject);
+        invalidObject.a1.key3 = 'invalid';
+        jsonObjectValidator.validate(invalidObject);
+      }).to.throw(`Invalid value for "a1.key3"`);
+    });
+
+    it('should throw on a invalid array type for valid key', () => {
+      expect(() => {
+        const invalidObject: any = deepCopy(testObject);
+        invalidObject.a1.key3 = ['invalid'];
+        jsonObjectValidator.validate(invalidObject);
+      }).to.throw(`Invalid key or type "a1.key3[]"`);
+    });
+
+    it('should throw on a key with an invalid empty object', () => {
+      expect(() => {
+        const invalidObject: any = deepCopy(testObject);
+        invalidObject.a1.key2 = {};
+        jsonObjectValidator.validate(invalidObject);
+      }).to.throw(`Invalid key or type "a1.key2"`);
+    });
+
+    it('should throw on valid nested wildcard object with invalid type', () => {
+      expect(() => {
+        const validObject: any = deepCopy(testObject);
+        validObject.b2.key3.key4.key5 = {
+          other: false,
+        };
+        jsonObjectValidator.validate(validObject);
+      }).to.throw('invalid key5.* type');
+    });
   });
 });

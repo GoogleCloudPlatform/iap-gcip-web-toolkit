@@ -28,6 +28,7 @@ import * as storage from '../../../server/api/cloud-storage-handler';
 import * as metadata from '../../../server/api/metadata-server';
 import { ERROR_MAP, ErrorResponse } from '../../../utils/error';
 import { addReadonlyGetter } from '../../../utils/index';
+import { deepCopy } from '../../../utils/deep-copy';
 import * as gcip from '../../../server/api/gcip-handler';
 import * as iap from '../../../server/api/iap-settings-handler';
 import {
@@ -220,10 +221,9 @@ describe('AuthServer', () => {
     // Configuration to save.
     const config = {
       [API_KEY]: {
-        title: '',
         authDomain: `${AUTH_SUBDOMAIN}.firebaseapp.com`,
         displayMode: 'optionFirst',
-        seletTenantUiTitle: PROJECT_ID,
+        selectTenantUiTitle: PROJECT_ID,
         selectTenantUiLogo: 'https://example.com/img/mylogo.png',
         tenants: {
           _ : {
@@ -473,6 +473,30 @@ describe('AuthServer', () => {
         .set({'Authorization': `Bearer ${personalAccessToken}`})
         .expect('Content-Type', /json/)
         .expect(500)
+        .then((response) => {
+          expect(response.text).to.equal(JSON.stringify(expectedResponse));
+        });
+    });
+
+    it('returns expected error when invalid configuration is provided', () => {
+      // Simulate invalid configuration provided.
+      const invalidConfig = deepCopy(config);
+      (invalidConfig[API_KEY].tenants._.signInOptions[3] as any).iconUrl = 'javascript:doEvil()';
+      const expectedResponse = {
+        error: {
+          code: 400,
+          status: 'INVALID_ARGUMENT',
+          message: `"${API_KEY}.tenants._.signInOptions[].iconUrl" should be a valid HTTPS URL.`,
+        },
+      };
+      const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
+
+      return request(authServer.server)
+        .post('/set_admin_config')
+        .send(invalidConfig)
+        .set({'Authorization': `Bearer ${personalAccessToken}`})
+        .expect('Content-Type', /json/)
+        .expect(400)
         .then((response) => {
           expect(response.text).to.equal(JSON.stringify(expectedResponse));
         });

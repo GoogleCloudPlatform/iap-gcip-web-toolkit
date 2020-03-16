@@ -27,6 +27,23 @@ import * as ciap from 'gcip-iap';
 interface SignInOption {
   provider: string;
   providerName?: string;
+  hd?: string;
+  buttonColor?: string;
+  iconUrl?: string;
+  scopes?: string[];
+  customParameters?: {[key: string]: any};
+  loginHintKey?: string;
+  requireDisplayName?: boolean;
+  recaptchaParameters?: {
+    type?: string;
+    size?: string;
+    badge?: string;
+  };
+  defaultCountry?: string;
+  defaultNationalNumber?: string;
+  loginHint?: string;
+  whitelistedCountries?: string[];
+  blacklistedCountries?: string[];
   [key: string]: any;
 }
 
@@ -38,6 +55,8 @@ interface ExtendedTenantUiConfig {
   signInOptions: (SignInOption | string)[];
   tosUrl?: string;
   privacyPolicyUrl?: string;
+  immediateFederatedRedirect?: boolean;
+  signInFlow?: 'redirect' | 'popup';
 }
 
 export interface UiConfig {

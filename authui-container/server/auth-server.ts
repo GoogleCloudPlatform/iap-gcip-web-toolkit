@@ -171,16 +171,29 @@ export class AuthServer {
           this.handleErrorResponse(res, ERROR_MAP.INVALID_ARGUMENT);
         } else {
           const accessToken = req.headers.authorization.split(' ')[1];
-          // TODO: validate config before saving it.
-          this.setConfigForAdmin(accessToken, req.body).then(() => {
-            res.set('Content-Type', 'application/json');
-            res.send(JSON.stringify({
-              status: 200,
-              message: 'Changes successfully saved.',
-            }));
-          }).catch((err) => {
-            this.handleError(res, err);
-          });
+          try {
+            // Validate config before saving it.
+            DefaultUiConfigBuilder.validateConfig(req.body);
+            this.setConfigForAdmin(accessToken, req.body).then(() => {
+              res.set('Content-Type', 'application/json');
+              res.send(JSON.stringify({
+                status: 200,
+                message: 'Changes successfully saved.',
+              }));
+            }).catch((err) => {
+              this.handleError(res, err);
+            });
+          } catch (e) {
+            this.handleErrorResponse(
+              res,
+              {
+                error: {
+                  code: 400,
+                  status: 'INVALID_ARGUMENT',
+                  message: e.message || 'Invalid UI configuration.',
+                },
+              });
+          }
         }
       });
     }
