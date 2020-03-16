@@ -307,3 +307,55 @@ export function createMockHttpResponse(headers: object, response?: any): HttpRes
     isJson: () => isNonNullObject(response),
   };
 }
+
+/** A map of user agents for different browsers used for testing. */
+export const USER_AGENTS = {
+  opera: 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHT' +
+      'ML, like Gecko) Chrome/49.0.2623.110 Safari/537.36 OPR/36.0.2130.74',
+  ie: 'Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0;' +
+      ' SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; ' +
+      'Media Center PC 6.0; .NET4.0C)',
+  edge: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+      '(KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.10240',
+  firefox: 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:46.0) Gecko/201' +
+      '00101 Firefox/46.0',
+  silk: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, li' +
+      'ke Gecko) Silk/44.1.54 like Chrome/44.0.2403.63 Safari/537.36',
+  safari: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11-4) AppleWebKit' +
+      '/601.5.17 (KHTML, like Gecko) Version/9.1 Safari/601.5.17',
+  chrome: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, ' +
+      'like Gecko) Chrome/50.0.2661.94 Safari/537.36',
+  iOS8iPhone: 'Mozilla/5.0 (iPhone; CPU iPhone OS 8_0 like Mac OS X) A' +
+      'ppleWebKit/600.1.4 (KHTML, like Gecko) Version/8.0 Mobile/12A366 Safar' +
+      'i/600.1.4',
+  iOS7iPod: 'Mozilla/5.0 (iPod touch; CPU iPhone OS 7_0_3 like Mac OS ' +
+      'X) AppleWebKit/537.51.1 (KHTML, like Gecko) Version/7.0 Mobile/11B511 ' +
+      'Safari/9537.53',
+  iOS7iPad: 'Mozilla/5.0 (iPad; CPU OS 7_0 like Mac OS X) AppleWebKit/' +
+      '537.51.1 (KHTML, like Gecko) CriOS/30.0.1599.12 Mobile/11A465 Safari/8' +
+      '536.25 (3B92C18B-D9DE-4CB7-A02A-22FD2AF17C8F)',
+  iOS7iPhone: 'Mozilla/5.0 (iPhone; CPU iPhone OS 7_0_4 like Mac OS X)' +
+      'AppleWebKit/537.51.1 (KHTML, like Gecko) Version/7.0 Mobile/11B554a Sa' +
+      'fari/9537.53',
+  android: 'Mozilla/5.0 (Linux; U; Android 4.0.3; ko-kr; LG-L160L Buil' +
+      'd/IML74K) AppleWebkit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Sa' +
+      'fari/534.30',
+  blackberry: 'Mozilla/5.0 (BlackBerry; U; BlackBerry 9900; en) AppleW' +
+      'ebKit/534.11+ (KHTML, like Gecko) Version/7.1.0.346 Mobile Safari/534.' +
+      '11+',
+  webOS: 'Mozilla/5.0 (webOS/1.3; U; en-US) AppleWebKit/525.27.1 (KHTM' +
+      'L, like Gecko) Version/1.0 Safari/525.27.1 Desktop/1.0',
+  windowsPhone: 'Mozilla/5.0 (compatible; MSIE 10.0; Windows Phone 8.0' +
+      ';Trident/6.0; IEMobile/10.0; ARM; Touch; NOKIA; Lumia 920)',
+  chrios: 'Mozilla/5.0 (iPhone; U; CPU iPhone OS 5_1_1 like Mac OS X; ' +
+      'en) AppleWebKit/534.46.0 (KHTML, like Gecko) CriOS/19.0.1084.60 Mobile' +
+      '/9B206 Safari/7534.48.3',
+  iOS9iPhone: 'Mozilla/5.0 (iPhone; CPU iPhone OS 9_2 like Mac OS X) A' +
+      'ppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13C75 Safar' +
+      'i/601.1',
+  // This user agent is manually constructed and not copied from a production
+  // user agent.
+  chrome55iOS10: 'Mozilla/5.0 (iPhone; U; CPU iPhone OS 10_2_0 like Ma' +
+      'c OS X; en) AppleWebKit/534.46.0 (KHTML, like Gecko) CriOS/55.0.2883.7' +
+      '9 Mobile/9B206 Safari/7534.48.3',
+};

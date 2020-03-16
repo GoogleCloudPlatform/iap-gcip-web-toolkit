@@ -20,6 +20,7 @@ import { SignInUi, UiConfig } from '../../../src/sign-in-ui';
 import * as ciap from 'gcip-iap';
 import * as firebaseui from 'firebaseui';
 import * as utils from '../../../src/utils/index';
+import * as browser from '../../../src/utils/browser';
 import {HttpClient} from '../../../src/utils/http-client';
 import {createMockLowLevelError, createMockHttpResponse} from './test-utils';
 
@@ -326,6 +327,90 @@ describe('SignInUi', () => {
           // Confirm the remaining config parameters match.
           delete actualFirebaseUiConfig[API_KEY].callbacks;
           expect(actualFirebaseUiConfig).to.deep.equal(expectedFirebaseuiConfig);
+        });
+    });
+
+    it('should keep immediateFederatedRedirect true in non-Safari browsers', () => {
+      // Simulate Chrome browser.
+      const getBrowserNameStub = sinon.stub(browser, 'getBrowserName');
+      getBrowserNameStub.returns(browser.BrowserName.Chrome);
+      stubs.push(getBrowserNameStub);
+      // Simulate single provider with immediate redirect.
+      const singleProviderConfig: UiConfig = utils.deepCopy(expectedUiConfig);
+      singleProviderConfig[API_KEY].tenants.tenantId1.immediateFederatedRedirect = true;
+      singleProviderConfig[API_KEY].tenants.tenantId1.signInOptions = ['facebook.com'];
+      const expectedSingleProviderFirebaseuiConfig = {
+        [API_KEY]: utils.deepCopy(singleProviderConfig[API_KEY]),
+      };
+      delete expectedSingleProviderFirebaseuiConfig[API_KEY].selectTenantUiLogo;
+      delete expectedSingleProviderFirebaseuiConfig[API_KEY].selectTenantUiTitle;
+      delete expectedSingleProviderFirebaseuiConfig[API_KEY].styleUrl;
+      // stub /config.
+      const expectedResp = createMockHttpResponse(
+          {'Content-Type': 'application/json'}, singleProviderConfig);
+      httpClientSendStub.resolves(expectedResp);
+
+      const signInUi = new SignInUi(containerElement);
+      return signInUi.render()
+        .then(() => {
+          expect(setStyleSheetStub).to.have.been.calledOnce.and.calledWith(document, CUSTOM_STYLESHEET_URL);
+          expect(httpClientSendStub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+          expect(ciapAuthenticationStub).to.have.been.calledOnce.and.calledWith(mockHandler);
+          expect(mockAuth.start).to.have.been.calledOnce;
+          expect(firebaseUiHandlerStub).to.have.been.calledOnce;
+          expect(firebaseUiHandlerStub.getCalls()[0].args[0]).to.be.equal(containerElement);
+          const actualFirebaseUiConfig = firebaseUiHandlerStub.getCalls()[0].args[1];
+          assertExpectedFirebaseUiCallbacks(
+              actualFirebaseUiConfig[API_KEY].callbacks,
+              singleProviderConfig,
+              API_KEY,
+              'tenantId1');
+          // Confirm the remaining config parameters match.
+          delete actualFirebaseUiConfig[API_KEY].callbacks;
+          expect(actualFirebaseUiConfig).to.deep.equal(expectedSingleProviderFirebaseuiConfig);
+        });
+    });
+
+    it('should set immediateFederatedRedirect false in Safari browsers', () => {
+      // Simulate Safari browser.
+      const getBrowserNameStub = sinon.stub(browser, 'getBrowserName');
+      getBrowserNameStub.returns(browser.BrowserName.Safari);
+      stubs.push(getBrowserNameStub);
+      // Simulate single provider with immediate redirect.
+      const singleProviderConfig: UiConfig = utils.deepCopy(expectedUiConfig);
+      singleProviderConfig[API_KEY].tenants.tenantId1.immediateFederatedRedirect = true;
+      singleProviderConfig[API_KEY].tenants.tenantId1.signInOptions = ['facebook.com'];
+      const expectedSingleProviderFirebaseuiConfig = {
+        [API_KEY]: utils.deepCopy(singleProviderConfig[API_KEY]),
+      };
+      // This should be changed to false.
+      expectedSingleProviderFirebaseuiConfig[API_KEY].tenants.tenantId1.immediateFederatedRedirect = false;
+      delete expectedSingleProviderFirebaseuiConfig[API_KEY].selectTenantUiLogo;
+      delete expectedSingleProviderFirebaseuiConfig[API_KEY].selectTenantUiTitle;
+      delete expectedSingleProviderFirebaseuiConfig[API_KEY].styleUrl;
+      // stub /config.
+      const expectedResp = createMockHttpResponse(
+          {'Content-Type': 'application/json'}, singleProviderConfig);
+      httpClientSendStub.resolves(expectedResp);
+
+      const signInUi = new SignInUi(containerElement);
+      return signInUi.render()
+        .then(() => {
+          expect(setStyleSheetStub).to.have.been.calledOnce.and.calledWith(document, CUSTOM_STYLESHEET_URL);
+          expect(httpClientSendStub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+          expect(ciapAuthenticationStub).to.have.been.calledOnce.and.calledWith(mockHandler);
+          expect(mockAuth.start).to.have.been.calledOnce;
+          expect(firebaseUiHandlerStub).to.have.been.calledOnce;
+          expect(firebaseUiHandlerStub.getCalls()[0].args[0]).to.be.equal(containerElement);
+          const actualFirebaseUiConfig = firebaseUiHandlerStub.getCalls()[0].args[1];
+          assertExpectedFirebaseUiCallbacks(
+              actualFirebaseUiConfig[API_KEY].callbacks,
+              singleProviderConfig,
+              API_KEY,
+              'tenantId1');
+          // Confirm the remaining config parameters match.
+          delete actualFirebaseUiConfig[API_KEY].callbacks;
+          expect(actualFirebaseUiConfig).to.deep.equal(expectedSingleProviderFirebaseuiConfig);
         });
     });
 

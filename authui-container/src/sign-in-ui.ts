@@ -14,6 +14,7 @@
 
 import {deepCopy, setStyleSheet} from './utils/index';
 import {HttpClient, HttpRequestConfig} from './utils/http-client';
+import {getBrowserName, BrowserName} from './utils/browser';
 // Import Firebase dependencies.
 // tslint:disable-next-line
 import * as firebase from 'firebase/app';
@@ -27,6 +28,23 @@ import * as ciap from 'gcip-iap';
 interface SignInOption {
   provider: string;
   providerName?: string;
+  hd?: string;
+  buttonColor?: string;
+  iconUrl?: string;
+  scopes?: string[];
+  customParameters?: {[key: string]: any};
+  loginHintKey?: string;
+  requireDisplayName?: boolean;
+  recaptchaParameters?: {
+    type?: string;
+    size?: string;
+    badge?: string;
+  };
+  defaultCountry?: string;
+  defaultNationalNumber?: string;
+  loginHint?: string;
+  whitelistedCountries?: string[];
+  blacklistedCountries?: string[];
   [key: string]: any;
 }
 
@@ -38,6 +56,8 @@ interface ExtendedTenantUiConfig {
   signInOptions: (SignInOption | string)[];
   tosUrl?: string;
   privacyPolicyUrl?: string;
+  immediateFederatedRedirect?: boolean;
+  signInFlow?: 'redirect' | 'popup';
 }
 
 export interface UiConfig {
@@ -197,6 +217,14 @@ export class SignInUi {
             this.separatorElement.style.display = 'block';
           },
         };
+        // Do not trigger immediate redirect in Safari without some user
+        // interaction.
+        for (const tenantId in (config.tenants || {})) {
+          if (config.tenants[tenantId].hasOwnProperty('immediateFederatedRedirect')) {
+            config.tenants[tenantId].immediateFederatedRedirect =
+                config.tenants[tenantId].immediateFederatedRedirect && getBrowserName() !== BrowserName.Safari;
+          }
+        }
         // Remove unsupported FirebaseUI configs.
         delete config.selectTenantUiLogo;
         delete config.selectTenantUiTitle;
