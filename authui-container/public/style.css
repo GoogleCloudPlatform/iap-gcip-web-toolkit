@@ -124,3 +124,12 @@ h3.line-through:after {
   right: 0;
   top: 0;
 }
+
+.toast-body {
+  word-wrap: break-word;
+}
+
+/***************/
+.CodeMirror {
+  border: 1px solid #000000;
+}

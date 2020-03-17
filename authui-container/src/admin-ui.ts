@@ -21,6 +21,10 @@ import * as firebase from 'firebase/app';
 // tslint:disable-next-line
 import 'firebase/auth';
 import 'bootstrap';
+// Import codemirror dependencies.
+import '../node_modules/codemirror/lib/codemirror.css';
+import * as CodeMirror from '../node_modules/codemirror/lib/codemirror.js';
+import '../node_modules/codemirror/mode/javascript/javascript.js';
 
 interface GcipConfig {
   apiKey: string;
@@ -35,6 +39,8 @@ export const MSG_CONFIGURATION_SAVED = 'Configuration successfully saved.';
 export const MSG_INVALID_CONFIGURATION = 'Invalid JSON configuration!';
 // The message to show when no user is signed in.
 export const MSG_NO_USER_LOGGED_IN = 'No user currently logged in. Refresh the page to sign-in.';
+// The message to show when the configuration is copied to clipboard.
+export const MSG_CONFIGURATION_COPIED = 'Configuration copied to clipboard';
 // Alert message title on success.
 const MSG_ALERT_SUCCESS = 'Success';
 // Alert message title on error.
@@ -129,6 +135,7 @@ export class AdminUi {
   private alertMessageElement: HTMLElement;
   private adminFormElement: HTMLElement;
   private auth: firebase.auth.Auth;
+  private editor: CodeMirror.EditorFromTextArea;
 
   /**
    * Instantiates a AdminUi instance to facilitate customization of the sign-in UI configuration.
@@ -192,9 +199,20 @@ export class AdminUi {
           return this.getAdminConfig()
             .then((adminConfig) => {
               // Populate config in textarea.
-              this.textAreaElement.value = JSON.stringify(adminConfig, undefined, 4);
+              this.textAreaElement.value = JSON.stringify(adminConfig, undefined, 2);
               // Show admin panel.
               this.containerElement.style.display = 'block';
+              this.editor = CodeMirror.fromTextArea(this.textAreaElement, {
+                lineNumbers: true,
+                mode: 'application/json',
+              });
+              // Set editor size.
+              this.editor.setSize(650, 600);
+              // On editor change, reflect changes in textarea.
+              this.editor.on('change', (cm) => {
+                // Reflect Editor text in textArea.
+                this.textAreaElement.value = cm.getValue();
+              });
               // Initialize Admin UI event handlers.
               this.initEventHandlers();
             })
@@ -223,7 +241,15 @@ export class AdminUi {
   /** Adds click handler to copy-to-clipboard button. */
   private addCopyToClipboardClickHandler() {
     this.copyToClipboardElement.addEventListener('click', (e) => {
+      this.textAreaElement.value = this.editor.getValue();
+      // CodeMirror hides the textarea after rendering.
+      const previousDisplay = this.textAreaElement.style.display;
+      // Copy does not seem to work on hidden content.
+      this.textAreaElement.style.display = 'block';
       copyTextAreaContent(this.textAreaElement);
+      // Restore previous state.
+      this.textAreaElement.style.display = previousDisplay;
+      this.showToastMessage('success', MSG_CONFIGURATION_COPIED);
       e.preventDefault();
       return false;
     });
