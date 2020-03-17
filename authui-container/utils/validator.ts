@@ -16,6 +16,19 @@
 
 import { URL } from 'url';
 
+/** Defines a single validation node needed for validating JSON object. */
+interface ValidationNode {
+  nodes?: {
+    [key: string]: ValidationNode;
+  };
+  validator?: (value: any, key: string) => void;
+}
+
+/** Defines the JSON object validation tree. */
+export interface ValidationTree {
+  [key: string]: ValidationNode;
+}
+
 /** Basic IPv4 address regex matcher. */
 const IP_ADDRESS_REGEXP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
 
@@ -254,4 +267,177 @@ export function isProviderId(providerId: any): boolean {
   // This check is quite lax. It may be tightened in the future.
   const re = /^[a-zA-Z0-9\-\_\.]+$/;
   return isNonEmptyString(providerId) && re.test(providerId);
+}
+
+/**
+ * Validates that a value is an empty object.
+ *
+ * @param value The value to validate.
+ * @return Whether the value is an empty object.
+ */
+export function isEmptyObject(value: any): boolean {
+  return isNonNullObject(value) && Object.keys(value).length === 0 && value.constructor === Object;
+}
+
+/**
+ * Validates that the input in a valid color string of format #00ff00.
+ *
+ * @param value The string to validate.
+ * @return Whether the string is a valid color string.
+ */
+export function isValidColorString(value: any): boolean {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  // Actually raw strings and rgba(50, 75, 75, 1) formats are allowed but for
+  // simplicity limit to this format.
+  const re = /^#[0-9a-f]{6}$/i;
+  return isNonEmptyString(value) && re.test(value);
+}
+
+/**
+ * Validates that the input is a safe string. This minimizes the risk of XSS.
+ *
+ * @param value The string to validate.
+ * @return Whether the string is safe or not.
+ */
+export function isSafeString(value: any): boolean {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  // This check only allows limited set of characters and spaces.
+  const re = /^[a-zA-Z0-9\-\_\.\s\,\+]+$/;
+  return isNonEmptyString(value) && re.test(value);
+}
+
+/**
+ * Utility used to validate a JSON object with nested content using a provided validation tree structure.
+ * For the following interface:
+ * interface MyStructure {
+ *   [key: string]: {
+ *     key1: string;
+ *     key2: string[];
+ *     key3: {
+ *       key4: (boolean | {key5: number});
+ *     };
+ *   };
+ * }
+ *
+ * The following ValidationTree is provided:
+ * const VALIDATION_TREE = {
+ *   '*': {
+ *     nodes: {
+ *       key1: {
+ *         validator: (input: any) => { // if input not string, throw },
+ *       },
+ *       key2[]: {
+ *         validator: (input: any) => { // if input not string, throw },
+ *       },
+ *       key3: {
+ *         nodes: {
+ *           key4: {
+ *             validator: (input: any) => { // if input not boolean, throw },
+ *             nodes: {
+ *               key5: {
+ *                 validator: (input: any) => { // if input not number, throw },
+ *               },
+ *             },
+ *           },
+ *         },
+ *       },
+ *     },
+ *   },
+ * };
+ */
+export class JsonObjectValidator {
+  /**
+   * Instantiates a JSON object validator using the provided validation tree.
+   * @param validationTree The validation tree to use.
+   */
+  constructor(private readonly validationTree: ValidationTree) {}
+
+  /**
+   * Validates the provided object.
+   * @param obj The object to validate.
+   */
+  validate(obj: any) {
+    this.validateJson(obj, []);
+  }
+
+  /**
+   * Returns the validator function for the provided path. If not found, null is returned.
+   * @param pathSoFar The path so far in the nested JSON object.
+   * @return The validation function for the specified path, null if not found.
+   */
+  private getValidator(pathSoFar: string[]): ((value: any, key: string) => void) | null {
+    let currentNode: any = this.validationTree;
+    let currentValidator: any = null;
+    for (const currentKey of pathSoFar) {
+      // For variable object keys, * is used in the validation tree.
+      if (currentNode.hasOwnProperty('*')) {
+        currentValidator = currentNode['*'].validator || ((value: any, key: string) => {
+          if (!isEmptyObject(value)) {
+            throw new Error(`Invalid value for "${key}"`);
+          }
+        });
+        currentNode = currentNode['*'].nodes || {};
+      } else if (currentNode.hasOwnProperty(currentKey)) {
+        currentValidator = currentNode[currentKey].validator || ((value: any, key: string) => {
+          if (!isEmptyObject(value)) {
+            throw new Error(`Invalid value for "${key}"`);
+          }
+        });
+        currentNode = currentNode[currentKey].nodes || {};
+      } else {
+        // Not found.
+        return null;
+      }
+    }
+    return currentValidator || null;
+  }
+
+  /**
+   * Recursive internal validator.
+   * @param obj The object to validate.
+   * @param pathSoFar The path so far in the object.
+   */
+  private validateJson(obj: any, pathSoFar: string[] = []) {
+    if (isNonEmptyArray(obj)) {
+      const key = pathSoFar.pop() || '';
+      pathSoFar.push(`${key}[]`);
+      obj.forEach((item) => {
+        this.validateJson(item, pathSoFar);
+      });
+      pathSoFar.pop();
+      if (key) {
+        pathSoFar.push(key);
+      }
+    } else if (isNonNullObject(obj) && !isEmptyObject(obj)) {
+      for (const key in obj) {
+        if (obj.hasOwnProperty(key)) {
+          pathSoFar.push(key);
+          this.validateJson(obj[key], pathSoFar);
+          pathSoFar.pop();
+        }
+      }
+    } else if (isEmptyObject(obj)) {
+      const validator = this.getValidator(pathSoFar);
+      if (!validator) {
+        throw new Error(`Invalid key or type "${pathSoFar.join('.')}"`);
+      }
+    } else if (isArray(obj) && obj.length === 0) {
+      const key = pathSoFar.pop() || '';
+      pathSoFar.push(`${key}[]`);
+      const validator = this.getValidator(pathSoFar);
+      if (!validator) {
+        throw new Error(`Invalid key or type "${pathSoFar.join('.')}"`);
+      }
+    } else {
+      const validator = this.getValidator(pathSoFar);
+      if (!validator) {
+        throw new Error(`Invalid key or type "${pathSoFar.join('.')}"`);
+      }
+      validator(obj, pathSoFar.join('.'));
+    }
+  }
 }
