@@ -405,7 +405,7 @@ export class JsonObjectValidator {
     if (isNonEmptyArray(obj)) {
       const key = pathSoFar.pop() || '';
       pathSoFar.push(`${key}[]`);
-      obj.forEach((item) => {
+      obj.forEach((item: any) => {
         this.validateJson(item, pathSoFar);
       });
       pathSoFar.pop();

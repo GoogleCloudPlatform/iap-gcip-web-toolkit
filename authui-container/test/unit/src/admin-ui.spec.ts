@@ -22,10 +22,11 @@ import {HttpClient} from '../../../src/utils/http-client';
 import { UiConfig } from '../../../src/sign-in-ui';
 import {
   AdminUi, TIMEOUT_DURATION, OAUTH_SCOPES, MSG_CONFIGURATION_SAVED,
-  MSG_NO_USER_LOGGED_IN, MSG_INVALID_CONFIGURATION,
+  MSG_NO_USER_LOGGED_IN, MSG_INVALID_CONFIGURATION, MSG_CONFIGURATION_COPIED,
 } from '../../../src/admin-ui';
 // tslint:disable-next-line
 import * as firebase from 'firebase/app';
+import * as CodeMirror from '../../../node_modules/codemirror/lib/codemirror.js';
 
 /**
  * Asserts toast message and status.
@@ -40,6 +41,7 @@ function assertToastMessage(status: string, message: string) {
 }
 
 describe('AdminUi', () => {
+  let codeMirrorEditorSpy: sinon.SinonSpy;
   let httpClientSendStub: sinon.SinonStub;
   let showToast: () => void;
   let toastContainer: HTMLElement;
@@ -129,6 +131,7 @@ describe('AdminUi', () => {
   };
 
   beforeEach(() => {
+    codeMirrorEditorSpy = sinon.spy(CodeMirror, 'fromTextArea');
     stubs = [];
     showToast = sinon.stub();
     toastContainer = document.createElement('div');
@@ -162,6 +165,7 @@ describe('AdminUi', () => {
   });
 
   afterEach(() => {
+    codeMirrorEditorSpy.restore();
     if (toastContainer) {
       document.body.removeChild(toastContainer);
     }
@@ -284,7 +288,15 @@ describe('AdminUi', () => {
           // Confirm loaded admin config displayed in textarea.
           const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
           expect(mainContainer.style.display).to.be.equal('block');
-          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 4));
+          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
+          // Confirm CodeMirror editor behavior.
+          expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
+              area, {lineNumbers: true, mode: 'application/json'});
+          const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
+          expect(editorInstance.getValue()).to.be.equal(area.value);
+          // Confirm on change set.
+          editorInstance.setValue('test');
+          expect(area.value).to.be.equal('test');
         });
     });
 
@@ -388,6 +400,8 @@ describe('AdminUi', () => {
     });
 
     it('should handle copy-to-clipboard button correctly', () => {
+      const updatedUiConfig = utils.deepCopy(expectedUiConfig);
+      updatedUiConfig[API_KEY].selectTenantUiTitle = 'Custom title';
       const stubbedAuthMethods = {
         setPersistence: sinon.stub(),
         getRedirectResult: sinon.stub().callsFake(() => {
@@ -442,11 +456,28 @@ describe('AdminUi', () => {
         .then(() => {
           const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
           expect(mainContainer.style.display).to.be.equal('block');
-          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 4));
+          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
+          // Confirm CodeMirror editor behavior.
+          expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
+              area, {lineNumbers: true, mode: 'application/json'});
+          const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
+          expect(editorInstance.getValue()).to.be.equal(area.value);
           // Test copy to clipboard functionality.
           const copyToClipboardButton = mainContainer.getElementsByClassName('copy-to-clipboard')[0];
           (copyToClipboardButton as HTMLButtonElement).click();
           expect(copyTextAreaContentStub).to.have.been.calledOnce.and.calledWith(area);
+          // Confirm toast message
+          assertToastMessage('Success', MSG_CONFIGURATION_COPIED);
+          expect(showToast).to.have.been.calledOnce;
+          // Update editor content.
+          editorInstance.setValue(JSON.stringify(updatedUiConfig));
+          (copyToClipboardButton as HTMLButtonElement).click();
+          expect(copyTextAreaContentStub).to.have.been.calledTwice.and.calledWith(area);
+          // In the process, the textarea should be updated.
+          expect(area.value).to.be.equal(editorInstance.getValue());
+          // Confirm toast message
+          assertToastMessage('Success', MSG_CONFIGURATION_COPIED);
+          expect(showToast).to.have.been.calledTwice;
         });
     });
 
@@ -520,9 +551,14 @@ describe('AdminUi', () => {
           expect(httpClientSendStub).to.have.been.calledTwice;
           const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
           expect(mainContainer.style.display).to.be.equal('block');
-          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 4));
-          // Update textarea content.
-          area.value = JSON.stringify(updatedUiConfig);
+          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
+          // Confirm CodeMirror editor behavior.
+          expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
+              area, {lineNumbers: true, mode: 'application/json'});
+          const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
+          expect(editorInstance.getValue()).to.be.equal(area.value);
+          // Update editor content.
+          editorInstance.setValue(JSON.stringify(updatedUiConfig));
           // Test save functionality.
           const adminFormButton = mainContainer.querySelector('button[type="submit"]');
           (adminFormButton as HTMLButtonElement).click();
@@ -598,9 +634,14 @@ describe('AdminUi', () => {
           expect(httpClientSendStub).to.have.been.calledTwice;
           const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
           expect(mainContainer.style.display).to.be.equal('block');
-          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 4));
-          // Update textarea content with an invalid JSON input.
-          area.value = '{invalid}';
+          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
+          // Confirm CodeMirror editor behavior.
+          expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
+              area, {lineNumbers: true, mode: 'application/json'});
+          const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
+          expect(editorInstance.getValue()).to.be.equal(area.value);
+          // Update editor content with an invalid JSON input.
+          editorInstance.setValue('{invalid}');
           // Test save functionality.
           const adminFormButton = mainContainer.querySelector('button[type="submit"]');
           (adminFormButton as HTMLButtonElement).click();
@@ -700,9 +741,14 @@ describe('AdminUi', () => {
           expect(httpClientSendStub).to.have.been.calledTwice;
           const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
           expect(mainContainer.style.display).to.be.equal('block');
-          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 4));
-          // Update textarea content.
-          area.value = JSON.stringify(updatedUiConfig);
+          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
+          // Confirm CodeMirror editor behavior.
+          expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
+              area, {lineNumbers: true, mode: 'application/json'});
+          const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
+          expect(editorInstance.getValue()).to.be.equal(area.value);
+          // Update editor content.
+          editorInstance.setValue(JSON.stringify(updatedUiConfig));
           // Test save functionality.
           const adminFormButton = mainContainer.querySelector('button[type="submit"]');
           (adminFormButton as HTMLButtonElement).click();
@@ -839,9 +885,14 @@ describe('AdminUi', () => {
           expect(httpClientSendStub).to.have.been.calledTwice;
           const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
           expect(mainContainer.style.display).to.be.equal('block');
-          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 4));
-          // Update textarea content.
-          area.value = JSON.stringify(updatedUiConfig);
+          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
+          // Confirm CodeMirror editor behavior.
+          expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
+              area, {lineNumbers: true, mode: 'application/json'});
+          const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
+          expect(editorInstance.getValue()).to.be.equal(area.value);
+          // Update editor content.
+          editorInstance.setValue(JSON.stringify(updatedUiConfig));
           // Test save functionality.
           adminFormButton.click();
           expect(httpClientSendStub).to.have.been.calledThrice;
@@ -995,9 +1046,14 @@ describe('AdminUi', () => {
           expect(httpClientSendStub).to.have.been.calledTwice;
           const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
           expect(mainContainer.style.display).to.be.equal('block');
-          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 4));
-          // Update textarea content.
-          area.value = JSON.stringify(updatedUiConfig);
+          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
+          // Confirm CodeMirror editor behavior.
+          expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
+              area, {lineNumbers: true, mode: 'application/json'});
+          const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
+          expect(editorInstance.getValue()).to.be.equal(area.value);
+          // Update editor content.
+          editorInstance.setValue(JSON.stringify(updatedUiConfig));
           // Test save functionality.
           adminFormButton.click();
           expect(httpClientSendStub).to.have.been.calledThrice;
@@ -1131,9 +1187,14 @@ describe('AdminUi', () => {
           expect(httpClientSendStub).to.have.been.calledTwice;
           const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
           expect(mainContainer.style.display).to.be.equal('block');
-          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 4));
-          // Update textarea content.
-          area.value = JSON.stringify(updatedUiConfig);
+          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
+          // Confirm CodeMirror editor behavior.
+          expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
+              area, {lineNumbers: true, mode: 'application/json'});
+          const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
+          expect(editorInstance.getValue()).to.be.equal(area.value);
+          // Update editor content.
+          editorInstance.setValue(JSON.stringify(updatedUiConfig));
           // Test save functionality.
           adminFormButton.click();
           expect(httpClientSendStub).to.have.been.calledThrice;
@@ -1251,9 +1312,14 @@ describe('AdminUi', () => {
           expect(httpClientSendStub).to.have.been.calledTwice;
           const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
           expect(mainContainer.style.display).to.be.equal('block');
-          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 4));
-          // Update textarea content.
-          area.value = JSON.stringify(updatedUiConfig);
+          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
+          // Confirm CodeMirror editor behavior.
+          expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
+              area, {lineNumbers: true, mode: 'application/json'});
+          const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
+          expect(editorInstance.getValue()).to.be.equal(area.value);
+          // Update editor content.
+          editorInstance.setValue(JSON.stringify(updatedUiConfig));
           // Test save functionality.
           adminFormButton.click();
           expect(httpClientSendStub).to.have.been.calledThrice;
@@ -1328,6 +1394,8 @@ describe('AdminUi', () => {
           expect(mainContainer.style.display).to.be.equal('none');
           const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
           expect(area.value).to.be.equal('');
+          // Confirm CodeMirror editor behavior.
+          expect(codeMirrorEditorSpy).to.not.have.been.called;
         });
     });
   });
