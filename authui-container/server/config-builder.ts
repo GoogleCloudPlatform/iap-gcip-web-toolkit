@@ -391,6 +391,10 @@ export class DefaultUiConfigBuilder {
         iconUrl: TENANT_ICON_URL,
         logoUrl: SIGN_IN_UI_LOGO_URL,
         buttonColor: '#007bff',
+        // By default, use immediate federated redirect.
+        // This is safe since if more than one provider is used, FirebaseUI will ignore this.
+        immediateFederatedRedirect: true,
+        signInFlow: 'redirect',
         signInOptions: (optionsMap[key] && optionsMap[key].signInOptions) || [],
         tosUrl: '',
         privacyPolicyUrl: '',

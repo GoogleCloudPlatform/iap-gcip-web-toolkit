@@ -88,6 +88,8 @@ describe('DefaultUiConfigBuilder', () => {
           iconUrl: TENANT_ICON_URL,
           logoUrl: SIGN_IN_UI_LOGO_URL,
           buttonColor: '#007bff',
+          immediateFederatedRedirect: true,
+          signInFlow: 'redirect',
           tosUrl: '',
           privacyPolicyUrl: '',
           signInOptions: [
@@ -108,6 +110,8 @@ describe('DefaultUiConfigBuilder', () => {
           iconUrl: TENANT_ICON_URL,
           logoUrl: SIGN_IN_UI_LOGO_URL,
           buttonColor: '#007bff',
+          immediateFederatedRedirect: true,
+          signInFlow: 'redirect',
           tosUrl: '',
           privacyPolicyUrl: '',
           signInOptions: [
@@ -127,6 +131,8 @@ describe('DefaultUiConfigBuilder', () => {
           iconUrl: TENANT_ICON_URL,
           logoUrl: SIGN_IN_UI_LOGO_URL,
           buttonColor: '#007bff',
+          immediateFederatedRedirect: true,
+          signInFlow: 'redirect',
           tosUrl: '',
           privacyPolicyUrl: '',
           signInOptions: [
@@ -201,6 +207,8 @@ describe('DefaultUiConfigBuilder', () => {
           iconUrl: TENANT_ICON_URL,
           logoUrl: SIGN_IN_UI_LOGO_URL,
           buttonColor: '#007bff',
+          immediateFederatedRedirect: true,
+          signInFlow: 'redirect',
           tosUrl: '',
           privacyPolicyUrl: '',
           signInOptions: [
@@ -221,6 +229,8 @@ describe('DefaultUiConfigBuilder', () => {
           iconUrl: TENANT_ICON_URL,
           logoUrl: SIGN_IN_UI_LOGO_URL,
           buttonColor: '#007bff',
+          immediateFederatedRedirect: true,
+          signInFlow: 'redirect',
           tosUrl: '',
           privacyPolicyUrl: '',
           signInOptions: [
@@ -240,6 +250,8 @@ describe('DefaultUiConfigBuilder', () => {
           iconUrl: TENANT_ICON_URL,
           logoUrl: SIGN_IN_UI_LOGO_URL,
           buttonColor: '#007bff',
+          immediateFederatedRedirect: true,
+          signInFlow: 'redirect',
           tosUrl: '',
           privacyPolicyUrl: '',
           signInOptions: [
@@ -268,7 +280,6 @@ describe('DefaultUiConfigBuilder', () => {
       styleUrl: 'https://example.com/styles/stylesheet.css',
       tosUrl: 'https://example.com/about/tos',
       privacyPolicyUrl: 'https://example.com/about/privacyPolicyUrl',
-
       tenants: {
         _: {
           displayName: 'My Company',
