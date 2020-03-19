@@ -21,11 +21,11 @@ import * as chaiAsPromised from 'chai-as-promised';
 
 import {
   isArray, isNonEmptyArray, isBoolean, isNumber, isString, isNonEmptyString,
-  isNonNullObject, isObject, isAuthorizedDomain, isURL, isHttpsURL,
+  isNonNullObject, isObject, isURL, isHttpsURL,
   isLocalhostOrHttpsURL, isEmail, isProviderId, JsonObjectValidator,
   isEmptyObject, isValidColorString, isSafeString,
-} from '../../../utils/validator';
-import {deepCopy} from '../../../utils/deep-copy';
+} from '../../../common/validator';
+import {deepCopy} from '../../../common/deep-copy';
 
 
 chai.should();
@@ -271,84 +271,6 @@ describe('isNonNullObject()', () => {
 
   it('should return true given a non-empty object', () => {
     expect(isNonNullObject({ a: 1 })).to.be.true;
-  });
-});
-
-describe('isAuthorizedDomain()', () => {
-  it('should return false when no authorized domains are provided', () => {
-    const authorizedDomains = [];
-    const url = 'http://localhost';
-    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
-  });
-
-  it('should return false on partial matches', () => {
-    const authorizedDomains = [
-      'abcdefghijklmnopqrstuvwxyz123456_suffix',
-      'prefix_abcdefghijklmnopqrstuvwxyz123456',
-      'prefix_abcdefghijklmnopqrstuvwxyz123456_suffix',
-    ];
-    const url = 'htt://aihpiglmnhnhijdnjghpfnlledckkhja/abc?a=1#b=2';
-    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
-  });
-
-  it('should return false when no domains match', () => {
-    const authorizedDomains = ['other.com', 'example.com'];
-    const url = 'http://www.domain.com/abc?a=1#b=2';
-    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
-  });
-
-  it('should return false on top level domain mismatch', () => {
-    const authorizedDomains = ['domain.com', 'domain.com.mx'];
-    const url = 'http://www.domain.com.lb/abc?a=1#b=2';
-    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
-  });
-
-  it('should return false on partial subdomain match', () => {
-    const authorizedDomains = ['site.example.com'];
-    const url = 'http://prefix-site.example.com';
-    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
-  });
-
-  it('should return false on IP address mismatch', () => {
-    const authorizedDomains = ['132.0.0.1'];
-    const url = 'http://127.0.0.1:8080/?redirect=132.0.0.1';
-    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
-  });
-
-  it('should return false for non http/https domains', () => {
-    const authorizedDomains = ['abcdefghijklmnopqrstuvwxyz123456'];
-    const url = 'file://abcdefghijklmnopqrstuvwxyz123456';
-    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
-  });
-
-  it('should return false even when matching non-http domains', () => {
-    const authorizedDomains = ['chrome-extension://abcdefghijklmnopqrstuvwxyz123456'];
-    const url = 'chrome-extension://abcdefghijklmnopqrstuvwxyz123456';
-    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.false;
-  });
-
-  it('should return true on exact domain match', () => {
-    const authorizedDomains = ['other.com', 'domain.com'];
-    const url = 'http://www.domain.com/abc?a=1#b=2';
-    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.true;
-  });
-
-  it('should return true on exact domain and top level match', () => {
-    const authorizedDomains = ['domain.com', 'domain.com.lb'];
-    const url = 'http://www.domain.com.lb:8080/abc?a=1#b=2';
-    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.true;
-  });
-
-  it('should return true on subdomain match', () => {
-    const authorizedDomains = ['site.example.com'];
-    const url = 'https://www.site.example.com';
-    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.true;
-  });
-
-  it('should return true on IP address match', () => {
-    const authorizedDomains = ['127.0.0.1'];
-    const url = 'http://127.0.0.1:8080/?redirect=132.0.0.1';
-    expect(isAuthorizedDomain(authorizedDomains, url)).to.be.true;
   });
 });
 

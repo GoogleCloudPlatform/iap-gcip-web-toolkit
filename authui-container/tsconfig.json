@@ -12,6 +12,6 @@
     "server/**/*",
     "server/api/**/*",
     "src/**/*",
-    "utils/**/*"
+    "common/**/*"
   ]
 }

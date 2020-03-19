@@ -16,7 +16,7 @@
 
 import * as _ from 'lodash';
 import {expect} from 'chai';
-import { deepCopy, deepExtend, deepEqual } from '../../../utils/deep-copy';
+import { deepCopy, deepExtend, deepEqual } from '../../../common/deep-copy';
 
 describe('deepCopy()', () => {
   it('should successfully make a copy of a Date object', () => {

@@ -13,11 +13,11 @@
  */
 
 import {AccessTokenManager} from './token-manager';
-import { deepCopy } from '../../utils/deep-copy';
+import { deepCopy } from '../../common/deep-copy';
 import {
   HttpServerRequestHandler, BaseRequestOptions, RequestOptions,
   HttpResponse,
-} from '../../utils/http-server-request-handler';
+} from '../../server/utils/http-server-request-handler';
 
 /** Utility for sending authenticated server side HTTP requests. */
 export class AuthenticatedRequestHandler extends HttpServerRequestHandler {

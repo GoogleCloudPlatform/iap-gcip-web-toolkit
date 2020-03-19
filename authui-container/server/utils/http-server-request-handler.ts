@@ -13,9 +13,9 @@
  */
 
 import requestPromise = require('request-promise');
-import { deepCopy, deepExtend } from '../utils/deep-copy';
-import { isNonNullObject } from '../utils/validator';
-import { addReadonlyGetter, formatString } from '../utils/index';
+import { deepCopy, deepExtend } from '../../common/deep-copy';
+import { isNonNullObject } from '../../common/validator';
+import { addReadonlyGetter, formatString } from '../../common/index';
 import { URL } from 'url';
 
 /** HTTP method type definition. */

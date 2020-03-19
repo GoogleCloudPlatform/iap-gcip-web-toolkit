@@ -19,9 +19,9 @@ import path = require('path');
 import {Server} from 'http';
 import { MetadataServer } from './api/metadata-server';
 import { CloudStorageHandler } from './api/cloud-storage-handler';
-import { ErrorResponse, ERROR_MAP } from '../utils/error';
-import { isNonNullObject } from '../utils/validator';
-import { UiConfig, DefaultUiConfigBuilder } from './config-builder';
+import { ErrorResponse, ERROR_MAP } from '../server/utils/error';
+import { isNonNullObject } from '../common/validator';
+import { UiConfig, DefaultUiConfigBuilder } from '../common/config-builder';
 import { IapSettingsHandler, IapSettings } from './api/iap-settings-handler';
 import { GcipHandler, TenantUiConfig, GcipConfig } from './api/gcip-handler';
 

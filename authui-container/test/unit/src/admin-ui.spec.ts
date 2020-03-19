@@ -53,7 +53,7 @@ describe('AdminUi', () => {
   const PROJECT_ID = 'project-id';
   const API_KEY = 'API_KEY';
   const AUTH_SUBDOMAIN = 'AUTH_SUBDOMAIN';
-  const CUSTOM_STYLESHEET_URL = './css/custom-stylesheet.css';
+  const CUSTOM_STYLESHEET_URL = 'https://www.example.com/css/custom-stylesheet.css';
   const expectedGcipConfig = {
     apiKey: API_KEY,
     authDomain: `${AUTH_SUBDOMAIN}.firebaseapp.com`,
@@ -63,13 +63,13 @@ describe('AdminUi', () => {
       authDomain: `${AUTH_SUBDOMAIN}.firebaseapp.com`,
       displayMode: 'optionFirst',
       selectTenantUiTitle: PROJECT_ID,
-      selectTenantUiLogo: 'http://www.example.com/img/select-tenant-logo.png',
+      selectTenantUiLogo: 'https://www.example.com/img/select-tenant-logo.png',
       styleUrl: CUSTOM_STYLESHEET_URL,
       tenants: {
         _: {
           displayName: 'ABCD',
-          iconUrl: 'http://www.example.com/img/tenant-icon0.png',
-          logoUrl: 'http://www.example.com/img/tenant-logo0.png',
+          iconUrl: 'https://www.example.com/img/tenant-icon0.png',
+          logoUrl: 'https://www.example.com/img/tenant-logo0.png',
           buttonColor: '#007bff',
           tosUrl: '',
           privacyPolicyUrl: '',
@@ -88,8 +88,8 @@ describe('AdminUi', () => {
         },
         tenantId1: {
           displayName: 'Tenant-display-name-1',
-          iconUrl: 'http://www.example.com/img/tenant-icon1.png',
-          logoUrl: 'http://www.example.com/img/tenant-logo1.png',
+          iconUrl: 'https://www.example.com/img/tenant-icon1.png',
+          logoUrl: 'https://www.example.com/img/tenant-logo1.png',
           buttonColor: '#007bff',
           tosUrl: '',
           privacyPolicyUrl: '',
@@ -107,8 +107,8 @@ describe('AdminUi', () => {
         },
         tenantId2: {
           displayName: 'Tenant-display-name-2',
-          iconUrl: 'http://www.example.com/img/tenant-icon2.png',
-          logoUrl: 'http://www.example.com/img/tenant-logo2.png',
+          iconUrl: 'https://www.example.com/img/tenant-icon2.png',
+          logoUrl: 'https://www.example.com/img/tenant-logo2.png',
           buttonColor: '#007bff',
           tosUrl: '',
           privacyPolicyUrl: '',
@@ -481,6 +481,82 @@ describe('AdminUi', () => {
         });
     });
 
+    it('should disable copy when an invalid configuration is provided', () => {
+      const updatedUiConfig = utils.deepCopy(expectedUiConfig);
+      // Use invalid field.
+      updatedUiConfig[API_KEY].selectTenantUiTitle = '<h1>Cool App</h1>';
+      const stubbedAuthMethods = {
+        setPersistence: sinon.stub(),
+        getRedirectResult: sinon.stub().callsFake(() => {
+          const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
+          app.auth().setCurrentMockUser(mockUser);
+          return Promise.resolve({
+            user: mockUser,
+            credential: {
+              providerId: 'google.com',
+              accessToken: OAUTH_ACCESS_TOKEN,
+            },
+          });
+        }),
+      };
+      const app = testUtils.createMockApp(
+          expectedGcipConfig,
+          stubbedAuthMethods);
+      const expectedGcipConfigResp = testUtils.createMockHttpResponse(
+          {'Content-Type': 'application/json'},
+          expectedGcipConfig);
+      const expectedGetAdminConfigResp = testUtils.createMockHttpResponse(
+          {'Content-Type': 'application/json'},
+          expectedUiConfig);
+      httpClientSendStub.callsFake((params) => {
+        expect(params.timeout).to.be.equal(TIMEOUT_DURATION);
+        expect(params.method).to.be.equal('GET');
+        if (params.url === '/gcipConfig') {
+          expect(params.headers).to.deep.equal({
+            'Content-Type': 'application/json',
+          });
+          return Promise.resolve(expectedGcipConfigResp);
+        } else if (params.url === '/get_admin_config') {
+          expect(params.headers).to.deep.equal({
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${OAUTH_ACCESS_TOKEN}`,
+          });
+          return Promise.resolve(expectedGetAdminConfigResp);
+        }
+        throw new Error('Unexpected call');
+      });
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
+        expect(config).to.deep.equal(expectedGcipConfig);
+        return app as any;
+      });
+      stubs.push(firebaseStub);
+      const copyTextAreaContentStub = sinon.stub(utils, 'copyTextAreaContent');
+      stubs.push(copyTextAreaContentStub);
+
+      const adminUi = new AdminUi(mainContainer, showToast);
+      return adminUi.render()
+        .then(() => {
+          const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
+          expect(mainContainer.style.display).to.be.equal('block');
+          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
+          // Confirm CodeMirror editor behavior.
+          expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
+              area, {lineNumbers: true, mode: 'application/json'});
+          const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
+          expect(editorInstance.getValue()).to.be.equal(area.value);
+          // Update editor content.
+          editorInstance.setValue(JSON.stringify(updatedUiConfig));
+          // Test copy to clipboard functionality.
+          const copyToClipboardButton = mainContainer.getElementsByClassName('copy-to-clipboard')[0];
+          (copyToClipboardButton as HTMLButtonElement).click();
+          expect(copyTextAreaContentStub).to.not.have.been.called;
+          // Confirm toast message with error.
+          assertToastMessage('Error', `"${API_KEY}.selectTenantUiTitle" should be a valid string.`);
+          expect(showToast).to.have.been.calledOnce;
+        });
+    });
+
     it('should successfully save admin config on unexpired access token', () => {
       const updatedUiConfig = utils.deepCopy(expectedUiConfig);
       updatedUiConfig[API_KEY].selectTenantUiTitle = 'Custom title';
@@ -656,6 +732,94 @@ describe('AdminUi', () => {
           expect((reauthButton as HTMLButtonElement).style.display).to.be.equal('none');
           // Confirm invalid JSON error displayed.
           assertToastMessage('Error', MSG_INVALID_CONFIGURATION);
+          expect(showToast).to.have.been.calledOnce;
+        });
+    });
+
+    it('should not save and catch invalid fields in the configuration client side', () => {
+      const updatedUiConfig = utils.deepCopy(expectedUiConfig);
+      // Use invalid field.
+      updatedUiConfig[API_KEY].selectTenantUiTitle = '<h1>Cool App</h1>';
+      const stubbedAuthMethods = {
+        setPersistence: sinon.stub(),
+        getRedirectResult: sinon.stub().callsFake(() => {
+          const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
+          app.auth().setCurrentMockUser(mockUser);
+          return Promise.resolve({
+            user: mockUser,
+            credential: {
+              providerId: 'google.com',
+              accessToken: OAUTH_ACCESS_TOKEN,
+            },
+          });
+        }),
+      };
+      const app = testUtils.createMockApp(
+          expectedGcipConfig,
+          stubbedAuthMethods);
+      const expectedGcipConfigResp = testUtils.createMockHttpResponse(
+          {'Content-Type': 'application/json'},
+          expectedGcipConfig);
+      const expectedGetAdminConfigResp = testUtils.createMockHttpResponse(
+          {'Content-Type': 'application/json'},
+          expectedUiConfig);
+      httpClientSendStub.callsFake((params) => {
+        expect(params.timeout).to.be.equal(TIMEOUT_DURATION);
+        expect(params.mode).to.be.equal('same-origin');
+        expect(params.cache).to.be.equal('no-cache');
+        if (params.url === '/gcipConfig') {
+          expect(params.method).to.be.equal('GET');
+          expect(params.headers).to.deep.equal({
+            'Content-Type': 'application/json',
+          });
+          return Promise.resolve(expectedGcipConfigResp);
+        } else if (params.url === '/get_admin_config') {
+          expect(params.method).to.be.equal('GET');
+          expect(params.headers).to.deep.equal({
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${OAUTH_ACCESS_TOKEN}`,
+          });
+          return Promise.resolve(expectedGetAdminConfigResp);
+        }
+        throw new Error('Unexpected call');
+      });
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
+        expect(config).to.deep.equal(expectedGcipConfig);
+        return app as any;
+      });
+      stubs.push(firebaseStub);
+      const copyTextAreaContentStub = sinon.stub(utils, 'copyTextAreaContent');
+      stubs.push(copyTextAreaContentStub);
+
+      const adminUi = new AdminUi(mainContainer, showToast);
+      return adminUi.render()
+        .then(() => {
+          expect(httpClientSendStub).to.have.been.calledTwice;
+          const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
+          expect(mainContainer.style.display).to.be.equal('block');
+          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
+          // Confirm CodeMirror editor behavior.
+          expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
+              area, {lineNumbers: true, mode: 'application/json'});
+          const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
+          expect(editorInstance.getValue()).to.be.equal(area.value);
+          // Update editor content with an invalid config.
+          editorInstance.setValue(JSON.stringify(updatedUiConfig));
+          // Test save functionality.
+          const adminFormButton = mainContainer.querySelector('button[type="submit"]');
+          (adminFormButton as HTMLButtonElement).click();
+          // No additional network request.
+          expect(httpClientSendStub).to.have.been.calledTwice;
+          // Add some delay before checking toast message.
+          return Promise.resolve();
+        })
+        .then(() => {
+          // Confirm re-auth button still hidden.
+          const reauthButton = document.getElementsByClassName('reauth')[0];
+          expect((reauthButton as HTMLButtonElement).style.display).to.be.equal('none');
+          // Confirm invalid config error displayed.
+          assertToastMessage('Error', `"${API_KEY}.selectTenantUiTitle" should be a valid string.`);
           expect(showToast).to.have.been.calledOnce;
         });
     });

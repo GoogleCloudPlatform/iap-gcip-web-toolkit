@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-import { URL } from 'url';
+import * as url from 'url';
+// TODO: find cleaner way to have this work client and server side.
+const URL: any = url.URL || (window && window.URL);
 
 /** Defines a single validation node needed for validating JSON object. */
 interface ValidationNode {
@@ -110,62 +112,6 @@ export function isObject(value: any): boolean {
  */
 export function isNonNullObject(value: any): boolean {
   return isObject(value) && value !== null;
-}
-
-/**
- * Validates whether the url provided is whitelisted in the list of authorized domains.
- * Authorized domains currently correspond to: domain.com = *://*.domain.com:* or
- * exact domain match.
- * In the case of Chrome extensions, the authorizedDomain will be formatted
- * as 'chrome-extension://abcdefghijklmnopqrstuvwxyz123456'.
- * The URL to check must have a chrome extension scheme and the domain
- * must be an exact match domain == 'abcdefghijklmnopqrstuvwxyz123456'.
- * For GCIP/IAP purposes, only http and https domains (traditional browser application) will be accepted.
- *
- * @param authorizedDomains List of authorized domains.
- * @param url The URL to check.
- * @return Whether the passed domain is an authorized one.
- */
-export function isAuthorizedDomain(authorizedDomains: string[], url: string): boolean {
-  const uri = new URL(url);
-  const scheme = uri.protocol;
-  const domain = uri.hostname;
-  let matchFound = false;
-  authorizedDomains.forEach((authorizedDomain: string) => {
-    if (matchDomain(authorizedDomain, domain, scheme)) {
-      matchFound = true;
-    }
-  });
-  return matchFound;
-}
-
-/**
- * @param domainPattern The domain pattern to match.
- * @param domain The domain to check. It is assumed that it is a valid
- *     domain, not a user provided one.
- * @param scheme The scheme of the domain to check.
- * @return Whether the provided domain matches the domain pattern.
- */
-function matchDomain(domainPattern: string, domain: string, scheme: string): boolean {
-  if (scheme !== 'http:' && scheme !== 'https:') {
-    // Any other scheme that is not http or https cannot be whitelisted.
-    return false;
-  } else {
-    // domainPattern must not contain a scheme and the current scheme must be
-    // either http or https.
-    // Check if authorized domain pattern is an IP address.
-    if (IP_ADDRESS_REGEXP.test(domainPattern)) {
-      // The domain has to be exactly equal to the pattern, as an IP domain will
-      // only contain the IP, no extra character.
-      return domain === domainPattern;
-    }
-    // Dots in pattern should be escaped.
-    const escapedDomainPattern = domainPattern.split('.').join('\\.');
-    // Non ip address domains.
-    // domain.com = *.domain.com OR domain.com
-    const re = new RegExp('^(.+\\.' + escapedDomainPattern + '|' + escapedDomainPattern + ')$', 'i');
-    return re.test(domain);
-  }
 }
 
 /**

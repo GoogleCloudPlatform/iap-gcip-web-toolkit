@@ -16,7 +16,7 @@
 
 import * as nock from 'nock';
 import * as sinon from 'sinon';
-import {HttpServerRequestHandler} from '../../../utils/http-server-request-handler';
+import {HttpServerRequestHandler} from '../../../../server/utils/http-server-request-handler';
 import {describe, it, beforeEach, afterEach} from 'mocha';
 import * as chai from 'chai';
 import * as sinonChai from 'sinon-chai';

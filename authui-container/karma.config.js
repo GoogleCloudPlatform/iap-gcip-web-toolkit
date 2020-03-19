@@ -21,6 +21,7 @@ module.exports = function(config) {
     frameworks: ['mocha', 'chai', 'sinon', 'karma-typescript'],
     files: [
       'src/**/*.ts',
+      'common/**/*.ts',
       'src/utils/**/*.ts',
       'test/unit/src/**/*.ts',
       'test/unit/src/utils/**/*.ts',
@@ -29,7 +30,8 @@ module.exports = function(config) {
     preprocessors: {
       'test/unit/src/**/*.ts': ['karma-typescript'],
       'src/utils/**/*.ts': ['karma-typescript', 'coverage'],
-      'src/**/*.ts': ['karma-typescript', 'coverage']
+      'src/**/*.ts': ['karma-typescript', 'coverage'],
+      'common/**/*.ts': ['karma-typescript'],
     },
     mime: {
       'text/x-typescript': ['ts']

@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-import {HttpServerRequestHandler} from '../../utils/http-server-request-handler';
+import {HttpServerRequestHandler} from '../../server/utils/http-server-request-handler';
 import {TokenManager, AccessTokenManager} from './token-manager';
 
 /** Metadata server project number endpoint. */

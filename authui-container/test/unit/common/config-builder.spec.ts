@@ -19,8 +19,8 @@ import {expect} from 'chai';
 import {
   DefaultUiConfigBuilder, TENANT_ICON_URL, SELECT_TENANT_LOGO_URL,
   SIGN_IN_UI_LOGO_URL, UiConfig,
-} from '../../../server/config-builder';
-import { deepCopy } from '../../../utils/deep-copy';
+} from '../../../common/config-builder';
+import { deepCopy } from '../../../common/deep-copy';
 
 describe('DefaultUiConfigBuilder', () => {
   const PROJECT_ID = 'project-id';

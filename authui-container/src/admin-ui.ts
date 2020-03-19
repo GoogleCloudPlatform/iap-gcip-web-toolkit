@@ -15,6 +15,7 @@
 import {deepCopy, copyTextAreaContent} from './utils/index';
 import {UiConfig} from './sign-in-ui';
 import {HttpClient, HttpRequestConfig, HttpResponse} from './utils/http-client';
+import {DefaultUiConfigBuilder} from '../common/config-builder';
 // Import Firebase dependencies.
 // tslint:disable-next-line
 import * as firebase from 'firebase/app';
@@ -242,17 +243,44 @@ export class AdminUi {
   private addCopyToClipboardClickHandler() {
     this.copyToClipboardElement.addEventListener('click', (e) => {
       this.textAreaElement.value = this.editor.getValue();
-      // CodeMirror hides the textarea after rendering.
-      const previousDisplay = this.textAreaElement.style.display;
-      // Copy does not seem to work on hidden content.
-      this.textAreaElement.style.display = 'block';
-      copyTextAreaContent(this.textAreaElement);
-      // Restore previous state.
-      this.textAreaElement.style.display = previousDisplay;
-      this.showToastMessage('success', MSG_CONFIGURATION_COPIED);
+      if (this.validateConfig(this.editor.getValue())) {
+        // CodeMirror hides the textarea after rendering.
+        const previousDisplay = this.textAreaElement.style.display;
+        // Copy does not seem to work on hidden content.
+        this.textAreaElement.style.display = 'block';
+        copyTextAreaContent(this.textAreaElement);
+        // Restore previous state.
+        this.textAreaElement.style.display = previousDisplay;
+        this.showToastMessage('success', MSG_CONFIGURATION_COPIED);
+      }
       e.preventDefault();
       return false;
     });
+  }
+
+  /**
+   * Validates the provided configuration and displays an error message
+   * if any error is detected. Return true on successful validation or false otherwise.
+   * @param configString The provided configuration string.
+   * @return Whether the config is valid or not.
+   */
+  private validateConfig(configString: string): boolean {
+    let newConfig: UiConfig;
+    try {
+      // Parse config string first.
+      newConfig = JSON.parse(configString);
+    } catch (e) {
+      this.showToastMessage('error', MSG_INVALID_CONFIGURATION);
+      return false;
+    }
+    // Validate provided config.
+    try {
+      DefaultUiConfigBuilder.validateConfig(newConfig);
+    } catch (e) {
+      this.showToastMessage('error', e.message);
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -285,12 +313,8 @@ export class AdminUi {
   private addSaveConfigClickHandler() {
     this.adminFormElement.addEventListener('submit', (e) => {
       e.preventDefault();
-      let newConfig: UiConfig;
-      try {
-        newConfig = JSON.parse(this.textAreaElement.value);
-        this.setAdminConfig(newConfig);
-      } catch (e) {
-        this.showToastMessage('error', MSG_INVALID_CONFIGURATION);
+      if (this.validateConfig(this.textAreaElement.value)) {
+        this.setAdminConfig(JSON.parse(this.textAreaElement.value));
       }
       return false;
     });

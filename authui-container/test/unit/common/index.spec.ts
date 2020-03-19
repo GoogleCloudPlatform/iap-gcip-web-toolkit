@@ -19,7 +19,7 @@ import {expect} from 'chai';
 import {
   addReadonlyGetter, removeUndefinedFields, formatString,
   mapObject, sanitizeUrl, isSafeUrl,
-} from '../../../utils/index';
+} from '../../../common/index';
 
 
 interface Obj {

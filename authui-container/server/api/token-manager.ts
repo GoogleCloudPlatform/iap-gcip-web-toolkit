@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-import {HttpServerRequestHandler} from '../../utils/http-server-request-handler';
+import {HttpServerRequestHandler} from '../../server/utils/http-server-request-handler';
 
 /** Interface defining a Google OAuth access token. */
 export interface GoogleOAuthAccessToken {

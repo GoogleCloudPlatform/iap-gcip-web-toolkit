@@ -12,8 +12,7 @@
  * limitations under the License.
  */
 
-import {TenantUiConfig, GcipConfig} from './api/gcip-handler';
-import * as validators from '../utils/validator';
+import * as validators from './validator';
 
 // TODO: Temporary URLs for now. Replace with production ones when ready.
 // This is the icon for each tenant button in the tenant selection screen.
@@ -24,6 +23,21 @@ export const SELECT_TENANT_LOGO_URL =
     '-rlkYYZNeSjm8xRd=w80-h40';
 // Sign in UI screen logo. This is the logo on the sign-in UI screen after a tenant is already selected.
 export const SIGN_IN_UI_LOGO_URL = 'https://img.icons8.com/cotton/2x/cloud.png';
+
+interface GcipConfig {
+  apiKey: string;
+  authDomain: string;
+}
+
+interface TenantUiConfigSignInOption {
+  provider: string;
+  providerName?: string;
+}
+
+interface TenantUiConfig {
+  displayName?: string;
+  signInOptions: TenantUiConfigSignInOption[];
+}
 
 interface SignInOption {
   provider: string;

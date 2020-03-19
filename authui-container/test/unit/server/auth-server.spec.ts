@@ -26,14 +26,14 @@ import {AuthServer, AUTH_SERVER_SCOPES} from '../../../server/auth-server';
 import express = require('express');
 import * as storage from '../../../server/api/cloud-storage-handler';
 import * as metadata from '../../../server/api/metadata-server';
-import { ERROR_MAP, ErrorResponse } from '../../../utils/error';
-import { addReadonlyGetter } from '../../../utils/index';
-import { deepCopy } from '../../../utils/deep-copy';
+import { ERROR_MAP, ErrorResponse } from '../../../server/utils/error';
+import { addReadonlyGetter } from '../../../common/index';
+import { deepCopy } from '../../../common/deep-copy';
 import * as gcip from '../../../server/api/gcip-handler';
 import * as iap from '../../../server/api/iap-settings-handler';
 import {
   DefaultUiConfigBuilder,
-} from '../../../server/config-builder';
+} from '../../../common/config-builder';
 
 chai.should();
 chai.use(sinonChai);
