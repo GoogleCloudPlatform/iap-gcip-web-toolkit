@@ -127,10 +127,30 @@ describe('Authentication', () => {
       expect(handler.languageCode).to.equal(hl);
     });
 
+    it('should initialize default SharedSettings with passed framework version', () => {
+      const frameworkVersion = 'ui-0.0.1';
+      const currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, hl);
+      const expectedConfig = new Config(currentUrl);
+      const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
+      const frameworkSharedSettings = new SharedSettings(apiKey, frameworkVersion);
+      stubs.push(stub);
+
+      expect(() => {
+        return new Authentication(handler, undefined, frameworkVersion);
+      }).not.to.throw();
+      // Default shared settings with framework version used.
+      expect(signInOperationHandlerSpy).to.have.been.calledOnce
+        .and.calledWith(expectedConfig, handler, frameworkSharedSettings);
+      expect(signOutOperationHandlerSpy).to.not.have.been.called;
+      expect(selectAuthSessionOperationHandlerSpy).to.not.have.been.called;
+      expect(handler.languageCode).to.equal(hl);
+    });
+
     it('should use same SharedSettings reference for a login mode AuthenticationHandler', () => {
+      const frameworkVersion = 'ui-0.0.1';
       const currentUrl = createMockUrl('login', apiKey, tid, redirectUri, state, hl);
       const stub = sinon.stub(utils, 'getCurrentUrl').returns(currentUrl);
-      const sharedSettingsRef = new SharedSettings(apiKey);
+      const sharedSettingsRef = new SharedSettings(apiKey, frameworkVersion);
       stubs.push(stub);
 
       expect(() => {

@@ -74,8 +74,10 @@ export class GCIPRequestHandler {
    *
    * @param apiKey The browser API key.
    * @param httpClient The HTTP client used to process RPCs to GCIP endpoints.
+   * @param framework Optional additional framework version to log.
    */
-  constructor(private readonly apiKey: string, private readonly httpClient: HttpClient) {
+  constructor(
+      private readonly apiKey: string, private readonly httpClient: HttpClient, private readonly framework?: string) {
     if (!isNonEmptyString(apiKey)) {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid API key');
     }
@@ -101,9 +103,11 @@ export class GCIPRequestHandler {
           throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid URL');
         }
       });
-
+      // Inject framework in header if available.
+      const extendedHeaders = typeof this.framework === 'undefined' ?
+          null : {'X-Client-Version': getClientVersion(undefined, this.framework)};
       return GCIPRequestHandler.GET_PROJECT_CONFIG.process(
-          this.httpClient, {apiKey: this.apiKey}, null, null, this.timeout)
+          this.httpClient, {apiKey: this.apiKey}, null, extendedHeaders, this.timeout)
           .then((response: HttpResponse) => {
             const responseJson = response.data as GetProjectConfigResponse;
             // Check each URL.

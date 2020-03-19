@@ -32,11 +32,12 @@ export class SharedSettings {
   /**
    * Initializes a shared settings instance.
    * @param apiKey The shared settings API key.
+   * @param framework Optional additional framework version to log.
    */
-  constructor(public readonly apiKey: string) {
+  constructor(public readonly apiKey: string, framework?: string) {
     const httpClient = new HttpClient();
     this.cache = new PromiseCache();
-    this.gcipRequest = new GCIPRequestHandler(apiKey, httpClient);
+    this.gcipRequest = new GCIPRequestHandler(apiKey, httpClient, framework);
     this.iapRequest = new IAPRequestHandler(httpClient);
   }
 }

@@ -116,8 +116,12 @@ export function isMobileBrowser(userAgent?: string): boolean {
  * This library is only usable from a window browser environment.
  *
  * @param The optional user agent.
+ * @param framework Optional additional framework version to log.
  * @return The full client SDK version.
  */
-export function getClientVersion(userAgent?: string): string {
-  return `${getBrowserName(userAgent || getUserAgentString())}/CIAP/<XXX_SDK_VERSION_XXX>`;
+export function getClientVersion(userAgent?: string, framework?: string): string {
+  // The format to be followed:
+  // ${browserName}/${clientImplementation}/${clientVersion}/${frameworkVersion}
+  return `${getBrowserName(userAgent || getUserAgentString())}/CIAP/<XXX_SDK_VERSION_XXX>` +
+    (typeof framework === 'undefined' ? '' : `/${framework}`);
 }

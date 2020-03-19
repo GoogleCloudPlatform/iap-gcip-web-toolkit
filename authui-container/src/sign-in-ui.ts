@@ -83,6 +83,8 @@ const GET_CONFIG_PARAMS: HttpRequestConfig = {
   url: '/config',
   timeout: TIMEOUT_DURATION,
 };
+// The current version of the hosted UI.
+export const HOSTED_UI_VERSION = '__XXX_HOSTED_UI_VERSION_XXX__';
 
 /** Utility for handling sign-in with IAP external identities. */
 export class SignInUi {
@@ -134,7 +136,8 @@ export class SignInUi {
         // token refresh, safe redirect to callback URL, etc.
         const handler = new firebaseui.auth.FirebaseUiHandler(
             this.container, config);
-        this.ciapAuth = new ciap.Authentication(handler);
+        // Log the hosted UI version.
+        this.ciapAuth = new (ciap.Authentication as any)(handler, undefined, HOSTED_UI_VERSION);
         return this.ciapAuth.start();
       })
       .catch((error) => {

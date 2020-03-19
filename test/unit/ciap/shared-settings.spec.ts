@@ -23,6 +23,7 @@ import { SharedSettings } from '../../../src/ciap/shared-settings';
 
 describe('SharedSettings', () => {
   const apiKey = 'API_KEY';
+  const FRAMEWORK_VERSION = 'ui-0.0.1';
 
   describe('Constructor', () => {
     it('should create an instance with the expected public properties' , () => {
@@ -31,6 +32,17 @@ describe('SharedSettings', () => {
       expect(sharedSettings.apiKey).to.equal(apiKey);
       expect(sharedSettings.gcipRequest)
         .to.deep.equal(new GCIPRequestHandler(apiKey, new HttpClient()));
+      expect(sharedSettings.iapRequest)
+        .to.deep.equal(new IAPRequestHandler(new HttpClient()));
+      expect(sharedSettings.cache).to.deep.equal(new PromiseCache());
+    });
+
+    it('should create an instance with the expected public properties when framework is provided' , () => {
+      const sharedSettings = new SharedSettings(apiKey, FRAMEWORK_VERSION);
+
+      expect(sharedSettings.apiKey).to.equal(apiKey);
+      expect(sharedSettings.gcipRequest)
+        .to.deep.equal(new GCIPRequestHandler(apiKey, new HttpClient(), FRAMEWORK_VERSION));
       expect(sharedSettings.iapRequest)
         .to.deep.equal(new IAPRequestHandler(new HttpClient()));
       expect(sharedSettings.cache).to.deep.equal(new PromiseCache());

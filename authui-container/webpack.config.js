@@ -16,6 +16,7 @@
 'use strict';
 
 const path = require('path');
+const pkg = require('./package.json');
 
 const config = {
   context: __dirname,
@@ -61,6 +62,17 @@ const config = {
       {
         test: /\.(png|woff|woff2|eot|ttf|svg)$/,
         loader: 'url-loader?limit=100000'
+      },
+      {
+        // Inject hosted UI version into gcip-iap.
+        // This is useful for detecting traffic from older versions of the hosted UI.
+        test: /\.ts$/,
+        loader: 'string-replace-loader',
+        options: {
+          search: '__XXX_HOSTED_UI_VERSION_XXX__',
+          replace: 'ui-' + pkg.version,
+          flags: 'g'
+        }
       }
     ]
   },

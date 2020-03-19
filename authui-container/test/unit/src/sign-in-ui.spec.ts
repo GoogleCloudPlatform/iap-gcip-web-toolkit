@@ -16,7 +16,7 @@
 
 import {expect} from 'chai';
 import * as sinon from 'sinon';
-import { SignInUi, UiConfig } from '../../../src/sign-in-ui';
+import { SignInUi, UiConfig, HOSTED_UI_VERSION } from '../../../src/sign-in-ui';
 import * as ciap from 'gcip-iap';
 import * as firebaseui from 'firebaseui';
 import * as utils from '../../../src/utils/index';
@@ -314,7 +314,8 @@ describe('SignInUi', () => {
         .then(() => {
           expect(setStyleSheetStub).to.have.been.calledOnce.and.calledWith(document, CUSTOM_STYLESHEET_URL);
           expect(httpClientSendStub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
-          expect(ciapAuthenticationStub).to.have.been.calledOnce.and.calledWith(mockHandler);
+          expect(ciapAuthenticationStub).to.have.been.calledOnce
+            .and.calledWith(mockHandler, undefined, HOSTED_UI_VERSION);
           expect(mockAuth.start).to.have.been.calledOnce;
           expect(firebaseUiHandlerStub).to.have.been.calledOnce;
           expect(firebaseUiHandlerStub.getCalls()[0].args[0]).to.be.equal(containerElement);

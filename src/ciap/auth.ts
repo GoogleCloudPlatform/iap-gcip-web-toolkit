@@ -41,8 +41,9 @@ export class Authentication {
    * @param handler The externally provided AuthenticationHandler used to
    *     interact with the GCIP/Firebase Auth instance and display sign-in or sign-out related UI.
    * @param sharedSettings The shared settings to use for caching RPC requests.
+   * @param framework Optional additional framework version to log.
    */
-  constructor(private readonly handler: AuthenticationHandler, sharedSettings?: SharedSettings) {
+  constructor(private readonly handler: AuthenticationHandler, sharedSettings?: SharedSettings, framework?: string) {
     // This is a developer error and should be thrown synchronously.
     if (!isAuthenticationHandler(handler)) {
       throw new CIAPError(CLIENT_ERROR_CODES['invalid-argument'], 'Invalid AuthenticationHandler');
@@ -55,7 +56,7 @@ export class Authentication {
       const config = new Config(getCurrentUrl(window), getHistoryState(window));
       // Shared settings API key must match current config.
       this.sharedSettings = sharedSettings && sharedSettings.apiKey === config.apiKey ?
-          sharedSettings : new SharedSettings(config.apiKey);
+          sharedSettings : new SharedSettings(config.apiKey, framework);
       try {
         // Set language code on initialization.
         // This may be needed for various UI related contexts:

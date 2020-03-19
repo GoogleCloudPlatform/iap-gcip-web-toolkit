@@ -159,6 +159,23 @@ describe('GCIPRequestHandler', () => {
         });
     });
 
+    it('should pass framework in header if available', () => {
+      const frameworkVersion = 'ui-0.0.1';
+      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+      stubs.push(stub);
+
+      const extendedConfigRequest = deepCopy(expectedConfigRequest);
+      extendedConfigRequest.headers['X-Client-Version'] = browser.getClientVersion(undefined, frameworkVersion);
+
+      const extendedRequestHandler = new GCIPRequestHandler(apiKey, httpClient, frameworkVersion);
+      return extendedRequestHandler
+        .checkAuthorizedDomainsAndGetProjectId(['https://example.com', 'https://authorized.com'])
+        .then((actualProjectId: string) => {
+          expect(actualProjectId).to.equal(projectId);
+          expect(stub).to.have.been.calledOnce.and.calledWith(extendedConfigRequest);
+        });
+    });
+
     it('should reject when the single URL array has an unauthorized domain', () => {
       const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
       stubs.push(stub);

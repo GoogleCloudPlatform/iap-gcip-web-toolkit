@@ -114,4 +114,9 @@ describe('getClientVersion', () => {
     expect(getClientVersion(USER_AGENTS.chrome)).to.equal('Chrome/CIAP/<XXX_SDK_VERSION_XXX>');
     expect(getClientVersion(USER_AGENTS.safari)).to.equal('Safari/CIAP/<XXX_SDK_VERSION_XXX>');
   });
+
+  it('should append framework version when available', () => {
+    expect(getClientVersion(USER_AGENTS.chrome, 'ui-0.0.1')).to.equal('Chrome/CIAP/<XXX_SDK_VERSION_XXX>/ui-0.0.1');
+    expect(getClientVersion(USER_AGENTS.safari, 'ui-2.3.0')).to.equal('Safari/CIAP/<XXX_SDK_VERSION_XXX>/ui-2.3.0');
+  });
 });
