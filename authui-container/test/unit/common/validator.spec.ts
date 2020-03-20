@@ -626,6 +626,18 @@ describe('JsonObjectValidator', () => {
             },
           },
         },
+        'key7[]': {
+          nodes: {
+            key8: {
+              validator: (input: any) => {
+                // If input not number, throw.
+                if (!isNumber(input)) {
+                  throw new Error('invalid key8 type');
+                }
+              },
+            },
+          },
+        },
         key3: {
           nodes: {
             key4: {
@@ -680,7 +692,51 @@ describe('JsonObjectValidator', () => {
     c3: {
       key2: ['single value'],
     },
-  }
+  };
+  const requiredFields = [
+    '*.key1',
+    '*.key2[]',
+    '*.key3.key4',
+    '*.key7[].key8',
+  ];
+  const testObjectWithRequiredFields = {
+    a1: {
+      key1: 'some-string',
+      key2: ['str1', 'str2'],
+      key3: {
+        key4: false,
+      },
+      key7: [{
+        key8: 1,
+      }],
+    },
+    b2: {
+      key1: 'other',
+      key2: [],
+      key3: {
+        key4: {
+          key5: -1.3,
+        },
+      },
+      key7: [{
+        key8: 2,
+      }],
+    },
+    c3: {
+      key1: 'another',
+      key2: ['single value'],
+      key3: {
+        key4: {
+          key5: {
+            foo: 'bar',
+          },
+        },
+      },
+      key7: [{
+        key8: 3,
+      }],
+    },
+  };
 
   describe('validate()', () => {
     it('should not throw on valid JSON object', () => {
@@ -791,6 +847,130 @@ describe('JsonObjectValidator', () => {
         };
         jsonObjectValidator.validate(validObject);
       }).to.throw('invalid key5.* type');
+    });
+
+    it('should not throw when all required fields are available', () => {
+      const requiredJsonObjectValidator = new JsonObjectValidator(validationTree, requiredFields);
+      expect(() => {
+        requiredJsonObjectValidator.validate(testObjectWithRequiredFields);
+      }).not.to.throw();
+    });
+
+    it('should not throw when required array is empty', () => {
+      const requiredJsonObjectValidator = new JsonObjectValidator(validationTree, requiredFields);
+      expect(() => {
+        const modifiedFieldObject = deepCopy(testObjectWithRequiredFields);
+        modifiedFieldObject.b2.key2 = [];
+        requiredJsonObjectValidator.validate(modifiedFieldObject);
+      }).not.to.throw();
+    });
+
+    it('should throw when required top level field is missing', () => {
+      const requiredJsonObjectValidator = new JsonObjectValidator(validationTree, requiredFields);
+      expect(() => {
+        const missingFieldObject = deepCopy(testObjectWithRequiredFields);
+        delete missingFieldObject.c3.key1;
+        requiredJsonObjectValidator.validate(missingFieldObject);
+      }).to.throw('Missing required field "*.key1"');
+    });
+
+    it('should throw when required nested field is missing', () => {
+      const requiredJsonObjectValidator = new JsonObjectValidator(validationTree, requiredFields);
+      expect(() => {
+        const missingFieldObject = deepCopy(testObjectWithRequiredFields);
+        delete missingFieldObject.b2.key3.key4;
+        requiredJsonObjectValidator.validate(missingFieldObject);
+      }).to.throw('Missing required field "*.key3.key4"');
+    });
+
+    it('should throw when required array is missing', () => {
+      const requiredJsonObjectValidator = new JsonObjectValidator(validationTree, requiredFields);
+      expect(() => {
+        const missingFieldObject = deepCopy(testObjectWithRequiredFields);
+        delete missingFieldObject.b2.key2;
+        requiredJsonObjectValidator.validate(missingFieldObject);
+      }).to.throw('Missing required field "*.key2[]"');
+    });
+
+    it('should throw when required object in array is missing', () => {
+      const requiredJsonObjectValidator = new JsonObjectValidator(validationTree, requiredFields);
+      expect(() => {
+        const missingFieldObject = deepCopy(testObjectWithRequiredFields);
+        delete missingFieldObject.b2.key7[0].key8;
+        requiredJsonObjectValidator.validate(missingFieldObject);
+      }).to.throw('Missing required field "*.key7[].key8"');
+    });
+
+    it('should not throw when top level explicit required field is provided', () => {
+      const requiredJsonObjectValidator = new JsonObjectValidator({
+        '*': {
+          validator: (input: any) => {
+            // If input not string, throw.
+            if (!isString(input)) {
+              throw new Error('invalid "top" type');
+            }
+          },
+        },
+      }, ['top']);
+      expect(() => {
+        requiredJsonObjectValidator.validate({top: 'hello'});
+      }).not.to.throw();
+    });
+
+    it('should throw when top level explicit required field is not provided', () => {
+      const requiredJsonObjectValidator = new JsonObjectValidator({
+        '*': {
+          validator: (input: any) => {
+            // If input not string, throw.
+            if (!isString(input)) {
+              throw new Error('invalid "top" type');
+            }
+          },
+        },
+      }, ['top']);
+      expect(() => {
+        requiredJsonObjectValidator.validate({other: 'hello'});
+      }).to.throw('Missing required field "top"');
+    });
+
+    it('should not throw when required nested wilcard claim is provided', () => {
+      const requiredJsonObjectValidator = new JsonObjectValidator({
+        top: {
+          nodes: {
+            '*': {
+              validator: (input: any) => {
+                // If input not string, throw.
+                if (!isString(input)) {
+                  throw new Error('invalid "top" type');
+                }
+              },
+            },
+          },
+        },
+      }, ['top.*']);
+      expect(() => {
+        requiredJsonObjectValidator.validate({top: {nested: 'hello'}});
+      }).not.to.throw();
+    });
+
+    it('should throw when required nested wilcard claim is not provided', () => {
+      const requiredJsonObjectValidator = new JsonObjectValidator({
+        top: {
+          nodes: {
+            '*': {
+              validator: (input: any) => {
+                // If input not string, throw.
+                if (!isString(input)) {
+                  throw new Error('invalid "top" type');
+                }
+              },
+            },
+          },
+        },
+      }, ['top.*']);
+      expect(() => {
+        requiredJsonObjectValidator.validate({top: {}});
+      }).to.throw('Missing required field "top.*"');
     });
   });
 });

@@ -88,6 +88,17 @@ export interface UiConfig {
   };
 }
 
+// List of required fields.
+const REQUIRED_FIELDS = [
+  '*.authDomain',
+  '*.displayMode',
+  '*.tenants.*.displayName',
+  '*.tenants.*.iconUrl',
+  '*.tenants.*.logoUrl',
+  '*.tenants.*.buttonColor',
+  '*.tenants.*.signInOptions[]',
+];
+
 /** UiConfig validation tree. */
 const VALIDATION_TREE: validators.ValidationTree = {
   '*': {
@@ -351,7 +362,7 @@ const VALIDATION_TREE: validators.ValidationTree = {
 /** Utility for building the default UI config object. */
 export class DefaultUiConfigBuilder {
   private static uiConfigValidator: validators.JsonObjectValidator =
-      new validators.JsonObjectValidator(VALIDATION_TREE);
+      new validators.JsonObjectValidator(VALIDATION_TREE, REQUIRED_FIELDS);
 
   /**
    * Validates the provided UiConfig object.

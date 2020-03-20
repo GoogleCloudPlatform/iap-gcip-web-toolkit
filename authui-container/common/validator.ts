@@ -294,13 +294,18 @@ export function isSafeString(value: any): boolean {
  *     },
  *   },
  * };
+ * Required fields can also be enforced:
+ * const requiredFields = ['*.key1', '*.key2[]', '*.key3.key4.key5'];
  */
 export class JsonObjectValidator {
   /**
    * Instantiates a JSON object validator using the provided validation tree.
    * @param validationTree The validation tree to use.
+   * @param requiredFields list of required field paths.
    */
-  constructor(private readonly validationTree: ValidationTree) {}
+  constructor(
+    private readonly validationTree: ValidationTree,
+    private readonly requiredFields: string[] = []) {}
 
   /**
    * Validates the provided object.
@@ -308,6 +313,51 @@ export class JsonObjectValidator {
    */
   validate(obj: any) {
     this.validateJson(obj, []);
+    this.checkRequiredFields(obj);
+  }
+
+  /**
+   * Validates that all required fields are provided.
+   * @param obj The object to validate.
+   */
+  private checkRequiredFields(obj: any) {
+    for (const requiredField of this.requiredFields) {
+      this.validateRequired(obj, requiredField.split('.'), requiredField);
+    }
+  }
+
+  /**
+   * Validates that the list of component keys are available in the provided object.
+   * @param obj The object to validate.
+   * @param components The array of keys to continue traversing to ensure availability.
+   * @param path The full path, useful for providing details in the error message.
+   */
+  private validateRequired(obj: any, components: string[], path: string) {
+    if (!components.length) {
+      return;
+    }
+    const component = components[0];
+    if (component === '*') {
+      const allKeys = Object.keys(obj);
+      if (!allKeys.length) {
+        throw new Error(`Missing required field "${path}"`);
+      }
+      for (const key of allKeys) {
+        this.validateRequired(obj[key], components.slice(1), path);
+      }
+    } else if (component.substring(component.length - 2) === '[]') {
+      const prefixKey = component.substring(0, component.length - 2);
+      if (!isArray(obj[prefixKey])) {
+        throw new Error(`Missing required field "${path}"`);
+      }
+      for (const entry of obj[prefixKey]) {
+        this.validateRequired(entry, components.slice(1), path);
+      }
+    } else if (obj.hasOwnProperty(component)) {
+      this.validateRequired(obj[component], components.slice(1), path);
+    } else {
+      throw new Error(`Missing required field "${path}"`);
+    }
   }
 
   /**

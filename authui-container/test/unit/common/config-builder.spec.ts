@@ -388,20 +388,68 @@ describe('DefaultUiConfigBuilder', () => {
       }).not.to.throw();
     });
 
-    it('should not throw on valid empty tenants object type', () => {
-      expect(() => {
-        const validConfig: any = deepCopy(expectedUiConfig);
-        validConfig[API_KEY].tenants.tenantId2 = {};
-        DefaultUiConfigBuilder.validateConfig(validConfig);
-      }).not.to.throw();
-    });
-
     it('should not throw on valid multiple signInOptions type values', () => {
       expect(() => {
         const validConfig: any = deepCopy(expectedUiConfig);
         validConfig[API_KEY].tenants.tenantId2.signInOptions = ['facebook.com' , {provider: 'twitter.com'}];
         DefaultUiConfigBuilder.validateConfig(validConfig);
       }).not.to.throw();
+    });
+
+    it('should throw on missing authDomain', () => {
+      expect(() => {
+        const invalidConfig: any = deepCopy(expectedUiConfig);
+        delete invalidConfig[API_KEY].authDomain;
+        DefaultUiConfigBuilder.validateConfig(invalidConfig);
+      }).to.throw(`Missing required field "*.authDomain"`);
+    });
+
+    it('should throw on missing displayMode', () => {
+      expect(() => {
+        const invalidConfig: any = deepCopy(expectedUiConfig);
+        delete invalidConfig[API_KEY].displayMode;
+        DefaultUiConfigBuilder.validateConfig(invalidConfig);
+      }).to.throw(`Missing required field "*.displayMode"`);
+    });
+
+    it('should throw on missing tenant *.tenants.*.displayName', () => {
+      expect(() => {
+        const invalidConfig: any = deepCopy(expectedUiConfig);
+        delete invalidConfig[API_KEY].tenants.tenantId1.displayName;
+        DefaultUiConfigBuilder.validateConfig(invalidConfig);
+      }).to.throw(`Missing required field "*.tenants.*.displayName"`);
+    });
+
+    it('should throw on missing tenant *.tenants.*.iconUrl', () => {
+      expect(() => {
+        const invalidConfig: any = deepCopy(expectedUiConfig);
+        delete invalidConfig[API_KEY].tenants.tenantId1.iconUrl;
+        DefaultUiConfigBuilder.validateConfig(invalidConfig);
+      }).to.throw(`Missing required field "*.tenants.*.iconUrl"`);
+    });
+
+    it('should throw on missing tenant *.tenants.*.logoUrl', () => {
+      expect(() => {
+        const invalidConfig: any = deepCopy(expectedUiConfig);
+        delete invalidConfig[API_KEY].tenants.tenantId1.logoUrl;
+        DefaultUiConfigBuilder.validateConfig(invalidConfig);
+      }).to.throw(`Missing required field "*.tenants.*.logoUrl"`);
+    });
+
+    it('should throw on missing tenant *.tenants.*.buttonColor', () => {
+      expect(() => {
+        const invalidConfig: any = deepCopy(expectedUiConfig);
+        delete invalidConfig[API_KEY].tenants.tenantId1.buttonColor;
+        DefaultUiConfigBuilder.validateConfig(invalidConfig);
+      }).to.throw(`Missing required field "*.tenants.*.buttonColor"`);
+    });
+
+    it('should throw on missing tenant *.tenants.*.signInOptions[]', () => {
+      expect(() => {
+        const invalidConfig: any = deepCopy(expectedUiConfig);
+        delete invalidConfig[API_KEY].tenants.tenantId1.signInOptions;
+        DefaultUiConfigBuilder.validateConfig(invalidConfig);
+      }).to.throw(`Missing required field "*.tenants.*.signInOptions[]"`);
     });
 
     it('should throw on invalid key', () => {
