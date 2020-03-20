@@ -241,9 +241,11 @@ export class AuthServer {
     if (process.env.UI_CONFIG) {
       try {
         const config: UiConfig = JSON.parse(process.env.UI_CONFIG);
+        DefaultUiConfigBuilder.validateConfig(config);
         return Promise.resolve(config);
-      } catch (e) {
-        // Ignore.
+      } catch (error) {
+        // Ignore but log error.
+        log(`Invalid configuration in environment variable UI_CONFIG: ${error.message}`);
       }
     }
     // Parse config from GCS bucket if available.

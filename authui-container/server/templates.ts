@@ -42,6 +42,7 @@ const admin = handlebars.compile(`
 <html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://unpkg.com/jsonlint@1.6.3/web/jsonlint.js"></script>
   <script src="/static/admin.js" type="text/javascript"></script>
   <body>
     <div class="toast-container">

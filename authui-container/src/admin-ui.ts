@@ -27,6 +27,10 @@ import '../node_modules/codemirror/lib/codemirror.css';
 import * as CodeMirror from '../node_modules/codemirror/lib/codemirror.js';
 import '../node_modules/codemirror/mode/javascript/javascript.js';
 
+import '../node_modules/codemirror/addon/lint/lint.css';
+import '../node_modules/codemirror/addon/lint/lint';
+import '../node_modules/codemirror/addon/lint/json-lint';
+
 interface GcipConfig {
   apiKey: string;
   authDomain?: string;
@@ -34,6 +38,10 @@ interface GcipConfig {
 
 // The alert status type.
 type AlertStatus = 'success' | 'error';
+// The message to show when the Google provider is not enabled.
+export const MSG_GOOGLE_PROVIDER_NOT_CONFIGURED = 'The Google identity provider configuration is not found. ' +
+    'Google should be enabled at the Identity Platform project-level IdPs in order to facilitate retrieval of ' +
+    'Google Admin user OAuth access tokens for customization of the sign-in UI configuration.';
 // The message to show when a configuration is successfully saved.
 export const MSG_CONFIGURATION_SAVED = 'Configuration successfully saved.';
 // The message to show when an invalid configuration is provided.
@@ -85,6 +93,15 @@ const SET_ADMIN_CONFIG_PARAMS: HttpRequestConfig = {
   headers: {
     'Content-Type': 'application/json',
   },
+};
+// The codeMirror configuration. This is optimized for JSON input and applies linting too.
+export const CODE_MIRROR_CONFIG = {
+  lineNumbers: true,
+  mode: 'application/json',
+  autoCloseBrackets: true,
+  gutters: ['CodeMirror-lint-markers'],
+  // tslint:disable-next-line
+  lint: !!window['jsonlint'],
 };
 
 /**
@@ -203,10 +220,7 @@ export class AdminUi {
               this.textAreaElement.value = JSON.stringify(adminConfig, undefined, 2);
               // Show admin panel.
               this.containerElement.style.display = 'block';
-              this.editor = CodeMirror.fromTextArea(this.textAreaElement, {
-                lineNumbers: true,
-                mode: 'application/json',
-              });
+              this.editor = CodeMirror.fromTextArea(this.textAreaElement, CODE_MIRROR_CONFIG);
               // Set editor size.
               this.editor.setSize(650, 600);
               // On editor change, reflect changes in textarea.
@@ -341,7 +355,7 @@ export class AdminUi {
              errorData.error.code === 403 ||
              errorData.error.message.match(/invalid\scredentials/i))) {
           // Show re-auth button.
-          this.reauthElement.style.display = 'block';
+          this.reauthElement.style.display = 'inline-block';
         }
         this.showToastMessage('error', errorData.error.message);
       });
@@ -410,6 +424,9 @@ export class AdminUi {
    */
   private handleUnrecoverableError(error: Error) {
     this.containerElement.style.display = 'block';
-    this.containerElement.innerText = error.message;
+    // Use a more informative/actionable error message than the default one.
+    this.containerElement.innerText =
+        error && (error as any).code && (error as any).code === 'auth/operation-not-allowed' ?
+            MSG_GOOGLE_PROVIDER_NOT_CONFIGURED : error.message;
   }
 }

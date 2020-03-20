@@ -937,7 +937,7 @@ describe('AuthServer', () => {
         });
     });
 
-    it('uses fallback when UI_CONFIG content is invalid', () => {
+    it('uses fallback when UI_CONFIG content is an invalid JSON', () => {
       // Invalid UI_CONFIG content.
       process.env.UI_CONFIG = '{"key": "invalid"';
       const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
@@ -964,13 +964,74 @@ describe('AuthServer', () => {
         .resolves(iapSettings);
       stubs.push(listIapSettingsStub);
 
-      return request(authServer.server)
-        .get('/config')
-        .expect('Content-Type', /json/)
-        .expect(200)
-        .then((response) => {
-          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
-        });
+      // Restart server with DEBUG_CONSOLE variable enabled.
+      metadataServerSpy.restore();
+      authServer.stop();
+      app = express();
+      process.env.DEBUG_CONSOLE = '1';
+      authServer = new AuthServer(app);
+
+      return authServer.start().then(() => {
+        return request(authServer.server)
+          .get('/config')
+          .expect('Content-Type', /json/)
+          .expect(200)
+          .then((response) => {
+            expect(consoleStub).to.have.been.calledWith(
+              'Invalid configuration in environment variable UI_CONFIG: Unexpected end of JSON input');
+            expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          });
+      });
+    });
+
+    it('uses fallback when UI_CONFIG content is an invalid UiConfig', () => {
+      // Invalid UI_CONFIG content.
+      const invalidUiConfig = deepCopy(expectedUiConfig);
+      invalidUiConfig[API_KEY].selectTenantUiLogo = 'invalid';
+      process.env.UI_CONFIG = JSON.stringify(invalidUiConfig);
+      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
+        .resolves(METADATA_ACCESS_TOKEN);
+      stubs.push(getAccessToken);
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(new Error('Not found'));
+      stubs.push(readFileStub);
+      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
+        .resolves(gcipConfig);
+      stubs.push(getGcipConfigStub);
+      const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
+      getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
+      getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
+      getTenantUiConfigStub.withArgs('tenantId2').resolves(tenantUiConfigMap.tenantId2);
+      stubs.push(getTenantUiConfigStub);
+      const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
+        .resolves(iapSettings);
+      stubs.push(listIapSettingsStub);
+
+      // Restart server with DEBUG_CONSOLE variable enabled.
+      metadataServerSpy.restore();
+      authServer.stop();
+      app = express();
+      process.env.DEBUG_CONSOLE = '1';
+      authServer = new AuthServer(app);
+
+      return authServer.start().then(() => {
+        return request(authServer.server)
+          .get('/config')
+          .expect('Content-Type', /json/)
+          .expect(200)
+          .then((response) => {
+            expect(consoleStub).to.have.been.calledWith(
+              'Invalid configuration in environment variable UI_CONFIG: ' +
+              `"${API_KEY}.selectTenantUiLogo" should be a valid HTTPS URL.`);
+            expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          });
+      });
     });
 
     it('returns 404 when fallback fails', () => {

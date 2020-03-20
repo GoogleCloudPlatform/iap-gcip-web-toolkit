@@ -23,6 +23,7 @@ import { UiConfig } from '../../../src/sign-in-ui';
 import {
   AdminUi, TIMEOUT_DURATION, OAUTH_SCOPES, MSG_CONFIGURATION_SAVED,
   MSG_NO_USER_LOGGED_IN, MSG_INVALID_CONFIGURATION, MSG_CONFIGURATION_COPIED,
+  MSG_GOOGLE_PROVIDER_NOT_CONFIGURED, CODE_MIRROR_CONFIG,
 } from '../../../src/admin-ui';
 // tslint:disable-next-line
 import * as firebase from 'firebase/app';
@@ -291,12 +292,64 @@ describe('AdminUi', () => {
           expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
           // Confirm CodeMirror editor behavior.
           expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
-              area, {lineNumbers: true, mode: 'application/json'});
+              area, CODE_MIRROR_CONFIG);
           const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
           expect(editorInstance.getValue()).to.be.equal(area.value);
           // Confirm on change set.
           editorInstance.setValue('test');
           expect(area.value).to.be.equal('test');
+        });
+    });
+
+    it('should catch Google provider not enabled error', () => {
+      const expectedError = {
+        code: 'auth/operation-not-allowed',
+        message: 'The identity provider configuration is not found.',
+      };
+      const stubbedAuthMethods = {
+        setPersistence: sinon.stub(),
+        getRedirectResult: sinon.stub().callsFake(() => {
+          // Simulate Google provider is not enabled.
+          return Promise.reject(expectedError);
+        }),
+      };
+      const app = testUtils.createMockApp(
+          expectedGcipConfig,
+          stubbedAuthMethods);
+      const expectedGcipConfigResp = testUtils.createMockHttpResponse(
+          {'Content-Type': 'application/json'},
+          expectedGcipConfig);
+      httpClientSendStub.callsFake((params) => {
+        expect(params.timeout).to.be.equal(TIMEOUT_DURATION);
+        expect(params.method).to.be.equal('GET');
+        if (params.url === '/gcipConfig') {
+          expect(params.headers).to.deep.equal({
+            'Content-Type': 'application/json',
+          });
+          return Promise.resolve(expectedGcipConfigResp);
+        }
+        throw new Error('Unexpected call');
+      });
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
+        expect(config).to.deep.equal(expectedGcipConfig);
+        return app as any;
+      });
+      stubs.push(firebaseStub);
+
+      const adminUi = new AdminUi(mainContainer, showToast);
+      return adminUi.render()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.deep.equal(expectedError);
+          expect(stubbedAuthMethods.getRedirectResult).to.have.been.calledOnce;
+          expect(httpClientSendStub).to.have.been.calledOnce;
+          expect(mainContainer.style.display).to.be.equal('block');
+          expect(mainContainer.innerText).to.be.equal(MSG_GOOGLE_PROVIDER_NOT_CONFIGURED);
+          // Confirm CodeMirror editor behavior.
+          expect(codeMirrorEditorSpy).to.not.have.been.called;
         });
     });
 
@@ -459,7 +512,7 @@ describe('AdminUi', () => {
           expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
           // Confirm CodeMirror editor behavior.
           expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
-              area, {lineNumbers: true, mode: 'application/json'});
+              area, CODE_MIRROR_CONFIG);
           const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
           expect(editorInstance.getValue()).to.be.equal(area.value);
           // Test copy to clipboard functionality.
@@ -542,7 +595,7 @@ describe('AdminUi', () => {
           expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
           // Confirm CodeMirror editor behavior.
           expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
-              area, {lineNumbers: true, mode: 'application/json'});
+              area, CODE_MIRROR_CONFIG);
           const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
           expect(editorInstance.getValue()).to.be.equal(area.value);
           // Update editor content.
@@ -630,7 +683,7 @@ describe('AdminUi', () => {
           expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
           // Confirm CodeMirror editor behavior.
           expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
-              area, {lineNumbers: true, mode: 'application/json'});
+              area, CODE_MIRROR_CONFIG);
           const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
           expect(editorInstance.getValue()).to.be.equal(area.value);
           // Update editor content.
@@ -713,7 +766,7 @@ describe('AdminUi', () => {
           expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
           // Confirm CodeMirror editor behavior.
           expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
-              area, {lineNumbers: true, mode: 'application/json'});
+              area, CODE_MIRROR_CONFIG);
           const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
           expect(editorInstance.getValue()).to.be.equal(area.value);
           // Update editor content with an invalid JSON input.
@@ -801,7 +854,7 @@ describe('AdminUi', () => {
           expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
           // Confirm CodeMirror editor behavior.
           expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
-              area, {lineNumbers: true, mode: 'application/json'});
+              area, CODE_MIRROR_CONFIG);
           const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
           expect(editorInstance.getValue()).to.be.equal(area.value);
           // Update editor content with an invalid config.
@@ -908,7 +961,7 @@ describe('AdminUi', () => {
           expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
           // Confirm CodeMirror editor behavior.
           expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
-              area, {lineNumbers: true, mode: 'application/json'});
+              area, CODE_MIRROR_CONFIG);
           const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
           expect(editorInstance.getValue()).to.be.equal(area.value);
           // Update editor content.
@@ -1052,7 +1105,7 @@ describe('AdminUi', () => {
           expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
           // Confirm CodeMirror editor behavior.
           expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
-              area, {lineNumbers: true, mode: 'application/json'});
+              area, CODE_MIRROR_CONFIG);
           const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
           expect(editorInstance.getValue()).to.be.equal(area.value);
           // Update editor content.
@@ -1065,7 +1118,7 @@ describe('AdminUi', () => {
         })
         .then(() => {
           // Confirm re-auth button shown.
-          expect(reauthButton.style.display).to.be.equal('block');
+          expect(reauthButton.style.display).to.be.equal('inline-block');
           assertToastMessage('Error', UNAUTHORIZED_USER_ERROR);
           expect(showToast).to.have.been.calledOnce;
           // Click re-auth button.
@@ -1213,7 +1266,7 @@ describe('AdminUi', () => {
           expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
           // Confirm CodeMirror editor behavior.
           expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
-              area, {lineNumbers: true, mode: 'application/json'});
+              area, CODE_MIRROR_CONFIG);
           const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
           expect(editorInstance.getValue()).to.be.equal(area.value);
           // Update editor content.
@@ -1226,7 +1279,7 @@ describe('AdminUi', () => {
         })
         .then(() => {
           // Confirm re-auth button shown.
-          expect(reauthButton.style.display).to.be.equal('block');
+          expect(reauthButton.style.display).to.be.equal('inline-block');
           assertToastMessage('Error', invalidCredentialsMessage);
           expect(showToast).to.have.been.calledOnce;
           // Click re-auth button.
@@ -1354,7 +1407,7 @@ describe('AdminUi', () => {
           expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
           // Confirm CodeMirror editor behavior.
           expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
-              area, {lineNumbers: true, mode: 'application/json'});
+              area, CODE_MIRROR_CONFIG);
           const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
           expect(editorInstance.getValue()).to.be.equal(area.value);
           // Update editor content.
@@ -1367,7 +1420,7 @@ describe('AdminUi', () => {
         })
         .then(() => {
           // Confirm re-auth button shown.
-          expect(reauthButton.style.display).to.be.equal('block');
+          expect(reauthButton.style.display).to.be.equal('inline-block');
           assertToastMessage('Error', UNAUTHORIZED_USER_ERROR);
           expect(showToast).to.have.been.calledOnce;
           // Click re-auth button.
@@ -1378,7 +1431,7 @@ describe('AdminUi', () => {
           });
         })
         .then(() => {
-          expect(reauthButton.style.display).to.be.equal('block');
+          expect(reauthButton.style.display).to.be.equal('inline-block');
           // Confirm re-auth error shown in toast alert.s
           assertToastMessage('Error', expectedError.message);
           expect(showToast).to.have.been.calledTwice;
@@ -1479,7 +1532,7 @@ describe('AdminUi', () => {
           expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
           // Confirm CodeMirror editor behavior.
           expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
-              area, {lineNumbers: true, mode: 'application/json'});
+              area, CODE_MIRROR_CONFIG);
           const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
           expect(editorInstance.getValue()).to.be.equal(area.value);
           // Update editor content.
@@ -1492,14 +1545,14 @@ describe('AdminUi', () => {
         })
         .then(() => {
           // Confirm re-auth button shown.
-          expect(reauthButton.style.display).to.be.equal('block');
+          expect(reauthButton.style.display).to.be.equal('inline-block');
           assertToastMessage('Error', UNAUTHORIZED_USER_ERROR);
           expect(showToast).to.have.been.calledOnce;
           // Simulate user signed out for some reason.
           app.auth().signOut();
           // Click re-auth button. This will trigger an error.
           reauthButton.click();
-          expect(reauthButton.style.display).to.be.equal('block');
+          expect(reauthButton.style.display).to.be.equal('inline-block');
           assertToastMessage('Error', MSG_NO_USER_LOGGED_IN);
           expect(showToast).to.have.been.calledTwice;
         });
