@@ -50,6 +50,8 @@ export const MSG_INVALID_CONFIGURATION = 'Invalid JSON configuration!';
 export const MSG_NO_USER_LOGGED_IN = 'No user currently logged in. Refresh the page to sign-in.';
 // The message to show when the configuration is copied to clipboard.
 export const MSG_CONFIGURATION_COPIED = 'Configuration copied to clipboard';
+// The message to show when re-authentication is required.
+export const MSG_INVALID_CREDENTIALS = 'Invalid or expired credentials. Re-authenticate to continue.';
 // Alert message title on success.
 const MSG_ALERT_SUCCESS = 'Success';
 // Alert message title on error.
@@ -145,6 +147,7 @@ function initializeProvider(email?: string, scopes: string[] = []): firebase.aut
 export class AdminUi {
   private accessToken: string | null;
   private httpClient: HttpClient;
+  private loadingSpinnerElement: HTMLElement | null;
   private containerElement: HTMLElement;
   private reauthElement: HTMLElement;
   private copyToClipboardElement: HTMLElement;
@@ -166,6 +169,7 @@ export class AdminUi {
     if (!this.containerElement) {
       throw new Error(`Container element ${container} not found`);
     }
+    this.loadingSpinnerElement = document.getElementById('loading-spinner');
     this.adminFormElement = getElementByClass('admin-form', this.containerElement) as HTMLElement;
     if (!this.adminFormElement) {
       throw new Error(`.admin-form element not found`);
@@ -218,16 +222,32 @@ export class AdminUi {
             .then((adminConfig) => {
               // Populate config in textarea.
               this.textAreaElement.value = JSON.stringify(adminConfig, undefined, 2);
+              // Remove spinner if available.
+              if (this.loadingSpinnerElement) {
+                this.loadingSpinnerElement.remove();
+              }
               // Show admin panel.
               this.containerElement.style.display = 'block';
               this.editor = CodeMirror.fromTextArea(this.textAreaElement, CODE_MIRROR_CONFIG);
               // Set editor size.
-              this.editor.setSize(650, 600);
+              this.editor.setSize('auto', 600);
               // On editor change, reflect changes in textarea.
               this.editor.on('change', (cm) => {
                 // Reflect Editor text in textArea.
                 this.textAreaElement.value = cm.getValue();
               });
+              // Attach copy button to editor top right corner.
+              const parentNode = this.copyToClipboardElement.parentNode;
+              if (parentNode) {
+                // Detach from parent.
+                parentNode.removeChild(this.copyToClipboardElement);
+                this.copyToClipboardElement.style.display = 'flex';
+                // Reattach to editor.
+                const editorContainer = getElementByClass('CodeMirror', this.containerElement);
+                if (editorContainer) {
+                  editorContainer.appendChild(this.copyToClipboardElement);
+                }
+              }
               // Initialize Admin UI event handlers.
               this.initEventHandlers();
             })
@@ -356,8 +376,10 @@ export class AdminUi {
              errorData.error.message.match(/invalid\scredentials/i))) {
           // Show re-auth button.
           this.reauthElement.style.display = 'inline-block';
+          this.showToastMessage('error', MSG_INVALID_CREDENTIALS);
+        } else {
+          this.showToastMessage('error', errorData.error.message);
         }
-        this.showToastMessage('error', errorData.error.message);
       });
   }
 
@@ -423,6 +445,10 @@ export class AdminUi {
    * @param error The error to handle.
    */
   private handleUnrecoverableError(error: Error) {
+    // Remove spinner if available.
+    if (this.loadingSpinnerElement) {
+      this.loadingSpinnerElement.remove();
+    }
     this.containerElement.style.display = 'block';
     // Use a more informative/actionable error message than the default one.
     this.containerElement.innerText =

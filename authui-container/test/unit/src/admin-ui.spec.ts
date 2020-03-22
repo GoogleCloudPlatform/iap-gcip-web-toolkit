@@ -23,7 +23,7 @@ import { UiConfig } from '../../../src/sign-in-ui';
 import {
   AdminUi, TIMEOUT_DURATION, OAUTH_SCOPES, MSG_CONFIGURATION_SAVED,
   MSG_NO_USER_LOGGED_IN, MSG_INVALID_CONFIGURATION, MSG_CONFIGURATION_COPIED,
-  MSG_GOOGLE_PROVIDER_NOT_CONFIGURED, CODE_MIRROR_CONFIG,
+  MSG_GOOGLE_PROVIDER_NOT_CONFIGURED, CODE_MIRROR_CONFIG, MSG_INVALID_CREDENTIALS,
 } from '../../../src/admin-ui';
 // tslint:disable-next-line
 import * as firebase from 'firebase/app';
@@ -45,6 +45,7 @@ describe('AdminUi', () => {
   let codeMirrorEditorSpy: sinon.SinonSpy;
   let httpClientSendStub: sinon.SinonStub;
   let showToast: () => void;
+  let loadingSpinner: HTMLElement;
   let toastContainer: HTMLElement;
   let mainContainer: HTMLElement;
   let stubs: sinon.SinonStub[];
@@ -135,6 +136,15 @@ describe('AdminUi', () => {
     codeMirrorEditorSpy = sinon.spy(CodeMirror, 'fromTextArea');
     stubs = [];
     showToast = sinon.stub();
+    loadingSpinner = document.createElement('div');
+    loadingSpinner.id = 'loading-spinner';
+    loadingSpinner.classList.add('d-flex', 'justify-content-center');
+    loadingSpinner.innerHTML = `
+      <div class="spinner-border text-secondary" role="status">
+        <span class="sr-only">Loading...</span>
+      </div>`;
+    document.body.appendChild(loadingSpinner);
+
     toastContainer = document.createElement('div');
     toastContainer.classList.add('toast-container');
     toastContainer.innerHTML = `
@@ -157,9 +167,10 @@ describe('AdminUi', () => {
       <form class="admin-form">
         <textarea rows="20" cols="70" class="config"></textarea><br>
         <button type="submit" class="btn btn-primary mb-2">Save</button>
-        <button class="copy-to-clipboard btn btn-primary mb-2">Copy to clipboard</button>
         <button class="reauth btn btn-primary mb-2" style="display:none;">Reauthenticate</button>
-      </form>`;
+      </form>
+      <div title="Copy to clipboard" class="copy-btn copy-to-clipboard" style="display:none;" aria-label="Copy">
+      </div>`;
     document.body.appendChild(mainContainer);
     httpClientSendStub = sinon.stub(HttpClient.prototype, 'send');
     stubs.push(httpClientSendStub);
@@ -167,6 +178,9 @@ describe('AdminUi', () => {
 
   afterEach(() => {
     codeMirrorEditorSpy.restore();
+    if (loadingSpinner && loadingSpinner.parentNode) {
+      document.body.removeChild(loadingSpinner);
+    }
     if (toastContainer) {
       document.body.removeChild(toastContainer);
     }
@@ -282,6 +296,9 @@ describe('AdminUi', () => {
       stubs.push(firebaseStub);
 
       const adminUi = new AdminUi(mainContainer, showToast);
+      // Copy button should be initially hidden.
+      const copyToClipboardButton = document.getElementsByClassName('copy-to-clipboard')[0] as HTMLButtonElement;
+      expect(copyToClipboardButton.style.display).to.be.equal('none');
       return adminUi.render()
         .then(() => {
           expect(stubbedAuthMethods.getRedirectResult).to.have.been.calledOnce;
@@ -298,6 +315,12 @@ describe('AdminUi', () => {
           // Confirm on change set.
           editorInstance.setValue('test');
           expect(area.value).to.be.equal('test');
+          // Spinner should be removed from DOM.
+          expect(loadingSpinner.parentNode).to.be.null;
+          // Copy button should be appended to editor.
+          const editorContainer = document.getElementsByClassName('CodeMirror')[0] as HTMLTextAreaElement;
+          expect(copyToClipboardButton.style.display).to.not.be.equal('none');
+          expect(copyToClipboardButton.parentNode).to.be.equal(editorContainer);
         });
     });
 
@@ -338,6 +361,7 @@ describe('AdminUi', () => {
       stubs.push(firebaseStub);
 
       const adminUi = new AdminUi(mainContainer, showToast);
+      const copyToClipboardButton = document.getElementsByClassName('copy-to-clipboard')[0] as HTMLButtonElement;
       return adminUi.render()
         .then(() => {
           throw new Error('Unexpected success');
@@ -350,6 +374,10 @@ describe('AdminUi', () => {
           expect(mainContainer.innerText).to.be.equal(MSG_GOOGLE_PROVIDER_NOT_CONFIGURED);
           // Confirm CodeMirror editor behavior.
           expect(codeMirrorEditorSpy).to.not.have.been.called;
+          // Spinner should be removed from DOM.
+          expect(loadingSpinner.parentNode).to.be.null;
+          // Copy button should remain hidden.
+          expect(copyToClipboardButton.style.display).to.be.equal('none');
         });
     });
 
@@ -1119,7 +1147,7 @@ describe('AdminUi', () => {
         .then(() => {
           // Confirm re-auth button shown.
           expect(reauthButton.style.display).to.be.equal('inline-block');
-          assertToastMessage('Error', UNAUTHORIZED_USER_ERROR);
+          assertToastMessage('Error', MSG_INVALID_CREDENTIALS);
           expect(showToast).to.have.been.calledOnce;
           // Click re-auth button.
           reauthButton.click();
@@ -1280,7 +1308,7 @@ describe('AdminUi', () => {
         .then(() => {
           // Confirm re-auth button shown.
           expect(reauthButton.style.display).to.be.equal('inline-block');
-          assertToastMessage('Error', invalidCredentialsMessage);
+          assertToastMessage('Error', MSG_INVALID_CREDENTIALS);
           expect(showToast).to.have.been.calledOnce;
           // Click re-auth button.
           reauthButton.click();
@@ -1421,7 +1449,7 @@ describe('AdminUi', () => {
         .then(() => {
           // Confirm re-auth button shown.
           expect(reauthButton.style.display).to.be.equal('inline-block');
-          assertToastMessage('Error', UNAUTHORIZED_USER_ERROR);
+          assertToastMessage('Error', MSG_INVALID_CREDENTIALS);
           expect(showToast).to.have.been.calledOnce;
           // Click re-auth button.
           reauthButton.click();
@@ -1546,7 +1574,7 @@ describe('AdminUi', () => {
         .then(() => {
           // Confirm re-auth button shown.
           expect(reauthButton.style.display).to.be.equal('inline-block');
-          assertToastMessage('Error', UNAUTHORIZED_USER_ERROR);
+          assertToastMessage('Error', MSG_INVALID_CREDENTIALS);
           expect(showToast).to.have.been.calledOnce;
           // Simulate user signed out for some reason.
           app.auth().signOut();
@@ -1604,6 +1632,7 @@ describe('AdminUi', () => {
       stubs.push(setCustomParametersStub);
 
       const adminUi = new AdminUi(mainContainer, showToast);
+      const copyToClipboardButton = document.getElementsByClassName('copy-to-clipboard')[0] as HTMLButtonElement;
       return adminUi.render()
         .then(() => {
           expect(httpClientSendStub).to.have.been.calledOnce;
@@ -1613,6 +1642,10 @@ describe('AdminUi', () => {
           expect(area.value).to.be.equal('');
           // Confirm CodeMirror editor behavior.
           expect(codeMirrorEditorSpy).to.not.have.been.called;
+          // Spinner should not be removed from DOM.
+          expect(loadingSpinner.parentNode).to.be.equal(document.body);
+          // Copy button should remain hidden.
+          expect(copyToClipboardButton.style.display).to.be.equal('none');
         });
     });
   });

@@ -118,6 +118,7 @@ function assertExpectedFirebaseUiCallbacks(
 }
 
 describe('SignInUi', () => {
+  let loadingSpinner: HTMLElement;
   let mainContainer: HTMLElement;
   let stubs: sinon.SinonStub[];
   let firebaseUiHandlerStub: sinon.SinonStub;
@@ -216,6 +217,15 @@ describe('SignInUi', () => {
   };
 
   beforeEach(() => {
+    loadingSpinner = document.createElement('div');
+    loadingSpinner.id = 'loading-spinner';
+    loadingSpinner.classList.add('d-flex', 'justify-content-center');
+    loadingSpinner.innerHTML = `
+      <div class="spinner-border text-secondary" role="status">
+        <span class="sr-only">Loading...</span>
+      </div>`;
+    document.body.appendChild(loadingSpinner);
+
     mainContainer = document.createElement('div');
     mainContainer.classList.add('main-container', 'blend');
     mainContainer.innerHTML = `
@@ -252,6 +262,9 @@ describe('SignInUi', () => {
   });
 
   afterEach(() => {
+    if (loadingSpinner && loadingSpinner.parentNode) {
+      document.body.removeChild(loadingSpinner);
+    }
     if (mainContainer) {
       document.body.removeChild(mainContainer);
     }
@@ -312,6 +325,8 @@ describe('SignInUi', () => {
       const signInUi = new SignInUi(containerElement);
       return signInUi.render()
         .then(() => {
+          // Spinner should be removed from DOM.
+          expect(loadingSpinner.parentNode).to.be.null;
           expect(setStyleSheetStub).to.have.been.calledOnce.and.calledWith(document, CUSTOM_STYLESHEET_URL);
           expect(httpClientSendStub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
           expect(ciapAuthenticationStub).to.have.been.calledOnce
@@ -354,6 +369,8 @@ describe('SignInUi', () => {
       const signInUi = new SignInUi(containerElement);
       return signInUi.render()
         .then(() => {
+          // Spinner should be removed from DOM.
+          expect(loadingSpinner.parentNode).to.be.null;
           expect(setStyleSheetStub).to.have.been.calledOnce.and.calledWith(document, CUSTOM_STYLESHEET_URL);
           expect(httpClientSendStub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
           expect(ciapAuthenticationStub).to.have.been.calledOnce.and.calledWith(mockHandler);
@@ -397,6 +414,8 @@ describe('SignInUi', () => {
       const signInUi = new SignInUi(containerElement);
       return signInUi.render()
         .then(() => {
+          // Spinner should be removed from DOM.
+          expect(loadingSpinner.parentNode).to.be.null;
           expect(setStyleSheetStub).to.have.been.calledOnce.and.calledWith(document, CUSTOM_STYLESHEET_URL);
           expect(httpClientSendStub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
           expect(ciapAuthenticationStub).to.have.been.calledOnce.and.calledWith(mockHandler);
@@ -436,6 +455,8 @@ describe('SignInUi', () => {
       const signInUi = new SignInUi(containerElement);
       return signInUi.render()
         .then(() => {
+          // Spinner should be removed from DOM.
+          expect(loadingSpinner.parentNode).to.be.null;
           expect(setStyleSheetStub).to.have.been.calledOnce.and.calledWith(document, CUSTOM_STYLESHEET_URL);
           expect(httpClientSendStub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
           expect(ciapAuthenticationStub).to.have.been.calledOnce.and.calledWith(mockHandler);
@@ -465,6 +486,8 @@ describe('SignInUi', () => {
       const signInUi = new SignInUi(containerElement);
       return signInUi.render()
         .then(() => {
+          // Spinner should be removed from DOM.
+          expect(loadingSpinner.parentNode).to.be.null;
           expect(setStyleSheetStub).to.not.have.been.called;
           expect(httpClientSendStub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
           expect(ciapAuthenticationStub).to.have.been.calledOnce.and.calledWith(mockHandler);
@@ -505,6 +528,8 @@ describe('SignInUi', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Spinner should be removed from DOM.
+          expect(loadingSpinner.parentNode).to.be.null;
           expect(error.message).to.be.equal(expectedMessage);
           expect(httpClientSendStub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
           expect(setStyleSheetStub).to.not.have.been.called;
@@ -531,6 +556,8 @@ describe('SignInUi', () => {
           throw new Error('Unexpected success');
         })
         .catch((error) => {
+          // Spinner should be removed from DOM.
+          expect(loadingSpinner.parentNode).to.be.null;
           expect(error).to.be.equal(expectedError);
           expect(setStyleSheetStub).to.have.been.calledOnce.and.calledWith(document, CUSTOM_STYLESHEET_URL);
           expect(httpClientSendStub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);

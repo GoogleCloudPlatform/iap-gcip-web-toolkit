@@ -91,6 +91,7 @@ export class SignInUi {
   private containerElement: HTMLElement;
   private titleElement: HTMLElement;
   private img: HTMLImageElement;
+  private loadingSpinnerElement: HTMLElement | null;
   private separatorElement: HTMLElement;
   private ciapAuth: ciap.Authentication;
   private mainContainer: Element;
@@ -103,6 +104,7 @@ export class SignInUi {
   constructor(private readonly container: string | HTMLElement) {
     this.httpClient = new HttpClient();
     this.containerElement = typeof container === 'string' ? document.querySelector(container) : container;
+    this.loadingSpinnerElement = document.getElementById('loading-spinner');
     const elements = document.getElementsByClassName('main-container');
     if (elements.length > 0 && elements[0]) {
       this.mainContainer = elements[0];
@@ -130,6 +132,10 @@ export class SignInUi {
   render() {
     return this.getConfig()
       .then((configs) => {
+        // Remove spinner if available.
+        if (this.loadingSpinnerElement) {
+          this.loadingSpinnerElement.remove();
+        }
         this.setCustomStyleSheet(configs);
         const config = this.generateFirebaseUiHandlerConfig(configs);
         // This will handle the underlying handshake for sign-in, sign-out,
@@ -245,6 +251,10 @@ export class SignInUi {
    * @param error The error to handle.
    */
   private handlerError(error: Error) {
+    // Remove spinner if available.
+    if (this.loadingSpinnerElement) {
+      this.loadingSpinnerElement.remove();
+    }
     // Show error message: errorData.error.message.
     this.mainContainer.classList.remove('blend');
     this.separatorElement.style.display = 'none';

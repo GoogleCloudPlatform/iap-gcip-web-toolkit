@@ -44,7 +44,7 @@ body {
   box-shadow: 0 2px 2px 0 rgba(0,0,0,.14), 0 3px 1px -2px rgba(0,0,0,.2), 0 1px 5px 0 rgba(0,0,0,.12);
   background-color: #fff;
   border: 1px solid #cccccc;
-  padding: 20px;
+  padding: 20px 20px 5px 20px;
 }
 
 .padded-div {
@@ -117,6 +117,7 @@ h3.line-through:after {
   position: fixed;
   right: 20;
   top: 20;
+  z-index: 10000;
 }
 
 .toast {
@@ -132,4 +133,30 @@ h3.line-through:after {
 /***************/
 .CodeMirror {
   border: 1px solid #000000;
+}
+
+.copy-btn {
+  cursor: pointer;
+  display: flex;
+  padding: 5px;
+  position:absolute;
+  right: 15px;
+  top: 5px;
+  width: 35px;
+  z-index:1000;
+}
+
+.copy-btn:hover {
+  background-color: #E6E6E6;
+  border-radius: 5px;
+}
+
+.spinner-border {
+  height: 3rem;
+  width: 3rem;
+}
+
+#loading-spinner {
+  margin-bottom: 50px;
+  margin-top: 50px;
 }
