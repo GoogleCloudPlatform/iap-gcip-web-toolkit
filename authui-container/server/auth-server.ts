@@ -34,6 +34,8 @@ export const AUTH_SERVER_SCOPES = [
 
 // Configuration file name.
 const CONFIG_FILE_NAME = 'config.json';
+// The current hosted UI version.
+export const HOSTED_UI_VERSION = '__XXX_HOSTED_UI_VERSION_XXX__';
 
 /**
  * Renders the sign-in UI HTML container and serves it in the response.
@@ -101,6 +103,9 @@ export class AuthServer {
   start(port: string = '8080'): Promise<void> {
     return new Promise((resolve, reject) => {
       this.server = this.app.listen(parseInt(port, 10), () => {
+        // Log current version of hosted UI.
+        // tslint:disable-next-line:no-console
+        console.log('Server started with version', HOSTED_UI_VERSION);
         resolve();
       });
     });
@@ -132,6 +137,12 @@ export class AuthServer {
     this.app.get('/', (req: express.Request, res: express.Response) => {
       // Serve content for signed in user.
       return serveContentForSignIn(req, res);
+    });
+
+    // Provide easy way for developer to determine version.
+    this.app.get('/versionz', (req: express.Request, res: express.Response) => {
+      res.set('Content-Type', 'text/html');
+      res.end(HOSTED_UI_VERSION);
     });
 
     // Developers can disable admin panel when deploying Cloud Run service.

@@ -22,7 +22,9 @@ import request = require('supertest');
 import * as templates from  '../../../server/templates';
 import * as fs from 'fs';
 import * as sinon from 'sinon';
-import {AuthServer, AUTH_SERVER_SCOPES} from '../../../server/auth-server';
+import {
+  AuthServer, AUTH_SERVER_SCOPES, HOSTED_UI_VERSION,
+} from '../../../server/auth-server';
 import express = require('express');
 import * as storage from '../../../server/api/cloud-storage-handler';
 import * as metadata from '../../../server/api/metadata-server';
@@ -121,15 +123,17 @@ describe('AuthServer', () => {
   });
 
   describe('logging', () => {
-    it('should not log to console by default', () => {
+    it('should only log version to console by default', () => {
       // Metadata server initialized with expected OAuth scopes.
       expect(metadataServerSpy).to.have.been.calledOnce
         .and.calledWith(AUTH_SERVER_SCOPES);
+      expect(consoleStub).to.have.been.calledOnce
+        .and.calledWith('Server started with version', HOSTED_UI_VERSION);
       // Get logger passed to metadataServer initializer.
       const logger = metadataServerSpy.getCall(0).args[1];
       logger('hello', 'world');
       // No data should be logged.
-      expect(consoleStub).to.not.have.been.called;
+      expect(consoleStub).to.have.been.calledOnce;
     });
 
     it('should log data when DEBUG_CONSOLE is set', () => {
@@ -138,6 +142,7 @@ describe('AuthServer', () => {
       authServer.stop();
       app = express();
       process.env.DEBUG_CONSOLE = '1';
+      consoleStub.reset();
       authServer = new AuthServer(app);
 
       return authServer.start().then(() => {
@@ -149,9 +154,11 @@ describe('AuthServer', () => {
         logger('hello', 'world');
         logger('foo bar');
         // Data should be logged.
-        expect(consoleStub).to.have.been.calledTwice;
-        expect(consoleStub.firstCall).have.been.calledWith('hello', 'world');
-        expect(consoleStub.secondCall).have.been.calledWith('foo bar');
+        expect(consoleStub).to.have.been.calledThrice;
+        expect(consoleStub.firstCall).have.been.calledWith(
+          'Server started with version', HOSTED_UI_VERSION);
+        expect(consoleStub.secondCall).have.been.calledWith('hello', 'world');
+        expect(consoleStub.thirdCall).have.been.calledWith('foo bar');
       });
     });
   });
@@ -168,6 +175,16 @@ describe('AuthServer', () => {
       .expect(200)
       .then((response) => {
         expect(response.text).to.equal(expectedResponse);
+      });
+  });
+
+  it('responds to /versionz', () => {
+    return request(authServer.server)
+      .get('/versionz')
+      .expect('Content-Type', /html/)
+      .expect(200)
+      .then((response) => {
+        expect(response.text).to.equal(HOSTED_UI_VERSION);
       });
   });
 
