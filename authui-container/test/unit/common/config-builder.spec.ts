@@ -17,8 +17,7 @@
 import * as _ from 'lodash';
 import {expect} from 'chai';
 import {
-  DefaultUiConfigBuilder, TENANT_ICON_URL, SELECT_TENANT_LOGO_URL,
-  SIGN_IN_UI_LOGO_URL, UiConfig,
+  DefaultUiConfigBuilder, TENANT_ICON_URL, UiConfig,
 } from '../../../common/config-builder';
 import { deepCopy } from '../../../common/deep-copy';
 
@@ -80,13 +79,13 @@ describe('DefaultUiConfigBuilder', () => {
       authDomain: gcipConfig.authDomain,
       displayMode: 'optionFirst',
       selectTenantUiTitle: PROJECT_ID,
-      selectTenantUiLogo: SELECT_TENANT_LOGO_URL,
+      selectTenantUiLogo: '',
       styleUrl: '',
       tenants: {
         _: {
           displayName: 'ABCD',
           iconUrl: TENANT_ICON_URL,
-          logoUrl: SIGN_IN_UI_LOGO_URL,
+          logoUrl: '',
           buttonColor: '#007bff',
           immediateFederatedRedirect: true,
           signInFlow: 'redirect',
@@ -108,7 +107,7 @@ describe('DefaultUiConfigBuilder', () => {
         tenantId1: {
           displayName: 'Tenant-display-name-1',
           iconUrl: TENANT_ICON_URL,
-          logoUrl: SIGN_IN_UI_LOGO_URL,
+          logoUrl: '',
           buttonColor: '#007bff',
           immediateFederatedRedirect: true,
           signInFlow: 'redirect',
@@ -129,7 +128,7 @@ describe('DefaultUiConfigBuilder', () => {
         tenantId2: {
           displayName: 'Tenant-display-name-2',
           iconUrl: TENANT_ICON_URL,
-          logoUrl: SIGN_IN_UI_LOGO_URL,
+          logoUrl: '',
           buttonColor: '#007bff',
           immediateFederatedRedirect: true,
           signInFlow: 'redirect',
@@ -199,13 +198,13 @@ describe('DefaultUiConfigBuilder', () => {
       authDomain: gcipConfig.authDomain,
       displayMode: 'optionFirst',
       selectTenantUiTitle: PROJECT_ID,
-      selectTenantUiLogo: SELECT_TENANT_LOGO_URL,
+      selectTenantUiLogo: '',
       styleUrl: '',
       tenants: {
         _: {
           displayName: 'My Company',
           iconUrl: TENANT_ICON_URL,
-          logoUrl: SIGN_IN_UI_LOGO_URL,
+          logoUrl: '',
           buttonColor: '#007bff',
           immediateFederatedRedirect: true,
           signInFlow: 'redirect',
@@ -227,7 +226,7 @@ describe('DefaultUiConfigBuilder', () => {
         tenantId1: {
           displayName: 'Company A',
           iconUrl: TENANT_ICON_URL,
-          logoUrl: SIGN_IN_UI_LOGO_URL,
+          logoUrl: '',
           buttonColor: '#007bff',
           immediateFederatedRedirect: true,
           signInFlow: 'redirect',
@@ -248,7 +247,7 @@ describe('DefaultUiConfigBuilder', () => {
         tenantId2: {
           displayName: 'Company B',
           iconUrl: TENANT_ICON_URL,
-          logoUrl: SIGN_IN_UI_LOGO_URL,
+          logoUrl: '',
           buttonColor: '#007bff',
           immediateFederatedRedirect: true,
           signInFlow: 'redirect',
@@ -276,7 +275,7 @@ describe('DefaultUiConfigBuilder', () => {
       authDomain: gcipConfig.authDomain,
       displayMode: 'optionFirst',
       selectTenantUiTitle: PROJECT_ID,
-      selectTenantUiLogo: SELECT_TENANT_LOGO_URL,
+      selectTenantUiLogo: 'https://example.com/img/tenant-select.png',
       styleUrl: 'https://example.com/styles/stylesheet.css',
       tosUrl: 'https://example.com/about/tos',
       privacyPolicyUrl: 'https://example.com/about/privacyPolicyUrl',
@@ -284,7 +283,7 @@ describe('DefaultUiConfigBuilder', () => {
         _: {
           displayName: 'My Company',
           iconUrl: TENANT_ICON_URL,
-          logoUrl: SIGN_IN_UI_LOGO_URL,
+          logoUrl: 'https://example.com/img/tenant-0.png',
           buttonColor: '#007bff',
           tosUrl: 'https://example.com/about/tos',
           privacyPolicyUrl: 'https://example.com/about/privacyPolicyUrl',
@@ -334,7 +333,7 @@ describe('DefaultUiConfigBuilder', () => {
         tenantId1: {
           displayName: 'Company A',
           iconUrl: TENANT_ICON_URL,
-          logoUrl: SIGN_IN_UI_LOGO_URL,
+          logoUrl: 'https://example.com/img/tenant-1.png',
           buttonColor: '#007bff',
           tosUrl: '',
           privacyPolicyUrl: '',
@@ -354,7 +353,7 @@ describe('DefaultUiConfigBuilder', () => {
         tenantId2: {
           displayName: 'Company B',
           iconUrl: TENANT_ICON_URL,
-          logoUrl: SIGN_IN_UI_LOGO_URL,
+          logoUrl: 'https://example.com/img/tenant-2.png',
           buttonColor: '#007bff',
           tosUrl: '',
           privacyPolicyUrl: '',
@@ -396,6 +395,22 @@ describe('DefaultUiConfigBuilder', () => {
       }).not.to.throw();
     });
 
+    it('should not throw on empty *.selectTenantUiLogo', () => {
+      expect(() => {
+        const validConfig: any = deepCopy(expectedUiConfig);
+        validConfig[API_KEY].selectTenantUiLogo = '';
+        DefaultUiConfigBuilder.validateConfig(validConfig);
+      }).not.to.throw();
+    });
+
+    it('should not throw on empty *.tenants.*.logoUrl', () => {
+      expect(() => {
+        const validConfig: any = deepCopy(expectedUiConfig);
+        validConfig[API_KEY].tenants.tenantId1.logoUrl = '';
+        DefaultUiConfigBuilder.validateConfig(validConfig);
+      }).not.to.throw();
+    });
+
     it('should throw on missing authDomain', () => {
       expect(() => {
         const invalidConfig: any = deepCopy(expectedUiConfig);
@@ -426,14 +441,6 @@ describe('DefaultUiConfigBuilder', () => {
         delete invalidConfig[API_KEY].tenants.tenantId1.iconUrl;
         DefaultUiConfigBuilder.validateConfig(invalidConfig);
       }).to.throw(`Missing required field "*.tenants.*.iconUrl"`);
-    });
-
-    it('should throw on missing tenant *.tenants.*.logoUrl', () => {
-      expect(() => {
-        const invalidConfig: any = deepCopy(expectedUiConfig);
-        delete invalidConfig[API_KEY].tenants.tenantId1.logoUrl;
-        DefaultUiConfigBuilder.validateConfig(invalidConfig);
-      }).to.throw(`Missing required field "*.tenants.*.logoUrl"`);
     });
 
     it('should throw on missing tenant *.tenants.*.buttonColor', () => {

@@ -220,10 +220,11 @@ export class SignInUi {
             if (config.tenants[key].logoUrl) {
               this.img.style.display = 'block';
               this.img.src = config.tenants[key].logoUrl;
+              this.separatorElement.style.display = 'block';
             } else {
               this.img.style.display = 'none';
+              this.separatorElement.style.display = 'none';
             }
-            this.separatorElement.style.display = 'block';
           },
         };
         // Do not trigger immediate redirect in Safari without some user

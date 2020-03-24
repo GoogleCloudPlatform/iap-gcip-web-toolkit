@@ -17,12 +17,6 @@ import * as validators from './validator';
 // TODO: Temporary URLs for now. Replace with production ones when ready.
 // This is the icon for each tenant button in the tenant selection screen.
 export const TENANT_ICON_URL = 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png';
-// Select tenant screen logo. This is the logo on the tenant selection screen.
-export const SELECT_TENANT_LOGO_URL =
-    'https://lh3.googleusercontent.com/AdcgmqzXjd7-Vpo478h7TzTkyagFycEvT38zSxFOQRFbyGUgtdraQe5fAtTlqsWx3FJN' +
-    '-rlkYYZNeSjm8xRd=w80-h40';
-// Sign in UI screen logo. This is the logo on the sign-in UI screen after a tenant is already selected.
-export const SIGN_IN_UI_LOGO_URL = 'https://img.icons8.com/cotton/2x/cloud.png';
 
 interface GcipConfig {
   apiKey: string;
@@ -64,7 +58,7 @@ interface SignInOption {
 interface ExtendedTenantUiConfig {
   displayName: string;
   iconUrl: string;
-  logoUrl: string;
+  logoUrl?: string;
   buttonColor: string;
   signInOptions: (SignInOption | string)[];
   tosUrl?: string;
@@ -94,7 +88,6 @@ const REQUIRED_FIELDS = [
   '*.displayMode',
   '*.tenants.*.displayName',
   '*.tenants.*.iconUrl',
-  '*.tenants.*.logoUrl',
   '*.tenants.*.buttonColor',
   '*.tenants.*.signInOptions[]',
 ];
@@ -126,7 +119,7 @@ const VALIDATION_TREE: validators.ValidationTree = {
       },
       selectTenantUiLogo: {
         validator: (value: any, key: string) => {
-          if (!validators.isHttpsURL(value)) {
+          if (value && !validators.isHttpsURL(value)) {
             throw new Error(`"${key}" should be a valid HTTPS URL.`);
           }
         },
@@ -172,7 +165,7 @@ const VALIDATION_TREE: validators.ValidationTree = {
               },
               logoUrl: {
                 validator: (value: any, key: string) => {
-                  if (!validators.isHttpsURL(value)) {
+                  if (value && !validators.isHttpsURL(value)) {
                     throw new Error(`"${key}" should be a valid HTTPS URL.`);
                   }
                 },
@@ -414,7 +407,7 @@ export class DefaultUiConfigBuilder {
       tenantConfigs[key] = {
         displayName,
         iconUrl: TENANT_ICON_URL,
-        logoUrl: SIGN_IN_UI_LOGO_URL,
+        logoUrl: '',
         buttonColor: '#007bff',
         // By default, use immediate federated redirect.
         // This is safe since if more than one provider is used, FirebaseUI will ignore this.
@@ -435,7 +428,7 @@ export class DefaultUiConfigBuilder {
         authDomain: this.gcipConfig.authDomain,
         displayMode: 'optionFirst',
         selectTenantUiTitle: this.projectId,
-        selectTenantUiLogo: SELECT_TENANT_LOGO_URL,
+        selectTenantUiLogo: '',
         styleUrl: '',
         tenants: tenantConfigs,
         tosUrl: '',

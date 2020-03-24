@@ -92,13 +92,14 @@ function assertExpectedFirebaseUiCallbacks(
   // Test with project level config.
   callbacks.signInUiShown(null);
   expect(mainContainerElement.classList.contains('blend')).to.be.false;
-  expect(separatorElement.style.display).to.be.equal('block');
   expect(titleElement.innerText).to.be.equal(expectedUiConfig[apiKey].tenants._.displayName);
   if (expectedUiConfig[apiKey].tenants._.logoUrl) {
     expect((imgElement as HTMLImageElement).src).to.be.equal(expectedUiConfig[apiKey].tenants._.logoUrl);
     expect(imgElement.style.display).to.be.equal('block');
+    expect(separatorElement.style.display).to.be.equal('block');
   } else {
     expect(imgElement.style.display).to.be.equal('none');
+    expect(separatorElement.style.display).to.be.equal('none');
   }
   // Test with tenant level config.
   mainContainerElement.classList.add('blend');
@@ -107,13 +108,14 @@ function assertExpectedFirebaseUiCallbacks(
   // Test with project level config.
   callbacks.signInUiShown(tenantId);
   expect(mainContainerElement.classList.contains('blend')).to.be.false;
-  expect(separatorElement.style.display).to.be.equal('block');
   expect(titleElement.innerText).to.be.equal(expectedUiConfig[apiKey].tenants[tenantId].displayName);
   if (expectedUiConfig[apiKey].tenants[tenantId].logoUrl) {
     expect((imgElement as HTMLImageElement).src).to.be.equal(expectedUiConfig[apiKey].tenants[tenantId].logoUrl);
     expect(imgElement.style.display).to.be.equal('block');
+    expect(separatorElement.style.display).to.be.equal('block');
   } else {
     expect(imgElement.style.display).to.be.equal('none');
+    expect(separatorElement.style.display).to.be.equal('none');
   }
 }
 
@@ -386,6 +388,83 @@ describe('SignInUi', () => {
           // Confirm the remaining config parameters match.
           delete actualFirebaseUiConfig[API_KEY].callbacks;
           expect(actualFirebaseUiConfig).to.deep.equal(expectedSingleProviderFirebaseuiConfig);
+        });
+    });
+
+    it('should handle missing tenant logoUrls as expected', () => {
+       // Simulate tenant with no logoUrl.
+      const modifiedProviderConfig: UiConfig = utils.deepCopy(expectedUiConfig);
+      delete modifiedProviderConfig[API_KEY].tenants.tenantId1.logoUrl;
+      const expectedModifiedProviderFirebaseuiConfig = {
+        [API_KEY]: utils.deepCopy(modifiedProviderConfig[API_KEY]),
+      };
+      delete expectedModifiedProviderFirebaseuiConfig[API_KEY].selectTenantUiLogo;
+      delete expectedModifiedProviderFirebaseuiConfig[API_KEY].selectTenantUiTitle;
+      delete expectedModifiedProviderFirebaseuiConfig[API_KEY].styleUrl;
+      delete expectedModifiedProviderFirebaseuiConfig[API_KEY].tenants.tenantId1.logoUrl;
+      // stub /config.
+      const expectedResp = createMockHttpResponse(
+          {'Content-Type': 'application/json'}, modifiedProviderConfig);
+      httpClientSendStub.resolves(expectedResp);
+
+      const signInUi = new SignInUi(containerElement);
+      return signInUi.render()
+        .then(() => {
+          // Spinner should be removed from DOM.
+          expect(loadingSpinner.parentNode).to.be.null;
+          expect(setStyleSheetStub).to.have.been.calledOnce.and.calledWith(document, CUSTOM_STYLESHEET_URL);
+          expect(httpClientSendStub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+          expect(ciapAuthenticationStub).to.have.been.calledOnce.and.calledWith(mockHandler);
+          expect(mockAuth.start).to.have.been.calledOnce;
+          expect(firebaseUiHandlerStub).to.have.been.calledOnce;
+          expect(firebaseUiHandlerStub.getCalls()[0].args[0]).to.be.equal(containerElement);
+          const actualFirebaseUiConfig = firebaseUiHandlerStub.getCalls()[0].args[1];
+          assertExpectedFirebaseUiCallbacks(
+              actualFirebaseUiConfig[API_KEY].callbacks,
+              modifiedProviderConfig,
+              API_KEY,
+              'tenantId1');
+          // Confirm the remaining config parameters match.
+          delete actualFirebaseUiConfig[API_KEY].callbacks;
+          expect(actualFirebaseUiConfig).to.deep.equal(expectedModifiedProviderFirebaseuiConfig);
+        });
+    });
+
+    it('should handle missing selectTenantUiLogo as expected', () => {
+       // Simulate tenant with no selectTenantUiLogo.
+      const modifiedProviderConfig: UiConfig = utils.deepCopy(expectedUiConfig);
+      delete modifiedProviderConfig[API_KEY].selectTenantUiLogo;
+      const expectedModifiedProviderFirebaseuiConfig = {
+        [API_KEY]: utils.deepCopy(modifiedProviderConfig[API_KEY]),
+      };
+      delete expectedModifiedProviderFirebaseuiConfig[API_KEY].selectTenantUiLogo;
+      delete expectedModifiedProviderFirebaseuiConfig[API_KEY].selectTenantUiTitle;
+      delete expectedModifiedProviderFirebaseuiConfig[API_KEY].styleUrl;
+      // stub /config.
+      const expectedResp = createMockHttpResponse(
+          {'Content-Type': 'application/json'}, modifiedProviderConfig);
+      httpClientSendStub.resolves(expectedResp);
+
+      const signInUi = new SignInUi(containerElement);
+      return signInUi.render()
+        .then(() => {
+          // Spinner should be removed from DOM.
+          expect(loadingSpinner.parentNode).to.be.null;
+          expect(setStyleSheetStub).to.have.been.calledOnce.and.calledWith(document, CUSTOM_STYLESHEET_URL);
+          expect(httpClientSendStub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+          expect(ciapAuthenticationStub).to.have.been.calledOnce.and.calledWith(mockHandler);
+          expect(mockAuth.start).to.have.been.calledOnce;
+          expect(firebaseUiHandlerStub).to.have.been.calledOnce;
+          expect(firebaseUiHandlerStub.getCalls()[0].args[0]).to.be.equal(containerElement);
+          const actualFirebaseUiConfig = firebaseUiHandlerStub.getCalls()[0].args[1];
+          assertExpectedFirebaseUiCallbacks(
+              actualFirebaseUiConfig[API_KEY].callbacks,
+              modifiedProviderConfig,
+              API_KEY,
+              'tenantId1');
+          // Confirm the remaining config parameters match.
+          delete actualFirebaseUiConfig[API_KEY].callbacks;
+          expect(actualFirebaseUiConfig).to.deep.equal(expectedModifiedProviderFirebaseuiConfig);
         });
     });
 
