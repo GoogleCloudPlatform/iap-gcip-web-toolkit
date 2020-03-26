@@ -27,14 +27,15 @@ printusage() {
   echo "deploy-container.sh <version>"
   echo ""
   echo "Arguments:"
-  echo "  version: 'patch', 'minor', or 'major'."
+  echo "  version: 'test', 'patch', 'minor', or 'major'."
 }
 
 VERSION=$1
 if [[ $VERSION == "" ]]; then
   printusage
   exit 1
-elif [[ ! ($VERSION == "patch" || \
+elif [[ ! ($VERSION == "test" || \
+           $VERSION == "patch" || \
            $VERSION == "minor" || \
            $VERSION == "major") ]]; then
   printusage
@@ -74,21 +75,27 @@ trap - ERR
 npm install
 # Build all output files before deploying container.
 npm run bundle
-# Create new version of hosted UI.
-echo "Making a $VERSION version..."
-npm version $VERSION
-UI_VERSION=$(jq -r ".version" package.json)
-echo "Made a $VERSION version: $UI_VERSION."
-# Substitute version in file.
-chmod 755 dist/server/auth-server.js
-sed -i "" "s/${VERSION_PLACEHOLDER}/${UI_VERSION}/g" dist/server/auth-server.js
+# Skip for non-production builds.
+if [[ $VERSION != "test" ]]; then
+  # Create new version of hosted UI.
+  echo "Making a $VERSION version..."
+  npm version $VERSION
+  UI_VERSION=$(jq -r ".version" package.json)
+  echo "Made a $VERSION version: $UI_VERSION."
+  # Substitute version in file.
+  chmod 755 dist/server/auth-server.js
+  sed -i "" "s/${VERSION_PLACEHOLDER}/${UI_VERSION}/g" dist/server/auth-server.js
+fi
 # Set expected GCP project where the container image lives.
 gcloud config set project $PROJECT_ID
-# Document changes introduced in the current build.
-read -p "Click enter to provide the changes introduced in this version: " next
-CHANGELOG_FILE=$(mktemp)
-vim $CHANGELOG_FILE
-change_summary=$(cat ${CHANGELOG_FILE})
+# Skip for non-production builds.
+if [[ $VERSION != "test" ]]; then
+  # Document changes introduced in the current build.
+  read -p "Click enter to provide the changes introduced in this version: " next
+  CHANGELOG_FILE=$(mktemp)
+  vim $CHANGELOG_FILE
+  change_summary=$(cat ${CHANGELOG_FILE})
+fi
 # Containerize the authui app. Save output to temporary file.
 OUTPUT_FILE=$(mktemp)
 # Note that the authui container image should be made public.
@@ -99,11 +106,14 @@ GCR_VERSION=$(grep "latest: digest: sha256:" "${OUTPUT_FILE}" | awk '{ print $3 
 echo "Deployed gcr.io/${PROJECT_ID}/${IMG_NAME}@${GCR_VERSION}"
 # Clean up.
 rm "${OUTPUT_FILE}"
-rm "${CHANGELOG_FILE}"
-# Log changes.
-echo "" >> CHANGELOG.md
-echo "#v${UI_VERSION}" >> CHANGELOG.md
-echo "" >> CHANGELOG.md
-echo "gcr.io/${PROJECT_ID}/${IMG_NAME}@${GCR_VERSION}"  >> CHANGELOG.md
-echo "" >> CHANGELOG.md
-echo "${change_summary}" >> CHANGELOG.md
+# Skip for non-production builds.
+if [[ $VERSION != "test" ]]; then
+  rm "${CHANGELOG_FILE}"
+  # Log changes.
+  echo "" >> CHANGELOG.md
+  echo "#v${UI_VERSION}" >> CHANGELOG.md
+  echo "" >> CHANGELOG.md
+  echo "gcr.io/${PROJECT_ID}/${IMG_NAME}@${GCR_VERSION}"  >> CHANGELOG.md
+  echo "" >> CHANGELOG.md
+  echo "${change_summary}" >> CHANGELOG.md
+fi

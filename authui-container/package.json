@@ -14,8 +14,7 @@
     "test:server": "mocha test/unit/common/*.spec.ts test/unit/server/*.spec.ts test/unit/server/*/*.spec.ts --timeout 20000 --require ts-node/register",
     "test:client": "karma start karma.config.js",
     "test:unit": "npm run test:server && npm run test:client",
-    "test": "run-s lint test:unit",
-    "deploy-image": "./deploy-container.sh"
+    "test": "run-s lint test:unit"
   },
   "author": "Google",
   "license": "Apache-2.0",

@@ -548,3 +548,95 @@ Platform configurations. This works as follows:
   configuration is lazy loaded on first authentication UI web server access,
   this step may be not required if the first visit occurs after the second
   resource is configured.
+
+## Contributions
+
+The following instructions illustrate how to make contributions to the
+hosted authentication UI used by IAP and how to generate and deploy your own
+custom container image build.
+
+### Installation
+
+To set up a development environment to build the sample from source, you must
+have the following installed:
+- Node.js (>= 10.0.0)
+- npm (should be included with Node.js)
+- [Google Cloud SDK](https://cloud.google.com/sdk/) which includes the gcloud
+  command line tool.
+
+Download the authentication UI container source code:
+
+```bash
+git clone https://github.com/GoogleCloudPlatform/iap-gcip-web-toolkit.git
+```
+
+Install the authentication UI container app:
+
+```bash
+cd iap-gcip-web-toolkit/sample/authui-container
+npm install
+```
+
+### Unit tests
+
+To run client side unit tests:
+
+```bash
+npm run test:client
+```
+
+To run server side unit tests:
+
+```bash
+npm run test:server
+```
+
+To run all tests without linting:
+
+```bash
+npm run test:unit
+```
+
+To run all tests with linting:
+
+```bash
+npm run test
+```
+
+### Generate and deploy locally built container image
+
+To generate the container image locally:
+
+Modify the following 2 fields in `deploy-container.sh`.
+
+```bash
+# GCP project ID where the container image will be generated.
+PROJECT_ID="<GCP_PROJECT_ID>"
+# GCR container image name.
+IMG_NAME="<GCR_CONTAINER_IMAGE>"
+```
+
+You can now generate the build by running:
+
+`./deploy-container.sh test`
+
+This will generate `gcr.io/${PROJECT_ID}/${IMG_NAME}` which can then be
+deployed in a Cloud Run service for testing. Learn more how to
+[deploy a prebuilt container](https://cloud.google.com/run/docs/quickstarts/prebuilt-deploy).
+
+Note that the created Cloud Run service should:
+- Be fully managed.
+- Allow unauthenticated invocations.
+- Use the container image above: `gcr.io/${PROJECT_ID}/${IMG_NAME}`.
+- Have at least 512MiB memory allocated.
+
+This will generate a URL of the form:
+`https://${SERVICE_NAME}-${RANDOM_CHARS}-uc.a.run.app`
+
+This will then need to be replaced as the authentication URL for the GCP
+resources protected by IAP external identities in the
+[Cloud Console](https://console.cloud.google.com/security/iap).
+
+In addition, the domain `${SERVICE_NAME}-${RANDOM_CHARS}-uc.a.run.app`
+should also be whitelisted with Identity Platform in the settings &gt;
+security section and saved.
