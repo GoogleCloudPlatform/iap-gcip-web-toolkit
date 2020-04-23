@@ -1,6 +1,6 @@
 {
   "name": "iap-external-identities-authentication-ui-angular",
-  "version": "0.1.1",
+  "version": "0.0.0",
   "description": "Angular-based Authentication UI for IAP external identities",
   "author": "Google",
   "license": "Apache-2.0",
@@ -41,7 +41,7 @@
     "codelyzer": "~4.5.0",
     "firebase": "^6.6.0",
     "firebaseui": "^4.4.0",
-    "gcip-iap": "0.1.0",
+    "gcip-iap": "0.1.1",
     "jasmine-core": "~2.99.1",
     "jasmine-spec-reporter": "~4.2.1",
     "jquery": "^3.4.1",
