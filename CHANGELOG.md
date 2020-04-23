@@ -1,1 +1,0 @@
-- Fixes token expiration errors in `session_refresher` iframe.
