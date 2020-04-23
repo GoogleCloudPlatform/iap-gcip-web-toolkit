@@ -89,10 +89,19 @@ which firebase &> /dev/null
 trap - ERR
 
 trap "echo 'Missing Chrome.'; exit 1" ERR
-which google-chrome &> /dev/null
-trap - ERR
-echo "Chrome version:"
-google-chrome --version
+if [[ `uname` = "Darwin" ]]; then
+  # Mac OS.
+  which /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome &> /dev/null
+  trap - ERR
+  echo "Chrome version:"
+  /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --version
+else
+  # Linux.
+  which google-chrome &> /dev/null
+  trap - ERR
+  echo "Chrome version:"
+  google-chrome --version
+fi
 echo "Checked for commands."
 
 echo "Checking for logged-in npm user..."
@@ -205,7 +214,11 @@ fi
 echo "Updating gcip-iap dependencies in sample apps..."
 for i in ${SAMPLE_APPS[@]}
 do
-  sed -i "s/\"gcip-iap\":\ \"\(.*\)\"/\"gcip-iap\":\ \"${NEW_VERSION}\"/g" ./sample/${i}/package.json
+  if [[ `uname` = "Darwin" ]]; then
+    sed -i '' -e "s/\"gcip-iap\":\ \"\(.*\)\"/\"gcip-iap\":\ \"${NEW_VERSION}\"/g" ./sample/${i}/package.json
+  else
+    sed -i "s/\"gcip-iap\":\ \"\(.*\)\"/\"gcip-iap\":\ \"${NEW_VERSION}\"/g" ./sample/${i}/package.json
+  fi
 done
 echo "Updated gcip-iap dependencies in sample apps..."
 
