@@ -1,6 +1,6 @@
 {
   "name": "iap-external-identities-authentication-quickstart",
-  "version": "0.0.0",
+  "version": "0.1.1",
   "description": "Quickstart for IAP external identities Authentication UI with FirebaseUI",
   "author": "Google",
   "license": "Apache-2.0",

@@ -1,6 +1,6 @@
 {
   "name": "iap-external-identities-authentication-ui-react",
-  "version": "0.0.0",
+  "version": "0.1.1",
   "description": "React-based Authentication UI for IAP external identities",
   "author": "Google",
   "license": "Apache-2.0",
