@@ -23,6 +23,8 @@ import {URL} from 'url';
  * The main page where the web driver test will be run from.
  */
 export class MainPage extends SignInPage {
+  /** The initial URL used to start the sign-in flow. */
+  private initialUrl: string;
   /** The ID of the email input element. */
   private readonly searchEmailInputId = 'email';
   /** The class name of the search email button element. */
@@ -38,14 +40,17 @@ export class MainPage extends SignInPage {
 
   /**
    * Initializes a main page instance for running web driver tests.
-   * @param initialUrl The initial main page URL to redirect to.
    */
-  constructor(private readonly initialUrl: string) {
+  constructor() {
     super();
   }
 
-  /** @return A promise that resolves after redirecting to the initial main page URL. */
-  start(): Promise<void> {
+  /**
+   * @param initialUrl The initial main page URL to redirect to.
+   * @return A promise that resolves after redirecting to the initial main page URL.
+   */
+  start(initialUrl: string): Promise<void> {
+    this.initialUrl = initialUrl;
     return this.visit(this.initialUrl);
   }
 

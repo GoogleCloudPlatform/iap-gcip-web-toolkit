@@ -60,6 +60,12 @@ function generateRandomString(length: number): string {
 }
 
 describe('GCIP/IAP sign-in automated testing', () => {
+  // For optimization, share the same MainPage for all tests.
+  const mainPage = new MainPage();
+  after(() => {
+    return mainPage.quit();
+  });
+
   describe('Using IAP resource configured with 3P Auth project level IdPs', () => {
     const uids = [];
     const serviceAccount = require('../resources/key.json');
@@ -70,7 +76,6 @@ describe('GCIP/IAP sign-in automated testing', () => {
     const app = admin.initializeApp({
       credential,
     }, 'project-level');
-    const mainPage = new MainPage(appUrl);
 
     before(() => {
       return deployAuthUi(credential, projectId);
@@ -81,8 +86,6 @@ describe('GCIP/IAP sign-in automated testing', () => {
       return cleanup(app, uids).then(() => {
         // Delete Admin instance.
         return app.delete();
-      }).then(() => {
-        return mainPage.quit();
       });
     });
 
@@ -99,7 +102,7 @@ describe('GCIP/IAP sign-in automated testing', () => {
           // Visit the GAE app.
           // The application has to be configured with IAP already.
           // In addition, the GAE app has to have been deployed already.
-          return mainPage.start();
+          return mainPage.start(appUrl);
         })
         .then(() => {
           return mainPage.getCurrentUrl();
@@ -166,7 +169,7 @@ describe('GCIP/IAP sign-in automated testing', () => {
           // Visit the GAE app.
           // The application has to be configured with IAP already.
           // In addition, the GAE app has to have been deployed already.
-          return mainPage.start();
+          return mainPage.start(appUrl);
         })
         .then(() => {
           return mainPage.getCurrentUrl();
@@ -232,7 +235,6 @@ describe('GCIP/IAP sign-in automated testing', () => {
     const app = admin.initializeApp({
       credential,
     }, 'single-tenant-level');
-    const mainPage = new MainPage(appUrl);
 
     before(() => {
       return deployAuthUi(credential, projectId);
@@ -243,8 +245,6 @@ describe('GCIP/IAP sign-in automated testing', () => {
       return cleanup(app, uids, tenantId).then(() => {
         // Delete Admin instance.
         return app.delete();
-      }).then(() => {
-        return mainPage.quit();
       });
     });
 
@@ -257,7 +257,7 @@ describe('GCIP/IAP sign-in automated testing', () => {
       // Visit the GAE app.
       // The application has to be configured with IAP already.
       // In addition, the GAE app has to have been deployed already.
-      return mainPage.start()
+      return mainPage.start(appUrl)
         .then(() => {
           return mainPage.getCurrentUrl();
         })
@@ -333,7 +333,7 @@ describe('GCIP/IAP sign-in automated testing', () => {
       // Visit the GAE app.
       // The application has to be configured with IAP already.
       // In addition, the GAE app has to have been deployed already.
-      return mainPage.start()
+      return mainPage.start(appUrl)
         .then(() => {
           return mainPage.getCurrentUrl();
         })
@@ -413,7 +413,6 @@ describe('GCIP/IAP sign-in automated testing', () => {
     const app = admin.initializeApp({
       credential,
     }, 'multi-tenant-level');
-    const mainPage = new MainPage(appUrl);
 
     before(() => {
       return deployAuthUi(credential, projectId);
@@ -424,8 +423,6 @@ describe('GCIP/IAP sign-in automated testing', () => {
       return cleanup(app, uids, tenantId).then(() => {
         // Delete Admin instance.
         return app.delete();
-      }).then(() => {
-        return mainPage.quit();
       });
     });
 
@@ -438,7 +435,7 @@ describe('GCIP/IAP sign-in automated testing', () => {
       // Visit the GAE app.
       // The application has to be configured with IAP already.
       // In addition, the GAE app has to have been deployed already.
-      return mainPage.start()
+      return mainPage.start(appUrl)
         .then(() => {
           return mainPage.getCurrentUrl();
         })
@@ -528,7 +525,7 @@ describe('GCIP/IAP sign-in automated testing', () => {
       // Visit the GAE app.
       // The application has to be configured with IAP already.
       // In addition, the GAE app has to have been deployed already.
-      return mainPage.start()
+      return mainPage.start(appUrl)
         .then(() => {
           return mainPage.getCurrentUrl();
         })

@@ -15,7 +15,7 @@
  */
 
 import {
-  FirebaseAuth, FirebaseApp, User, Unsubscribe, UserCredential,
+  FirebaseAuth, FirebaseApp, User, Unsubscribe, UserCredential, IdTokenResult,
 } from '../../src/ciap/firebase-auth';
 import { addReadonlyGetter, runIfDefined } from '../../src/utils/index';
 import {
@@ -251,6 +251,7 @@ export class MockUser {
   public processed: boolean;
   private expiredToken: boolean;
   private disabledUser: boolean;
+  private issuedAtDate: Date | null;
 
   /**
    * Initializes the mock user.
@@ -278,9 +279,19 @@ export class MockUser {
   }
 
   /**
-   * @return A promise that resolves with the ID token
+   * Updates the user's current ID token dates.
+   *
+   * @param newIssuedAtDate The new issued-at date.
    */
-  public getIdToken(): Promise<string> {
+  public updateIdTokenDates(newIssuedAtDate?: Date) {
+    this.issuedAtDate = newIssuedAtDate || null;
+  }
+
+  /**
+   * @param forceRefresh Whether to force token refresh.
+   * @return A promise that resolves with the ID token.
+   */
+  public getIdToken(forceRefresh: boolean = false): Promise<string> {
     const error = new Error('message');
     if (this.expiredToken) {
       addReadonlyGetter(error, 'code', 'auth/user-token-expired');
@@ -297,11 +308,53 @@ export class MockUser {
           throw error;
         });
     } else {
-      // Append user processed status on ID token. This helps confirm the ID token was
-      // generated after the user was processed.
+      // Append user processed / refresh status on ID token. This helps confirm the
+      // ID token was generated after the user was processed or refreshed.
       return Promise.resolve(
-          this.idToken + (this.processed ? '-processed' : ''));
+        this.idToken +
+        (this.processed ? '-processed' : '') +
+        (forceRefresh ? '-refreshed' : ''));
       }
+  }
+
+  /**
+   * @param forceRefresh Whether to force token refresh.
+   * @return A promise that resolves with the ID token result.
+   */
+  public getIdTokenResult(forceRefresh: boolean = false): Promise<IdTokenResult> {
+    const error = new Error('message');
+    if (this.expiredToken) {
+      addReadonlyGetter(error, 'code', 'auth/user-token-expired');
+      // Auth will auto-signout the user when its refresh token is expired.
+      return (this.auth ? this.auth.signOut() : Promise.resolve())
+        .then(() => {
+          throw error;
+        });
+    } else if (this.disabledUser) {
+      addReadonlyGetter(error, 'code', 'auth/user-disabled');
+      // Auth will auto-signout the user when it is disabled.
+      return (this.auth ? this.auth.signOut() : Promise.resolve())
+        .then(() => {
+          throw error;
+        });
+    } else {
+      // Append user processed / refresh status on ID token. This helps confirm the
+      // ID token was generated after the user was processed or refreshed.
+      const modifiedToken = this.idToken +
+          (this.processed ? '-processed' : '') +
+          (forceRefresh ? '-refreshed' : '');
+      const issuedAtDate = this.issuedAtDate || new Date();
+
+      return Promise.resolve({
+        authTime: issuedAtDate.toUTCString(),
+        claims: {},
+        // Expiration is always 1 hour from the issued at time.
+        expirationTime: new Date(issuedAtDate.getTime() + 3600 * 1000).toUTCString(),
+        issuedAtTime: issuedAtDate.toUTCString(),
+        signInProvider: null,
+        token: modifiedToken,
+      });
+    }
   }
 
   /** Expires the user's refresh token. */

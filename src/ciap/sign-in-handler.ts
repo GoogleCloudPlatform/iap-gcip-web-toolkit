@@ -18,10 +18,16 @@ import { AuthenticationHandler } from './authentication-handler';
 import { BaseOperationHandler, OperationType, CacheDuration } from './base-operation-handler';
 import { Config } from './config';
 import { RedirectServerResponse } from './iap-request';
-import { UserCredential, User } from './firebase-auth';
+import { UserCredential, User, IdTokenResult } from './firebase-auth';
 import { setCurrentUrl, isCrossOriginIframe } from '../utils/index';
 import { CLIENT_ERROR_CODES, CIAPError } from '../utils/error';
 import { SharedSettings } from './shared-settings';
+
+/**
+ * The threshold to force token refresh in milliseconds.
+ * Currently this is 2 minutes.
+ */
+export const FORCE_REFRESH_THRESHOLD = 1000 * 60 * 2;
 
 /**
  * Defines the sign-in operation handler.
@@ -163,11 +169,26 @@ export class SignInOperationHandler extends BaseOperationHandler {
    */
   private finishSignIn(user: User): Promise<void> {
     let originalUrl: string;
+    let currentUser: User;
     // Process user first.
     return this.processUser(user)
       .then((processedUser) => {
+        currentUser = processedUser;
         // Get ID token of processed user.
-        return processedUser.getIdToken();
+        return processedUser.getIdTokenResult();
+      })
+      .then((result: IdTokenResult) => {
+        const issuedAtTime = new Date(result.issuedAtTime).getTime();
+        const delta = new Date().getTime() - issuedAtTime;
+        // If token is within refresh threshold, do not force refresh.
+        if (delta <= FORCE_REFRESH_THRESHOLD) {
+          return result.token;
+        }
+        // Force refresh. This makes it possible to refresh the token before it's expired
+        // to ensure a fresh token with a predictable expiration is available at all times.
+        // By doing so, this makes the iframe session refresher which refreshes every 45 minutes
+        // easier to use.
+        return currentUser.getIdToken(true);
       })
       .then((idToken: string) => {
         // Exchange ID token for redirect token and get back original URL.

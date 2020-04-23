@@ -16,10 +16,21 @@
 
 export type Unsubscribe = () => void;
 
+export interface IdTokenResult {
+  authTime: string;
+  claims: {[key: string]: any};
+  expirationTime: string;
+  issuedAtTime: string;
+  signInProvider: string | null;
+  signInSecondFactor?: string | null;
+  token: string;
+}
+
 export interface User {
   uid: string;
   tenantId?: string | null;
   getIdToken(forceRefresh?: boolean): Promise<string>;
+  getIdTokenResult(forceRefresh?: boolean): Promise<IdTokenResult>;
 }
 
 export interface FirebaseApp {

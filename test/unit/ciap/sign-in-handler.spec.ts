@@ -17,7 +17,7 @@
 import {expect} from 'chai';
 import * as sinon from 'sinon';
 import { Config } from '../../../src/ciap/config';
-import { SignInOperationHandler } from '../../../src/ciap/sign-in-handler';
+import { SignInOperationHandler, FORCE_REFRESH_THRESHOLD } from '../../../src/ciap/sign-in-handler';
 import {
   OperationType, CacheDuration, GCIP_IAP_FRAMEWORK_ID,
 } from '../../../src/ciap/base-operation-handler';
@@ -36,6 +36,10 @@ import { PromiseCache } from '../../../src/utils/promise-cache';
 import { SharedSettings } from '../../../src/ciap/shared-settings';
 
 describe('SignInOperationHandler', () => {
+  const oneSecAccuracyTime = Math.floor(new Date().getTime() / 1000) * 1000;
+  // This makes it easy to test JWT timestamps which are set to 1 second accuracy.
+  const now = new Date(oneSecAccuracyTime);
+  let clock: sinon.SinonFakeTimers;
   let sharedSettings: SharedSettings;
   const stubs: sinon.SinonStub[] = [];
   const projectId = 'PROJECT_ID';
@@ -82,6 +86,7 @@ describe('SignInOperationHandler', () => {
   let isCrossOriginIframeStub: sinon.SinonStub;
 
   beforeEach(() => {
+    clock = sinon.useFakeTimers(now.getTime());
     sharedSettings = new SharedSettings(apiKey);
     mockStorageManager = createMockStorageManager();
     // Stub globalStorageManager getter.
@@ -274,7 +279,7 @@ describe('SignInOperationHandler', () => {
             .and.calledWith(auth.currentUser)
             .and.calledAfter(startSignInSpy)
             .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
-          // ID token for processed user should be used.
+          // ID token for processed user should be used without forced refresh.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
             .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.state);
@@ -408,7 +413,7 @@ describe('SignInOperationHandler', () => {
             .and.calledWith(auth.currentUser)
             .and.calledAfter(startSignInSpy)
             .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
-          // ID token for processed user should be used.
+          // ID token for processed user should be used without forced refresh.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
             .and.calledWith(
@@ -483,7 +488,7 @@ describe('SignInOperationHandler', () => {
             .and.calledWith(agentAuth.currentUser)
             .and.calledAfter(startSignInSpy)
             .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
-          // ID token for processed user should be used.
+          // ID token for processed user should be used without forced refresh.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
             .and.calledWith(agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentConfig.state);
@@ -503,6 +508,10 @@ describe('SignInOperationHandler', () => {
 
     it('should finish sign in when authenticationHandler startSignIn triggers for tenant flow', () => {
       user = createMockUser('UID1', 'ID_TOKEN1', tid);
+      // Set issued at time to be exactly FORCE_REFRESH_THRESHOLD.
+      // This should not force token refresh.
+      const issuedAtDate = new Date(now.getTime() - FORCE_REFRESH_THRESHOLD);
+      user.updateIdTokenDates(issuedAtDate);
       tenant2Auth[tid] = auth;
       authenticationHandler = createMockAuthenticationHandler(
           tenant2Auth,
@@ -548,7 +557,7 @@ describe('SignInOperationHandler', () => {
           expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
               cacheAndReturnResultSpy.getCalls()[1].args[1].exchangeIdTokenAndGetOriginalAndTargetUrl);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[1]).to.be.instanceof(IAPRequestHandler);
-          // ID token for processed user should be used.
+          // ID token for processed user should be used without forced refresh.
           expect(cacheAndReturnResultSpy.getCalls()[1].args[2])
             .to.deep.equal([config.redirectUrl, 'ID_TOKEN1-processed', config.state]);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[3]).to.equal(CacheDuration.ExchangeIdToken);
@@ -578,10 +587,118 @@ describe('SignInOperationHandler', () => {
             .and.calledWith(auth.currentUser)
             .and.calledAfter(startSignInSpy)
             .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
-          // Confirm ID token for processed user exchanged.
+          // Confirm ID token for processed user exchanged without forced refresh.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
             .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.state);
+          // Confirm set cookie endpoint called.
+          expect(setCookieAtTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
+          // Confirm redirect to original URI.
+          expect(setCurrentUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(setCookieAtTargetUrlStub)
+            .and.calledWith(window, redirectServerResp.originalUri);
+          // Confirm expected tenant ID stored after success along with the other existing tenant ID.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.have.same.members(['OTHER_TENANT_ID', tid]);
+          // Call again. Cached results should be used. This is not a realistic scenario and only used
+          // to illustrate expected caching behavior.
+          return operationHandler.start();
+        })
+        .then(() => {
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.be.calledOnce;
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub).to.be.calledOnce;
+          expect(setCookieAtTargetUrlStub).to.be.calledOnce;
+        });
+    });
+
+    it('should force token refresh if the existing ID token is older than the allowed threshold', () => {
+      user = createMockUser('UID1', 'ID_TOKEN1', tid);
+      // Set issued at time to be older than FORCE_REFRESH_THRESHOLD by 1 second.
+      const issuedAtDate = new Date(now.getTime() - FORCE_REFRESH_THRESHOLD - 1000);
+      user.updateIdTokenDates(issuedAtDate);
+      tenant2Auth[tid] = auth;
+      authenticationHandler = createMockAuthenticationHandler(
+          tenant2Auth,
+          // onStartSignIn simulates user signing in.
+          () => auth.setCurrentMockUser(user));
+      operationHandler = new SignInOperationHandler(config, authenticationHandler);
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          GCIPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock ID token exchange endpoint.
+      const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
+            .resolves(redirectServerResp);
+      stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+      // Mock set cookie.
+      const setCookieAtTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+      stubs.push(setCookieAtTargetUrlStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+
+      // Simulate some other tenant previously signed in and saved in storage.
+      return authTenantsStorageManager.addTenant('OTHER_TENANT_ID')
+        .then(() => {
+          return operationHandler.start();
+        })
+        .then(() => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
+          // Expect checkAuthorizedDomainsAndGetProjectId result to be cached for 30 mins.
+          expect(cacheAndReturnResultSpy).to.be.calledThrice;
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
+            .to.deep.equal([[currentUrlOrigin, config.redirectUrl]]);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
+          // Expect getOriginalUrlForSignOut result to be cached for 5 mins.
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[1].args[1].exchangeIdTokenAndGetOriginalAndTargetUrl);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[1]).to.be.instanceof(IAPRequestHandler);
+          // ID token for processed user should be used with forced refresh.
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[2])
+            .to.deep.equal([config.redirectUrl, 'ID_TOKEN1-processed-refreshed', config.state]);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[3]).to.equal(CacheDuration.ExchangeIdToken);
+          // Expect setCookieAtTargetUrl to be cached for 5 mins.
+          expect(cacheAndReturnResultSpy.getCalls()[2].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[2].args[1].setCookieAtTargetUrl);
+          expect(cacheAndReturnResultSpy.getCalls()[2].args[1]).to.be.instanceof(IAPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[2].args[2])
+            .to.deep.equal([redirectServerResp.targetUri, redirectServerResp.redirectToken]);
+          expect(cacheAndReturnResultSpy.getCalls()[2].args[3]).to.equal(CacheDuration.SetCookie);
+
+          // Progress bar should be shown on initialization.
+          expect(showProgressBarSpy).to.have.been.calledTwice
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
+          // Progress bar should be hidden before user is asked to sign-in.
+          expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledBefore(startSignInSpy);
+          // Confirm startSignIn is called.
+          expect(startSignInSpy).to.have.been.calledOnce
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Progress bar should be shown after the user is signed in and ID token is being processed.
+          expect(showProgressBarSpy).to.have.been.calledTwice.and.calledAfter(startSignInSpy);
+          // User should be processed before calling exchangeIdTokenAndGetOriginalAndTargetUrl.
+          expect(processUserSpy).to.have.been.calledOnce
+            .and.calledWith(auth.currentUser)
+            .and.calledAfter(startSignInSpy)
+            .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+          // Confirm ID token for processed user exchanged with forced refresh.
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(processUserSpy)
+            .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed-refreshed', config.state);
           // Confirm set cookie endpoint called.
           expect(setCookieAtTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
@@ -655,7 +772,7 @@ describe('SignInOperationHandler', () => {
           expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
               cacheAndReturnResultSpy.getCalls()[1].args[1].exchangeIdTokenAndGetOriginalAndTargetUrl);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[1]).to.be.instanceof(IAPRequestHandler);
-          // ID token for processed user should be used.
+          // ID token for processed user should be used without forced refresh.
           expect(cacheAndReturnResultSpy.getCalls()[1].args[2])
             .to.deep.equal([agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentConfig.state]);
           expect(cacheAndReturnResultSpy.getCalls()[1].args[3]).to.equal(CacheDuration.ExchangeIdToken);
@@ -686,7 +803,7 @@ describe('SignInOperationHandler', () => {
             .and.calledWith(agentAuth.currentUser)
             .and.calledAfter(startSignInSpy)
             .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
-          // Confirm ID token for processed user exchanged.
+          // Confirm ID token for processed user exchanged without forced refresh.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
             .and.calledWith(agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentConfig.state);
@@ -951,7 +1068,7 @@ describe('SignInOperationHandler', () => {
             .and.calledWith(auth.currentUser)
             .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
             .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
-          // ID token for processed user should be used.
+          // ID token for processed user should be used without forced refresh.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
             .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.state);
@@ -1014,7 +1131,7 @@ describe('SignInOperationHandler', () => {
             .and.calledWith(auth.currentUser)
             .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
             .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
-          // ID token for processed user should be used.
+          // ID token for processed user should be used without forced refresh.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
             .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.state);
@@ -1109,7 +1226,7 @@ describe('SignInOperationHandler', () => {
             .and.calledWith(validUser)
             .and.calledAfter(startSignInSpy)
             .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
-          // ID token for processed valid user should be used.
+          // ID token for processed valid user should be used without forced refresh.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
             .and.calledWith(config.redirectUrl, 'ID_TOKEN2-processed', config.state);
@@ -1209,7 +1326,7 @@ describe('SignInOperationHandler', () => {
             .and.calledWith(validUser)
             .and.calledAfter(startSignInSpy)
             .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
-          // ID token for processed valid user should be used.
+          // ID token for processed valid user should be used without forced refresh.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
             .and.calledWith(config.redirectUrl, 'ID_TOKEN2-processed', config.state);
@@ -1274,7 +1391,7 @@ describe('SignInOperationHandler', () => {
             .and.calledWith(agentAuth.currentUser)
             .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
             .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
-          // ID token for processed user should be used.
+          // ID token for processed user should be used without forced refresh.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
             .and.calledWith(agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentConfig.state);
@@ -1342,7 +1459,7 @@ describe('SignInOperationHandler', () => {
           // Confirm SharedSettings iapRequest used.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub.getCall(0).thisValue)
             .to.equal(sharedSettings.iapRequest);
-          // ID token for processed user should be used.
+          // ID token for processed user should be used without forced refresh.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
             .and.calledWith(agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentConfig.state);
@@ -1472,7 +1589,7 @@ describe('SignInOperationHandler', () => {
             .and.calledWith(auth.currentUser)
             .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
             .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
-          // ID token for processed user should be used.
+          // ID token for processed user should be used without forced refresh.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
             .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.state);
@@ -1567,7 +1684,7 @@ describe('SignInOperationHandler', () => {
            .and.calledWith(auth.currentUser)
            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
            .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
-          // ID token for processed user should be used.
+          // ID token for processed user should be used without forced refresh.
           expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
             .to.have.been.calledOnce.and.calledAfter(processUserSpy)
             .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.state);
