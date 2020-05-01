@@ -252,7 +252,7 @@ export function isSafeString(value: any): boolean {
     return false;
   }
   // This check only allows limited set of characters and spaces.
-  const re = /^[a-zA-Z0-9\-\_\.\s\,\+]+$/;
+  const re = /^[a-zA-Z0-9\-\_\.\s\,\+\?\!\&\;]+$/;
   return isNonEmptyString(value) && re.test(value);
 }
 

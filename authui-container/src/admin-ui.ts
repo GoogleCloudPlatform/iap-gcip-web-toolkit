@@ -369,11 +369,8 @@ export class AdminUi {
         const errorData = resp.data;
         // Seems like the error is being constructed as Invalid Credentials:
         // {"error":{"code":500,"status":"UNKNOWN","message":"Invalid Credentials"}}
-        if (errorData &&
-            errorData.error &&
-            (errorData.error.code === 401 ||
-             errorData.error.code === 403 ||
-             errorData.error.message.match(/invalid\scredentials/i))) {
+        if (errorData && errorData.error && errorData.error.message &&
+            errorData.error.message.match(/invalid\scredentials/i)) {
           // Show re-auth button.
           this.reauthElement.style.display = 'inline-block';
           this.showToastMessage('error', MSG_INVALID_CREDENTIALS);

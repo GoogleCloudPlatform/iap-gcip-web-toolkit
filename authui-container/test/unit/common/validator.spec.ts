@@ -518,7 +518,7 @@ describe('isSafeString()', () => {
     expect(isSafeString('foo')).to.be.true;
   });
 
-  const unsafeStrings = ['<', '<a>', '"', '\'', '&', '(', ')', '\\', '/'];
+  const unsafeStrings = ['<', '<a>', '"', '\'', '(', ')', '\\', '/'];
   unsafeStrings.forEach((unsafeString) => {
     it(`should return false given a safe string: "${unsafeString}"`, () => {
       expect(isSafeString(unsafeString)).to.be.false;
@@ -528,7 +528,9 @@ describe('isSafeString()', () => {
   it('should return true given a safe string', () => {
     const alphabet = 'abcdefghijklmnopqrstuvwxyz';
     const numbers = '0123456789';
-    expect(isSafeString(`${alphabet.toLowerCase()} ${alphabet.toUpperCase()} ${numbers} - _ . , +`)).to.be.true;
+    expect(isSafeString(
+      `${alphabet.toLowerCase()} ${alphabet.toUpperCase()} ${numbers} - _ . , + ! ? & ;`)
+    ).to.be.true;
   });
 });
 

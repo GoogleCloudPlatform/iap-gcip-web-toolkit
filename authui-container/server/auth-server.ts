@@ -397,8 +397,14 @@ export class AuthServer {
       })
       .catch((error) => {
         if (error.message && error.message.toLowerCase().indexOf('not found') !== -1) {
-          // If not found, return default config.
-          return this.getDefaultConfig();
+          // Since we can't check permissions on a non-existant bucket,
+          // check user can list buckets.
+          return cloudStorageHandler.listBuckets()
+            .then(() => {
+              // If not found, but user can list buckets, return default config.
+              // Otherwise throw an error.
+              return this.getDefaultConfig();
+            });
         }
         throw error;
       })

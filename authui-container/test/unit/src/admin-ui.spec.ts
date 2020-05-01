@@ -53,6 +53,7 @@ describe('AdminUi', () => {
   const OAUTH_ACCESS_TOKEN = 'OAUTH_ACCESS_TOKEN';
   const UPDATED_OAUTH_ACCESS_TOKEN = 'UPDATED_OAUTH_ACCESS_TOKEN';
   const PROJECT_ID = 'project-id';
+  const PROJECT_NUMBER = 'PROJECT_NUMBER';
   const API_KEY = 'API_KEY';
   const AUTH_SUBDOMAIN = 'AUTH_SUBDOMAIN';
   const CUSTOM_STYLESHEET_URL = 'https://www.example.com/css/custom-stylesheet.css';
@@ -1011,7 +1012,7 @@ describe('AdminUi', () => {
         });
     });
 
-    it('should trigger re-auth on expired access token', () => {
+    it('should display error message when user is not authorized', () => {
       let callCounter = 0;
       const reauthButton = document.getElementsByClassName('reauth')[0] as HTMLButtonElement;
       const adminFormButton = mainContainer.querySelector('button[type="submit"]') as HTMLButtonElement;
@@ -1035,14 +1036,22 @@ describe('AdminUi', () => {
         }),
       };
       const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1', stubbedUserMethods);
-      const UNAUTHORIZED_USER_ERROR = 'Unauthorized user';
+      const UNAUTHORIZED_USER_ERROR =
+        `${EMAIL} does not have storage.buckets.create access to project ${PROJECT_NUMBER}.`;
       const serverLowLevelError = testUtils.createMockLowLevelError(
           'Server responded with status 401',
-          401,
+          403,
           {
             data: {
               error: {
-                code: 401,
+                errors: [
+                  {
+                    domain: 'global',
+                    reason: 'forbidden',
+                    message: UNAUTHORIZED_USER_ERROR,
+                  },
+                ],
+                code: 403,
                 message: UNAUTHORIZED_USER_ERROR,
               },
             },
@@ -1145,29 +1154,10 @@ describe('AdminUi', () => {
           return Promise.resolve();
         })
         .then(() => {
-          // Confirm re-auth button shown.
-          expect(reauthButton.style.display).to.be.equal('inline-block');
-          assertToastMessage('Error', MSG_INVALID_CREDENTIALS);
-          expect(showToast).to.have.been.calledOnce;
-          // Click re-auth button.
-          reauthButton.click();
-          // Add some delay to allow reauthenticateWithPopup to process.
-          return new Promise((resolve, reject) => {
-            setTimeout(resolve, 20);
-          });
-        })
-        .then(() => {
-          // Re-auth button should be hidden now.
+          // Confirm re-auth button not shown.
           expect(reauthButton.style.display).to.be.equal('none');
-          // Try to save again.
-          adminFormButton.click();
-          // Add some delay before checking toast message.
-          return Promise.resolve();
-        })
-        .then(() => {
-          expect(httpClientSendStub.callCount).to.be.equal(4);
-          assertToastMessage('Success', MSG_CONFIGURATION_SAVED);
-          expect(showToast).to.have.been.calledTwice;
+          assertToastMessage('Error', UNAUTHORIZED_USER_ERROR);
+          expect(showToast).to.have.been.calledOnce;
         });
     });
 
@@ -1447,142 +1437,10 @@ describe('AdminUi', () => {
           return Promise.resolve();
         })
         .then(() => {
-          // Confirm re-auth button shown.
-          expect(reauthButton.style.display).to.be.equal('inline-block');
-          assertToastMessage('Error', MSG_INVALID_CREDENTIALS);
+          // Confirm re-auth button not shown.
+          expect(reauthButton.style.display).to.be.equal('none');
+          assertToastMessage('Error', UNAUTHORIZED_USER_ERROR);
           expect(showToast).to.have.been.calledOnce;
-          // Click re-auth button.
-          reauthButton.click();
-          // Add some delay to allow reauthenticateWithPopup to process.
-          return new Promise((resolve, reject) => {
-            setTimeout(resolve, 20);
-          });
-        })
-        .then(() => {
-          expect(reauthButton.style.display).to.be.equal('inline-block');
-          // Confirm re-auth error shown in toast alert.s
-          assertToastMessage('Error', expectedError.message);
-          expect(showToast).to.have.been.calledTwice;
-        });
-    });
-
-    it('should handle null currentUser before reauthenticateWithPopup', () => {
-      const reauthButton = document.getElementsByClassName('reauth')[0] as HTMLButtonElement;
-      const adminFormButton = mainContainer.querySelector('button[type="submit"]') as HTMLButtonElement;
-      const stubbedUserMethods = {
-        email: EMAIL,
-        reauthenticateWithPopup: sinon.stub(),
-      };
-      const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1', stubbedUserMethods);
-      const UNAUTHORIZED_USER_ERROR = 'Unauthorized user';
-      const serverLowLevelError = testUtils.createMockLowLevelError(
-          'Server responded with status 401',
-          401,
-          {
-            data: {
-              error: {
-                code: 401,
-                message: UNAUTHORIZED_USER_ERROR,
-              },
-            },
-          });
-      const updatedUiConfig = utils.deepCopy(expectedUiConfig);
-      updatedUiConfig[API_KEY].selectTenantUiTitle = 'Custom title';
-      const stubbedAuthMethods = {
-        setPersistence: sinon.stub(),
-        getRedirectResult: sinon.stub().callsFake(() => {
-          app.auth().setCurrentMockUser(mockUser);
-          return Promise.resolve({
-            user: mockUser,
-            credential: {
-              providerId: 'google.com',
-              accessToken: OAUTH_ACCESS_TOKEN,
-            },
-          });
-        }),
-      };
-      const app = testUtils.createMockApp(
-          expectedGcipConfig,
-          stubbedAuthMethods);
-      const expectedGcipConfigResp = testUtils.createMockHttpResponse(
-          {'Content-Type': 'application/json'},
-          expectedGcipConfig);
-      const expectedGetAdminConfigResp = testUtils.createMockHttpResponse(
-          {'Content-Type': 'application/json'},
-          expectedUiConfig);
-      httpClientSendStub.callsFake((params) => {
-        expect(params.timeout).to.be.equal(TIMEOUT_DURATION);
-        expect(params.mode).to.be.equal('same-origin');
-        expect(params.cache).to.be.equal('no-cache');
-        if (params.url === '/gcipConfig') {
-          expect(params.method).to.be.equal('GET');
-          expect(params.headers).to.deep.equal({
-            'Content-Type': 'application/json',
-          });
-          return Promise.resolve(expectedGcipConfigResp);
-        } else if (params.url === '/get_admin_config') {
-          expect(params.method).to.be.equal('GET');
-          expect(params.headers).to.deep.equal({
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OAUTH_ACCESS_TOKEN}`,
-          });
-          return Promise.resolve(expectedGetAdminConfigResp);
-        } else if (params.url === '/set_admin_config') {
-          expect(params.method).to.be.equal('POST');
-          expect(params.headers).to.deep.equal({
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OAUTH_ACCESS_TOKEN}`,
-          });
-          expect(params.data).to.deep.equal(updatedUiConfig);
-          // Simulate token expired.
-          return Promise.reject(serverLowLevelError);
-        }
-        throw new Error('Unexpected call');
-      });
-      const firebaseStub = sinon.stub(firebase, 'initializeApp');
-      firebaseStub.callsFake((config) => {
-        expect(config).to.deep.equal(expectedGcipConfig);
-        return app as any;
-      });
-      stubs.push(firebaseStub);
-      // GoogleAuthProvider stubs.
-      const addScopeStub = sinon.stub(firebase.auth.GoogleAuthProvider.prototype, 'addScope');
-      stubs.push(addScopeStub);
-      const setCustomParametersStub = sinon.stub(firebase.auth.GoogleAuthProvider.prototype, 'setCustomParameters');
-      stubs.push(setCustomParametersStub);
-
-      const adminUi = new AdminUi(mainContainer, showToast);
-      return adminUi.render()
-        .then(() => {
-          expect(httpClientSendStub).to.have.been.calledTwice;
-          const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
-          expect(mainContainer.style.display).to.be.equal('block');
-          expect(area.value).to.be.equal(JSON.stringify(expectedUiConfig, undefined, 2));
-          // Confirm CodeMirror editor behavior.
-          expect(codeMirrorEditorSpy).to.have.been.calledOnce.and.calledWith(
-              area, CODE_MIRROR_CONFIG);
-          const editorInstance = codeMirrorEditorSpy.getCall(0).returnValue;
-          expect(editorInstance.getValue()).to.be.equal(area.value);
-          // Update editor content.
-          editorInstance.setValue(JSON.stringify(updatedUiConfig));
-          // Test save functionality.
-          adminFormButton.click();
-          expect(httpClientSendStub).to.have.been.calledThrice;
-          // Add some delay before checking toast message.
-          return Promise.resolve();
-        })
-        .then(() => {
-          // Confirm re-auth button shown.
-          expect(reauthButton.style.display).to.be.equal('inline-block');
-          assertToastMessage('Error', MSG_INVALID_CREDENTIALS);
-          expect(showToast).to.have.been.calledOnce;
-          // Simulate user signed out for some reason.
-          app.auth().signOut();
-          // Click re-auth button. This will trigger an error.
-          reauthButton.click();
-          expect(reauthButton.style.display).to.be.equal('inline-block');
-          assertToastMessage('Error', MSG_NO_USER_LOGGED_IN);
-          expect(showToast).to.have.been.calledTwice;
         });
     });
 

@@ -36,6 +36,56 @@ describe('CloudStorageHandler', () => {
     foo: 'bar',
     success: true,
   };
+  const listBucketsResponse = {
+    kind: 'storage#buckets',
+    items: [
+      {
+        kind: 'storage#bucket',
+        selfLink: 'https://www.googleapis.com/storage/v1/b/foo-bar-static-files',
+        id: 'foo-bar-static-files',
+        name: 'foo-bar-static-files',
+        projectNumber: PROJECT_NUMBER,
+        metageneration: '1',
+        location: 'US',
+        storageClass: 'STANDARD',
+        etag: 'CAE=',
+        defaultEventBasedHold: false,
+        timeCreated: '2020-04-30T21:28:34.181Z',
+        updated: '2020-04-30T21:28:34.181Z',
+        iamConfiguration: {
+          bucketPolicyOnly: {
+            enabled: false
+          },
+          uniformBucketLevelAccess: {
+            enabled: false
+          }
+        },
+        locationType: 'multi-region',
+      },
+      {
+        kind: 'storage#bucket',
+        selfLink: 'https://www.googleapis.com/storage/v1/b/hello-world.appspot.com',
+        id: 'hello-world.appspot.com',
+        name: 'hello-world.appspot.com',
+        projectNumber: PROJECT_NUMBER,
+        metageneration: '1',
+        location: 'US',
+        storageClass: 'STANDARD',
+        etag: 'CAE=',
+        timeCreated: '2019-03-29T01:12:31.813Z',
+        updated: '2019-03-29T01:12:31.813Z',
+        iamConfiguration: {
+          bucketPolicyOnly: {
+            enabled: false,
+          },
+          uniformBucketLevelAccess: {
+            enabled: false,
+          },
+        },
+        locationType: 'multi-region',
+      },
+    ],
+  };
 
   beforeEach(() => {
     accessTokenManager = {
@@ -281,6 +331,72 @@ describe('CloudStorageHandler', () => {
       stubs.push(stub);
 
       return cloudStorageHandler.writeFile(bucketName, fileName, content)
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error).to.be.equal(expectedError);
+        });
+    });
+  });
+
+  describe('listBuckets()', () => {
+    it('should call expected endpoint with expected parameters on success', () => {
+      const scope = nock('https://storage.googleapis.com', {
+        reqheaders: {
+          'Authorization': `Bearer ${ACCESS_TOKEN}`,
+        },
+      }).get(`/storage/v1/b?project=${PROJECT_ID}`)
+        .reply(200, listBucketsResponse);
+      mockedRequests.push(scope);
+
+      return cloudStorageHandler.listBuckets()
+        .then((content) => {
+          expect(app.log).to.have.been.calledTwice;
+          expect((app.log as sinon.SinonStub).firstCall).to.be.calledWith(
+            `GET to https://storage.googleapis.com/storage/v1/b?project=${PROJECT_ID}`);
+          expect((app.log as sinon.SinonStub).secondCall).to.be.calledWith('200 response');
+          expect(content).to.deep.equal(listBucketsResponse);
+        });
+    });
+
+    it('should fail with expected error when underlying call fails', () => {
+      const errorResponse = {
+        error: {
+          code: 403,
+          message: 'EMAIL does not have storage.buckets.list access to project PROJECT_NUMBER.',
+          errors: [
+            {
+              message: 'EMAIL does not have storage.buckets.list access to project PROJECT_NUMBER.',
+              domain: 'global',
+              reason: 'forbidden'
+            },
+          ],
+        },
+      };
+      const scope = nock('https://storage.googleapis.com', {
+        reqheaders: {
+          'Authorization': `Bearer ${ACCESS_TOKEN}`,
+        },
+      }).get(`/storage/v1/b?project=${PROJECT_ID}`)
+        .reply(403, errorResponse);
+      mockedRequests.push(scope);
+
+      return cloudStorageHandler.listBuckets()
+        .then(() => {
+          throw new Error('Unexpected success');
+        })
+        .catch((error) => {
+          expect(error.message).to.be.equal(errorResponse.error.message);
+        });
+    });
+
+    it('should fail with expected error when access token is not determined', () => {
+      const expectedError = new Error('Invalid credentials');
+      const stub = sinon.stub(accessTokenManager, 'getAccessToken').rejects(expectedError);
+      stubs.push(stub);
+
+      return cloudStorageHandler.listBuckets()
         .then(() => {
           throw new Error('Unexpected success');
         })

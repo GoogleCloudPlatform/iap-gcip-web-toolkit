@@ -384,6 +384,7 @@ export class DefaultUiConfigBuilder {
     let charCode = 'A'.charCodeAt(0);
     const optionsMap = this.tenantUiConfigMap;
     const tenantIds: string[] = [];
+    let totalSignInOptions: number = 0;
 
     for (const tenantId in optionsMap) {
       if (optionsMap.hasOwnProperty(tenantId)) {
@@ -404,6 +405,9 @@ export class DefaultUiConfigBuilder {
         charCode++;
       }
 
+      totalSignInOptions += (optionsMap[key] &&
+        optionsMap[key].signInOptions && optionsMap[key].signInOptions.length) || 0;
+
       tenantConfigs[key] = {
         displayName,
         iconUrl: TENANT_ICON_URL,
@@ -418,8 +422,8 @@ export class DefaultUiConfigBuilder {
         privacyPolicyUrl: '',
       };
     });
-    // IAP not yet configured.
-    if (tenantIds.length === 0) {;
+    // IAP or IdPs not yet configured.
+    if (totalSignInOptions === 0) {;
       return null;
     }
 

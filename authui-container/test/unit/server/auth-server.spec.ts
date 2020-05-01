@@ -1229,6 +1229,60 @@ describe('AuthServer', () => {
         ],
       },
     };
+    const emptyListBucketsResponse = {
+      kind: 'storage#buckets',
+      items: [],
+    };
+    const listBucketsResponse = {
+      kind: 'storage#buckets',
+      items: [
+        {
+          kind: 'storage#bucket',
+          selfLink: 'https://www.googleapis.com/storage/v1/b/foo-bar-static-files',
+          id: 'foo-bar-static-files',
+          name: 'foo-bar-static-files',
+          projectNumber: PROJECT_NUMBER,
+          metageneration: '1',
+          location: 'US',
+          storageClass: 'STANDARD',
+          etag: 'CAE=',
+          defaultEventBasedHold: false,
+          timeCreated: '2020-04-30T21:28:34.181Z',
+          updated: '2020-04-30T21:28:34.181Z',
+          iamConfiguration: {
+            bucketPolicyOnly: {
+              enabled: false
+            },
+            uniformBucketLevelAccess: {
+              enabled: false
+            }
+          },
+          locationType: 'multi-region',
+        },
+        {
+          kind: 'storage#bucket',
+          selfLink: 'https://www.googleapis.com/storage/v1/b/hello-world.appspot.com',
+          id: 'hello-world.appspot.com',
+          name: 'hello-world.appspot.com',
+          projectNumber: PROJECT_NUMBER,
+          metageneration: '1',
+          location: 'US',
+          storageClass: 'STANDARD',
+          etag: 'CAE=',
+          timeCreated: '2019-03-29T01:12:31.813Z',
+          updated: '2019-03-29T01:12:31.813Z',
+          iamConfiguration: {
+            bucketPolicyOnly: {
+              enabled: false,
+            },
+            uniformBucketLevelAccess: {
+              enabled: false,
+            },
+          },
+          locationType: 'multi-region',
+        },
+      ],
+    };
     const expectedUiConfig =
         new DefaultUiConfigBuilder(PROJECT_ID, gcipConfig, tenantUiConfigMap).build();
 
@@ -1442,6 +1496,9 @@ describe('AuthServer', () => {
       const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
         .rejects(new Error('Not found'));
       stubs.push(readFileStub);
+      const listBucketsStub = sinon.stub(storage.CloudStorageHandler.prototype, 'listBuckets')
+        .resolves(listBucketsResponse);
+      stubs.push(listBucketsStub);
       const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
         .resolves(gcipConfig);
       stubs.push(getGcipConfigStub);
@@ -1481,6 +1538,8 @@ describe('AuthServer', () => {
             .and.calledWith(AUTH_SERVER_SCOPES);
           // readFile called.
           expect(readFileStub).to.have.been.calledOnce.and.calledWith(bucketName, fileName);
+          // listBuckets called.
+          expect(listBucketsStub).to.have.been.calledOnce;
           // getGcipConfig called next.
           expect(getGcipConfigStub).to.have.been.calledOnce.and.calledAfter(readFileStub);
           // listIapSettings called next.
@@ -1489,6 +1548,79 @@ describe('AuthServer', () => {
           expect(getTenantUiConfigStub).to.have.been.calledThrice.and.calledAfter(listIapSettingsStub);
           // Expected default config returned.
           expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+        });
+    });
+
+    it('responds with error if file not found in GCS and user does not have list permission', () => {
+      const expectedResponse = {
+        error: {
+          code: 403,
+          message: 'EMAIL does not have storage.buckets.list access to project PROJECT_NUMBER.',
+        },
+      };
+      const expectedError = createError(expectedResponse);
+      const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
+      const fileName = 'config.json';
+      const bucketName = `gcip-iap-bucket-${K_CONFIGURATION}-${PROJECT_NUMBER}`;
+      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
+        .resolves(METADATA_ACCESS_TOKEN);
+      stubs.push(getAccessToken);
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(new Error('Not found'));
+      stubs.push(readFileStub);
+      const listBucketsStub = sinon.stub(storage.CloudStorageHandler.prototype, 'listBuckets')
+        .rejects(expectedError);
+      stubs.push(listBucketsStub);
+      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
+        .resolves(gcipConfig);
+      stubs.push(getGcipConfigStub);
+      const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
+      getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
+      getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
+      getTenantUiConfigStub.withArgs('tenantId2').resolves(tenantUiConfigMap.tenantId2);
+      stubs.push(getTenantUiConfigStub);
+      const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
+        .resolves(iapSettings);
+      stubs.push(listIapSettingsStub);
+
+      return request(authServer.server)
+        .get('/get_admin_config')
+        .set({'Authorization': `Bearer ${personalAccessToken}`})
+        .expect('Content-Type', /json/)
+        .expect(403)
+        .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
+          assertApiHandlerInitializedWithMetadataServer(gcipHandlerSpy, metadataServerSpy);
+          assertApiHandlerInitializedWithMetadataServer(iapSettingsHandlerSpy, metadataServerSpy);
+          // CloudStorageHandler initialized with expected OAuth access token.
+          expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
+          expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
+            .to.eventually.equal(personalAccessToken);
+          // gcipHandler and iapSettingsHandler initialized with expected OAuth access token.
+          expect(gcipHandlerSpy).to.have.been.calledOnce;
+          expect(gcipHandlerSpy.getCall(0).args[1].getAccessToken())
+            .to.eventually.equal(METADATA_ACCESS_TOKEN);
+          expect(iapSettingsHandlerSpy).to.have.been.calledOnce;
+          expect(iapSettingsHandlerSpy.getCall(0).args[1].getAccessToken())
+            .to.eventually.equal(METADATA_ACCESS_TOKEN);
+          // Metadata server initialized with expected OAuth scopes.
+          expect(metadataServerSpy).to.have.been.calledOnce
+            .and.calledWith(AUTH_SERVER_SCOPES);
+          // readFile called.
+          expect(readFileStub).to.have.been.calledOnce.and.calledWith(bucketName, fileName);
+          // listBuckets called.
+          expect(listBucketsStub).to.have.been.calledOnce;
+          // getGcipConfig called next.
+          expect(getGcipConfigStub).to.not.have.been.called;
+          expect(response.text).to.equal(JSON.stringify(expectedResponse));
         });
     });
 
@@ -1508,6 +1640,9 @@ describe('AuthServer', () => {
       const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
         .rejects(new Error('Not found'));
       stubs.push(readFileStub);
+      const listBucketsStub = sinon.stub(storage.CloudStorageHandler.prototype, 'listBuckets')
+        .resolves(emptyListBucketsResponse);
+      stubs.push(listBucketsStub);
       const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
         .resolves(gcipConfig);
       stubs.push(getGcipConfigStub);
@@ -1542,6 +1677,8 @@ describe('AuthServer', () => {
             .and.calledWith(AUTH_SERVER_SCOPES);
           // readFile called.
           expect(readFileStub).to.have.been.calledOnce.and.calledWith(bucketName, fileName);
+          // listBuckets called.
+          expect(listBucketsStub).to.have.been.calledOnce;
           // getGcipConfig called next.
           expect(getGcipConfigStub).to.have.been.calledOnce.and.calledAfter(readFileStub);
           // listIapSettings called next.
@@ -1574,6 +1711,9 @@ describe('AuthServer', () => {
       stubs.push(getProjectIdStub);
       const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
         .rejects(new Error('Not found'));
+      const listBucketsStub = sinon.stub(storage.CloudStorageHandler.prototype, 'listBuckets')
+        .resolves(emptyListBucketsResponse);
+      stubs.push(listBucketsStub);
       stubs.push(readFileStub);
       const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
         .rejects(expectedError);
@@ -1606,6 +1746,8 @@ describe('AuthServer', () => {
             .and.calledWith(AUTH_SERVER_SCOPES);
           // readFile called.
           expect(readFileStub).to.have.been.calledOnce.and.calledWith(bucketName, fileName);
+          // listBuckets called.
+          expect(listBucketsStub).to.have.been.calledOnce;
           // getGcipConfig called next.
           expect(getGcipConfigStub).to.have.been.calledOnce.and.calledAfter(readFileStub);
           expect(response.text).to.equal(JSON.stringify(expectedResponse));
@@ -1636,6 +1778,9 @@ describe('AuthServer', () => {
       const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
         .rejects(new Error('Not found'));
       stubs.push(readFileStub);
+      const listBucketsStub = sinon.stub(storage.CloudStorageHandler.prototype, 'listBuckets')
+        .resolves(emptyListBucketsResponse);
+      stubs.push(listBucketsStub);
       const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
         .resolves(gcipConfig);
       stubs.push(getGcipConfigStub);
@@ -1675,6 +1820,8 @@ describe('AuthServer', () => {
             .and.calledWith(AUTH_SERVER_SCOPES);
           // readFile called.
           expect(readFileStub).to.have.been.calledOnce.and.calledWith(bucketName, fileName);
+          // listBuckets called.
+          expect(listBucketsStub).to.have.been.calledOnce;
           // getGcipConfig called next.
           expect(getGcipConfigStub).to.have.been.calledOnce.and.calledAfter(readFileStub);
           // listIapSettings called next.

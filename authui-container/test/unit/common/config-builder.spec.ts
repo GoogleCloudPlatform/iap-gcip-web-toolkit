@@ -773,5 +773,22 @@ describe('DefaultUiConfigBuilder', () => {
 
       expect(configBuilder.build()).to.be.null;
     });
+
+    it('should return null when empty signInOptions are provided', () => {
+      const emptyConfigMap = {
+        _: {
+          signInOptions: [],
+        },
+        tenantId1: {
+          signInOptions: [],
+        },
+        tenantId2: {
+          signInOptions: [],
+        },
+      };
+      const configBuilder = new DefaultUiConfigBuilder(PROJECT_ID, gcipConfig, emptyConfigMap);
+
+      expect(configBuilder.build()).to.be.null;
+    });
   });
 });
