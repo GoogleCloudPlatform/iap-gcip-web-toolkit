@@ -61,7 +61,6 @@ export const TIMEOUT_DURATION = 30000;
 // The OAuth scopes needed to call Google APIs needed for managing config.
 export const OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/devstorage.read_write',
-  'https://www.googleapis.com/auth/cloud-platform',
 ];
 // The HTTP parameters needed for the get GCIP web config.
 const GET_GCIP_CONFIG_PARAMS: HttpRequestConfig = {

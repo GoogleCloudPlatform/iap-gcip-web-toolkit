@@ -1020,9 +1020,8 @@ describe('AdminUi', () => {
         email: EMAIL,
         reauthenticateWithPopup: sinon.stub().callsFake((provider) => {
           expect(provider.providerId).to.be.equal('google.com');
-          expect(addScopeStub).to.have.been.calledTwice;
+          expect(addScopeStub).to.have.been.calledOnce;
           expect(addScopeStub.getCall(0)).to.have.been.calledWith(OAUTH_SCOPES[0]);
-          expect(addScopeStub.getCall(1)).to.have.been.calledWith(OAUTH_SCOPES[1]);
           expect(setCustomParametersStub).to.have.been.calledOnce
             .and.calledWith({login_hint: EMAIL, prompt: 'select_account'});
           return Promise.resolve({
@@ -1170,9 +1169,8 @@ describe('AdminUi', () => {
         email: EMAIL,
         reauthenticateWithPopup: sinon.stub().callsFake((provider) => {
           expect(provider.providerId).to.be.equal('google.com');
-          expect(addScopeStub).to.have.been.calledTwice;
+          expect(addScopeStub).to.have.been.calledOnce;
           expect(addScopeStub.getCall(0)).to.have.been.calledWith(OAUTH_SCOPES[0]);
-          expect(addScopeStub.getCall(1)).to.have.been.calledWith(OAUTH_SCOPES[1]);
           expect(setCustomParametersStub).to.have.been.calledOnce
             .and.calledWith({login_hint: EMAIL, prompt: 'select_account'});
           return Promise.resolve({
@@ -1330,9 +1328,8 @@ describe('AdminUi', () => {
         email: EMAIL,
         reauthenticateWithPopup: sinon.stub().callsFake((provider) => {
           expect(provider.providerId).to.be.equal('google.com');
-          expect(addScopeStub).to.have.been.calledTwice;
+          expect(addScopeStub).to.have.been.calledOnce;
           expect(addScopeStub.getCall(0)).to.have.been.calledWith(OAUTH_SCOPES[0]);
-          expect(addScopeStub.getCall(1)).to.have.been.calledWith(OAUTH_SCOPES[1]);
           expect(setCustomParametersStub).to.have.been.calledOnce
             .and.calledWith({login_hint: EMAIL, prompt: 'select_account'});
           return Promise.reject(expectedError);
@@ -1451,9 +1448,8 @@ describe('AdminUi', () => {
           expect(stubbedAuthMethods.setPersistence).to.have.been.calledOnce
             .and.calledWith('none');
           expect(provider.providerId).to.be.equal('google.com');
-          expect(addScopeStub).to.have.been.calledTwice;
+          expect(addScopeStub).to.have.been.calledOnce;
           expect(addScopeStub.getCall(0)).to.have.been.calledWith(OAUTH_SCOPES[0]);
-          expect(addScopeStub.getCall(1)).to.have.been.calledWith(OAUTH_SCOPES[1]);
           expect(setCustomParametersStub).to.have.been.calledOnce
             .and.calledWith({login_hint: undefined, prompt: 'select_account'});
         }),
