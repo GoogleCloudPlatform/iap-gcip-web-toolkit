@@ -573,7 +573,7 @@ git clone https://github.com/GoogleCloudPlatform/iap-gcip-web-toolkit.git
 Install the authentication UI container app:
 
 ```bash
-cd iap-gcip-web-toolkit/sample/authui-container
+cd iap-gcip-web-toolkit/authui-container
 npm install
 ```
 
