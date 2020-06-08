@@ -23,7 +23,8 @@ import * as templates from  '../../../server/templates';
 import * as fs from 'fs';
 import * as sinon from 'sinon';
 import {
-  AuthServer, AUTH_SERVER_SCOPES, HOSTED_UI_VERSION,
+  AuthServer, AUTH_SERVER_SCOPES, HOSTED_UI_VERSION, MAX_BUCKET_STRING_LENGTH,
+  ALLOWED_LAST_CHAR,
 } from '../../../server/auth-server';
 import express = require('express');
 import * as storage from '../../../server/api/cloud-storage-handler';
@@ -333,6 +334,127 @@ describe('AuthServer', () => {
           // writeFile should be called last.
           expect(writeFileStub).to.have.been.calledOnce.and.calledWith(bucketName, fileName, config)
             .and.calledAfter(createBucketStub);
+          expect(response.text).to.equal(JSON.stringify(expectedResponse));
+        });
+    });
+
+    it('trims bucket name to allowed limit on creation', () => {
+      // Simulate long service name used (62 chars). The generated bucket name will get trimmed as
+      // a maximum of 63 characters are allowed.
+      process.env.K_CONFIGURATION =
+        'abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz';
+      // The expected bucket name will be trimmed to not exceed the maximum allowed number
+      // of characters.
+      const expectedBucketName = `gcip-iap-bucket-${process.env.K_CONFIGURATION}-${PROJECT_NUMBER}`
+        .substr(0, MAX_BUCKET_STRING_LENGTH);
+      const notFoundError = new Error('Not found');
+      const expectedResponse = {
+        status: 200,
+        message: 'Changes successfully saved.',
+      };
+      const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
+      const fileName = 'config.json';
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      // Get Storage bucket.
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(notFoundError);
+      stubs.push(readFileStub);
+      // Create Storage bucket.
+      const createBucketStub = sinon.stub(storage.CloudStorageHandler.prototype, 'createBucket')
+        .resolves();
+      stubs.push(createBucketStub);
+      // Save Storage bucket.
+      const writeFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'writeFile')
+        .resolves();
+      stubs.push(writeFileStub);
+
+      return request(authServer.server)
+        .post('/set_admin_config')
+        .send(config)
+        .set({'Authorization': `Bearer ${personalAccessToken}`})
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
+          // CloudStorageHandler initialized with expected OAuth access token.
+          expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
+          expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
+            .to.eventually.equal(personalAccessToken);
+          // Metadata server initialized with expected OAuth scopes.
+          expect(metadataServerSpy).to.have.been.calledOnce
+            .and.calledWith(AUTH_SERVER_SCOPES);
+          // readFile first called.
+          expect(readFileStub).to.have.been.calledOnce.and.calledWith(expectedBucketName, fileName);
+          // Bucket should be created next.
+          expect(createBucketStub).to.have.been.calledOnce.and.calledWith(expectedBucketName)
+            .and.calledAfter(readFileStub);
+          // writeFile should be called last.
+          expect(writeFileStub).to.have.been.calledOnce.and
+            .calledWith(expectedBucketName, fileName, config).and.calledAfter(createBucketStub);
+          expect(response.text).to.equal(JSON.stringify(expectedResponse));
+        });
+    });
+
+    it('substitutes invalid character in trimmed bucket name', () => {
+      // Simulate long service name. The last char at 63 mark will be replaced with 0.
+      const numberOfRepeatedChars = MAX_BUCKET_STRING_LENGTH - 'gcip-iap-bucket-'.length - 1;
+      process.env.K_CONFIGURATION = 'a'.repeat(numberOfRepeatedChars) + '-bc';
+      // The expected bucket name will be trimmed to not exceed the maximum allowed number
+      // of characters. The last invalid char will be replaced with an allowed char.
+      const expectedBucketName =
+        `gcip-iap-bucket-${'a'.repeat(numberOfRepeatedChars)}${ALLOWED_LAST_CHAR}`;
+      const notFoundError = new Error('Not found');
+      const expectedResponse = {
+        status: 200,
+        message: 'Changes successfully saved.',
+      };
+      const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
+      const fileName = 'config.json';
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      // Get Storage bucket.
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(notFoundError);
+      stubs.push(readFileStub);
+      // Create Storage bucket.
+      const createBucketStub = sinon.stub(storage.CloudStorageHandler.prototype, 'createBucket')
+        .resolves();
+      stubs.push(createBucketStub);
+      // Save Storage bucket.
+      const writeFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'writeFile')
+        .resolves();
+      stubs.push(writeFileStub);
+
+      return request(authServer.server)
+        .post('/set_admin_config')
+        .send(config)
+        .set({'Authorization': `Bearer ${personalAccessToken}`})
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
+          // CloudStorageHandler initialized with expected OAuth access token.
+          expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
+          expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
+            .to.eventually.equal(personalAccessToken);
+          // Metadata server initialized with expected OAuth scopes.
+          expect(metadataServerSpy).to.have.been.calledOnce
+            .and.calledWith(AUTH_SERVER_SCOPES);
+          // readFile first called.
+          expect(readFileStub).to.have.been.calledOnce.and.calledWith(expectedBucketName, fileName);
+          // Bucket should be created next.
+          expect(createBucketStub).to.have.been.calledOnce.and.calledWith(expectedBucketName)
+            .and.calledAfter(readFileStub);
+          // writeFile should be called last.
+          expect(writeFileStub).to.have.been.calledOnce.and
+            .calledWith(expectedBucketName, fileName, config).and.calledAfter(createBucketStub);
           expect(response.text).to.equal(JSON.stringify(expectedResponse));
         });
     });
