@@ -18,7 +18,7 @@ import * as _ from 'lodash';
 import {expect} from 'chai';
 import {
   addReadonlyGetter, removeUndefinedFields, formatString,
-  mapObject, sanitizeUrl, isSafeUrl,
+  mapObject, sanitizeUrl, isSafeUrl, isLastCharLetterOrNumber,
 } from '../../../common/index';
 
 
@@ -217,6 +217,57 @@ describe('isSafeUrl()', () => {
   it('should return false for unsafe URLs', () => {
     unsafeUrls.forEach((url) => {
       expect(isSafeUrl(url)).to.be.false;
+    });
+  });
+});
+
+describe('isLastCharLetterOrNumber()', () => {
+  const alphabet = 'abcdefghijklmnopqrstuvwqyz';
+  const singleLetterOrNumberChar =
+    (alphabet + alphabet.toUpperCase() + '1234567890').split('');
+  const allStringsWithTrailingLetter = [
+    '-1a', '+1b', '?1c', '!1d', '#1e', '$1f', '%1g', '^1h', '&1i', '*1j', '(1k', ')1l',
+    '-1m', '+1n', '?1o', '!1p', '#1q', '$1r', '%1s', '^1t', '&1u', '*1v', '(1w', ')1x',
+    '-1y', '+1z',
+  ];
+  const allStringsWithTrailingNumber = [
+    '-1a', '+1b', '?1', '!2', '#3', '$4', '%5', '^6', '&7', '*8', '(9', ')0',
+  ];
+  const allStringsWithTrailingNonNumberOrLetter = [
+    'a.', 'ggr-', 'h5nt+', '{', ':', '&', '.',
+  ];
+
+  it('should return true when single char string is a letter or number', () => {
+    singleLetterOrNumberChar.forEach((char) => {
+      expect(isLastCharLetterOrNumber(char)).to.be.true;
+    });
+  });
+
+  it('should return true when last char is upper case letter', () => {
+    allStringsWithTrailingLetter.forEach((str) => {
+      expect(isLastCharLetterOrNumber(str.toUpperCase())).to.be.true;
+    });
+  });
+
+  it('should return true when last char is lower case letter', () => {
+    allStringsWithTrailingLetter.forEach((str) => {
+      expect(isLastCharLetterOrNumber(str.toLowerCase())).to.be.true;
+    });
+  });
+
+  it('should return true when last char is a number', () => {
+    allStringsWithTrailingNumber.forEach((str) => {
+      expect(isLastCharLetterOrNumber(str)).to.be.true;
+    });
+  });
+
+  it('should return false when given empty string', () => {
+    expect(isLastCharLetterOrNumber('')).to.be.false;
+  });
+
+  it('should return false when last char is not a number of letter', () => {
+    allStringsWithTrailingNonNumberOrLetter.forEach((str) => {
+      expect(isLastCharLetterOrNumber(str)).to.be.false;
     });
   });
 });
