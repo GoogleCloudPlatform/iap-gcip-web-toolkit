@@ -24,6 +24,7 @@ import { isNonNullObject } from '../common/validator';
 import { UiConfig, DefaultUiConfigBuilder } from '../common/config-builder';
 import { IapSettingsHandler, IapSettings } from './api/iap-settings-handler';
 import { GcipHandler, TenantUiConfig, GcipConfig } from './api/gcip-handler';
+import { isLastCharLetterOrNumber } from '../common/index';
 
 // Defines the Auth server OAuth scopes needed for internal usage.
 // This is used to query APIs to determine the default config.
@@ -36,6 +37,11 @@ export const AUTH_SERVER_SCOPES = [
 const CONFIG_FILE_NAME = 'config.json';
 // The current hosted UI version.
 export const HOSTED_UI_VERSION = '__XXX_HOSTED_UI_VERSION_XXX__';
+// The maximum allowed length of a GCS bucket.
+export const MAX_BUCKET_STRING_LENGTH = 63;
+// Character to substitute at the end of a bucket name to ensure it
+// ends with a letter or number.
+export const ALLOWED_LAST_CHAR = '0';
 
 /**
  * Renders the sign-in UI HTML container and serves it in the response.
@@ -370,7 +376,18 @@ export class AuthServer {
     }
     return this.metadataServer.getProjectNumber()
       .then((projectNumber) => {
-        this.bucketName = `${bucketPrefix}${projectNumber}`;
+        // https://cloud.google.com/storage/docs/naming-buckets#requirements
+        // Bucket names cannot exceed a certain limit. Trim overflowing characters.
+        // Bucket names must also start and end with a number or letter.
+        let computedBucketName =
+          `${bucketPrefix}${projectNumber}`.substr(0, MAX_BUCKET_STRING_LENGTH);
+        // Last character should always be a number, unless the bucket name is trimmed.
+        if (!isLastCharLetterOrNumber(computedBucketName)) {
+          // Last char is not a letter or number. Replace with 0.
+          computedBucketName =
+            computedBucketName.substr(0, computedBucketName.length - 1) + ALLOWED_LAST_CHAR;
+        }
+        this.bucketName = computedBucketName;
         return this.bucketName;
       });
   }

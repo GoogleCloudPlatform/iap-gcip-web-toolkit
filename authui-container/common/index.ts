@@ -121,3 +121,12 @@ export function sanitizeUrl(url: string): string {
 export function isSafeUrl(url: string): boolean {
   return SAFE_URL_PATTERN.test(url);
 }
+
+/**
+ * @param str The string to check.
+ * @return Whether the string ends with a letter or number.
+ */
+export function isLastCharLetterOrNumber(str: string): boolean {
+  const lastChar = str.charAt(str.length - 1);
+  return !!lastChar.match(/[a-z0-9]/i);
+}
