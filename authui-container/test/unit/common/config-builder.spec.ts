@@ -34,6 +34,7 @@ describe('DefaultUiConfigBuilder', () => {
         {
           provider: 'saml.idp1',
           providerName: 'saml-display-name-1',
+          fullLabel: 'Contractor Portal',
         },
         {
           provider: 'oidc.idp1',
@@ -52,6 +53,7 @@ describe('DefaultUiConfigBuilder', () => {
         {
           provider: 'oidc.idp2',
           providerName: 'oidc-display-name-2',
+          fullLabel: 'Employee Login',
         },
       ],
     },
@@ -97,6 +99,7 @@ describe('DefaultUiConfigBuilder', () => {
             {
               provider: 'saml.idp1',
               providerName: 'saml-display-name-1',
+              fullLabel: 'Contractor Portal',
             },
             {
               provider: 'oidc.idp1',
@@ -122,6 +125,7 @@ describe('DefaultUiConfigBuilder', () => {
             {
               provider: 'oidc.idp2',
               providerName: 'oidc-display-name-2',
+              fullLabel: 'Employee Login',
             },
           ],
         },
@@ -159,6 +163,7 @@ describe('DefaultUiConfigBuilder', () => {
         {
           provider: 'saml.idp1',
           providerName: 'saml-display-name-1',
+          fullLabel: 'Contractor Portal',
         },
         {
           provider: 'oidc.idp1',
@@ -176,6 +181,7 @@ describe('DefaultUiConfigBuilder', () => {
         {
           provider: 'oidc.idp2',
           providerName: 'oidc-display-name-2',
+          fullLabel: 'Employee Login',
         },
       ],
     },
@@ -216,6 +222,7 @@ describe('DefaultUiConfigBuilder', () => {
             {
               provider: 'saml.idp1',
               providerName: 'saml-display-name-1',
+              fullLabel: 'Contractor Portal',
             },
             {
               provider: 'oidc.idp1',
@@ -241,6 +248,7 @@ describe('DefaultUiConfigBuilder', () => {
             {
               provider: 'oidc.idp2',
               providerName: 'oidc-display-name-2',
+              fullLabel: 'Employee Login',
             },
           ],
         },
@@ -323,6 +331,7 @@ describe('DefaultUiConfigBuilder', () => {
               iconUrl: 'https://example.com/img/icon.png',
               provider: 'saml.idp1',
               providerName: 'saml-display-name-1',
+              fullLabel: 'Contractor Portal',
             },
             {
               provider: 'oidc.idp1',
@@ -347,6 +356,7 @@ describe('DefaultUiConfigBuilder', () => {
             {
               provider: 'oidc.idp2',
               providerName: 'oidc-display-name-2',
+              fullLabel: 'Employee Login',
             },
           ],
         },
@@ -627,6 +637,14 @@ describe('DefaultUiConfigBuilder', () => {
         invalidConfig[API_KEY].tenants.tenantId1.signInOptions[0].providerName = '<h2>Provider Name</h2>';
         DefaultUiConfigBuilder.validateConfig(invalidConfig);
       }).to.throw(`"${API_KEY}.tenants.tenantId1.signInOptions[].providerName" should be a valid string.`);
+    });
+
+    it('should throw on invalid *.tenants.*.signInOptions[].fullLabel type', () => {
+      expect(() => {
+        const invalidConfig: any = deepCopy(expectedUiConfig);
+        invalidConfig[API_KEY].tenants.tenantId1.signInOptions[0].fullLabel = '<h2>Employee Login</h2>';
+        DefaultUiConfigBuilder.validateConfig(invalidConfig);
+      }).to.throw(`"${API_KEY}.tenants.tenantId1.signInOptions[].fullLabel" should be a valid string.`);
     });
 
     it('should throw on invalid *.tenants.*.signInOptions[].hd type', () => {

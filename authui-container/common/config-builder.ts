@@ -35,6 +35,7 @@ interface TenantUiConfig {
 
 interface SignInOption {
   provider: string;
+  fullLabel?: string;
   providerName?: string;
   hd?: string;
   buttonColor?: string;
@@ -221,6 +222,13 @@ const VALIDATION_TREE: validators.ValidationTree = {
                     },
                   },
                   providerName: {
+                    validator: (value: any, key: string) => {
+                      if (!validators.isSafeString(value)) {
+                        throw new Error(`"${key}" should be a valid string.`);
+                      }
+                    },
+                  },
+                  fullLabel: {
                     validator: (value: any, key: string) => {
                       if (!validators.isSafeString(value)) {
                         throw new Error(`"${key}" should be a valid string.`);
