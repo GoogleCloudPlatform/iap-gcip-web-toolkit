@@ -1,6 +1,6 @@
 {
   "name": "knative-serving-iap-gcip-authui",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Containerized Authentication UI for IAP external identities",
   "main": "dist/app.js",
   "scripts": {
