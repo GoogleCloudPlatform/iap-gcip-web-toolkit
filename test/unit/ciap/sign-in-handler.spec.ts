@@ -248,7 +248,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -313,7 +313,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -360,6 +360,70 @@ describe('SignInOperationHandler', () => {
         });
     });
 
+    it('should redirect to targetUrl with redirectServerToken when XSRF check is needed', () => {
+      auth.setCurrentMockUser(createMockUser('UID1', 'ID_TOKEN1', tid));
+      const xsrfCheckTargetUrl = redirectServerResp.targetUri + '?rt=' +
+        encodeURIComponent(redirectServerResp.redirectToken);
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          GCIPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock ID token exchange endpoint.
+      const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
+            .resolves(redirectServerResp);
+      stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+      // Mock set cookie. Simulate XSRF check being needed.
+      const setCookieAtTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(true);
+      stubs.push(setCookieAtTargetUrlStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+
+      // Initialize SignInOperationHandler using config with SelectedTenantInfo.
+      operationHandler = new SignInOperationHandler(configWithSelectedTenantInfo, authenticationHandler);
+
+      return operationHandler.start()
+        .then(() => {
+          // Confirm framework ID set on auth.
+          expect(auth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          expect(agentAuth.loggedFrameworks).deep.equal([]);
+          // Progress bar should be shown on initialization.
+          expect(showProgressBarSpy).to.have.been.calledOnce
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, config.redirectUrl]);
+          // Progress bar should not be called.
+          expect(hideProgressBarSpy).to.not.have.been.called;
+          // startSignIn not be called since a user is already signed in.
+          expect(startSignInSpy).to.not.have.been.called;
+          // User should be processed before calling exchangeIdTokenAndGetOriginalAndTargetUrl.
+          expect(processUserSpy).to.have.been.calledOnce
+            .and.calledWith(auth.currentUser)
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
+            .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+          // ID token for unprocessed user should be used.
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub)
+            .and.calledWith(config.redirectUrl, 'ID_TOKEN1-processed', config.state);
+          expect(setCookieAtTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .and.calledWith(redirectServerResp.targetUri, redirectServerResp.redirectToken);
+          // Confirm redirect to target URL with redirect server token appended.
+          expect(setCurrentUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(setCookieAtTargetUrlStub)
+            .and.calledWith(window, xsrfCheckTargetUrl);
+          // Confirm expected tenant ID stored after success.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.have.same.members([tid]);
+        });
+    });
+
     it('should call authenticationHandler startSignIn when existing user has mismatching tenant ID', () => {
       const matchingUser = createMockUser('UID1', 'ID_TOKEN1', tid);
       // Set current user with mismatching tenant ID.
@@ -376,7 +440,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -453,7 +517,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -530,7 +594,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -638,7 +702,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -745,7 +809,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -831,6 +895,123 @@ describe('SignInOperationHandler', () => {
         });
     });
 
+    it('should finish sign in and redirect to targetUrl when startSignIn triggers with XSRF check', () => {
+      auth.clearLoggedFrameworks();
+      agentAuth.clearLoggedFrameworks();
+      const redirectServerResponse = {
+        originalUri: 'https://www.example.com/path/main',
+        // Test with query string mode.
+        targetUri: 'https://www.example.com/path/main/?gcp-iap-mode=GCIP_AUTHENTICATING',
+        redirectToken: 'REDIRECT_TOKEN',
+      };
+      // redirect server token should be appended to existing query string.
+      const xsrfCheckTargetUrl = redirectServerResponse.targetUri + '&rt=' +
+        encodeURIComponent(redirectServerResponse.redirectToken);
+      // Agent user.
+      user = createMockUser('UID_AGENT', 'ID_TOKEN_AGENT', null);
+      authenticationHandler = createMockAuthenticationHandler(
+          tenant2Auth,
+          // onStartSignIn simulates user signing in.
+          () => agentAuth.setCurrentMockUser(user));
+      operationHandler = new SignInOperationHandler(agentConfig, authenticationHandler);
+      // Mock domains are authorized.
+      const checkAuthorizedDomainsAndGetProjectIdStub = sinon.stub(
+          GCIPRequestHandler.prototype,
+          'checkAuthorizedDomainsAndGetProjectId').resolves(projectId);
+      stubs.push(checkAuthorizedDomainsAndGetProjectIdStub);
+      // Mock ID token exchange endpoint.
+      const exchangeIdTokenAndGetOriginalAndTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'exchangeIdTokenAndGetOriginalAndTargetUrl')
+            .resolves(redirectServerResponse);
+      stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+      // Mock set cookie. Simulate XSRF check needed.
+      const setCookieAtTargetUrlStub =
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(true);
+      stubs.push(setCookieAtTargetUrlStub);
+      // Mock redirect.
+      const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
+      stubs.push(setCurrentUrlStub);
+
+      // Simulate some other tenant previously signed in and saved in storage.
+      return authTenantsStorageManager.addTenant('OTHER_TENANT_ID')
+        .then(() => {
+          return operationHandler.start();
+        })
+        .then(() => {
+          // Confirm framework ID set on agentAuth.
+          expect(auth.loggedFrameworks).deep.equal([]);
+          expect(agentAuth.loggedFrameworks).deep.equal([GCIP_IAP_FRAMEWORK_ID]);
+          // Expect checkAuthorizedDomainsAndGetProjectId result to be cached for 30 mins.
+          expect(cacheAndReturnResultSpy).to.be.calledThrice;
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[0].args[1].checkAuthorizedDomainsAndGetProjectId);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[1]).to.be.instanceof(GCIPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[2])
+            .to.deep.equal([[currentUrlOrigin, agentConfig.redirectUrl]]);
+          expect(cacheAndReturnResultSpy.getCalls()[0].args[3]).to.equal(CacheDuration.CheckAuthorizedDomains);
+          // Expect getOriginalUrlForSignOut result to be cached for 5 mins.
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[1].args[1].exchangeIdTokenAndGetOriginalAndTargetUrl);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[1]).to.be.instanceof(IAPRequestHandler);
+          // ID token for processed user should be used without forced refresh.
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[2])
+            .to.deep.equal([agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentConfig.state]);
+          expect(cacheAndReturnResultSpy.getCalls()[1].args[3]).to.equal(CacheDuration.ExchangeIdToken);
+          // Expect setCookieAtTargetUrl to be cached for 5 mins.
+          expect(cacheAndReturnResultSpy.getCalls()[2].args[0]).to.equal(
+              cacheAndReturnResultSpy.getCalls()[2].args[1].setCookieAtTargetUrl);
+          expect(cacheAndReturnResultSpy.getCalls()[2].args[1]).to.be.instanceof(IAPRequestHandler);
+          expect(cacheAndReturnResultSpy.getCalls()[2].args[2])
+            .to.deep.equal([redirectServerResponse.targetUri, redirectServerResponse.redirectToken]);
+          expect(cacheAndReturnResultSpy.getCalls()[2].args[3]).to.equal(CacheDuration.SetCookie);
+
+          // Progress bar should be shown on initialization.
+          expect(showProgressBarSpy).to.have.been.calledTwice
+            .and.calledBefore(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Confirm URLs are checked for authorization.
+          expect(checkAuthorizedDomainsAndGetProjectIdStub)
+            .to.have.been.calledOnce.and.calledWith([currentUrlOrigin, agentConfig.redirectUrl]);
+          // Progress bar should be hidden before user is asked to sign-in.
+          expect(hideProgressBarSpy).to.have.been.calledOnce.and.calledBefore(startSignInSpy);
+          // Confirm startSignIn is called.
+          expect(startSignInSpy).to.have.been.calledOnce
+            .and.calledWith(agentAuth)
+            .and.calledAfter(checkAuthorizedDomainsAndGetProjectIdStub);
+          // Progress bar should be shown after the user is signed in and ID token is being processed.
+          expect(showProgressBarSpy).to.have.been.calledTwice.and.calledAfter(startSignInSpy);
+          // User should be processed before calling exchangeIdTokenAndGetOriginalAndTargetUrl.
+          expect(processUserSpy).to.have.been.calledOnce
+            .and.calledWith(agentAuth.currentUser)
+            .and.calledAfter(startSignInSpy)
+            .and.calledBefore(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
+          // Confirm ID token for processed user exchanged without forced refresh.
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(processUserSpy)
+            .and.calledWith(agentConfig.redirectUrl, 'ID_TOKEN_AGENT-processed', agentConfig.state);
+          // Confirm set cookie endpoint called.
+          expect(setCookieAtTargetUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(exchangeIdTokenAndGetOriginalAndTargetUrlStub)
+            .and.calledWith(redirectServerResponse.targetUri, redirectServerResponse.redirectToken);
+          // Confirm redirect to target URL with redirect server token appended.
+          expect(setCurrentUrlStub)
+            .to.have.been.calledOnce.and.calledAfter(setCookieAtTargetUrlStub)
+            .and.calledWith(window, xsrfCheckTargetUrl);
+          // Confirm expected agent ID stored after success along with the other existing tenant ID.
+          return authTenantsStorageManager.listTenants();
+        })
+        .then((tenantList: string[]) => {
+          expect(tenantList).to.have.same.members(['OTHER_TENANT_ID', agentId]);
+          // Call again. Cached results should be used. This is not a realistic scenario and only used
+          // to illustrate expected caching behavior.
+          return operationHandler.start();
+        })
+        .then(() => {
+          expect(checkAuthorizedDomainsAndGetProjectIdStub).to.be.calledOnce;
+          expect(exchangeIdTokenAndGetOriginalAndTargetUrlStub).to.be.calledOnce;
+          expect(setCookieAtTargetUrlStub).to.be.calledOnce;
+        });
+    });
+
     it('should reject when authenticationHandler startSignIn resolves with a mismatching user tenant ID', () => {
       user = createMockUser('UID1', 'ID_TOKEN1', 'MISMATCHING_TENANT_ID');
       tenant2Auth[tid] = auth;
@@ -851,7 +1032,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -919,7 +1100,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -971,7 +1152,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -1039,7 +1220,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -1102,7 +1283,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -1163,7 +1344,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -1263,7 +1444,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -1361,7 +1542,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -1426,7 +1607,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -1494,7 +1675,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -1554,7 +1735,7 @@ describe('SignInOperationHandler', () => {
       stubs.push(exchangeIdTokenAndGetOriginalAndTargetUrlStub);
       // Mock set cookie.
       const setCookieAtTargetUrlStub =
-          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves();
+          sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl').resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');
@@ -1653,7 +1834,7 @@ describe('SignInOperationHandler', () => {
       const setCookieAtTargetUrlStub = sinon.stub(IAPRequestHandler.prototype, 'setCookieAtTargetUrl');
       // Fail on first try and succeed on second.
       setCookieAtTargetUrlStub.onFirstCall().rejects(expectedError);
-      setCookieAtTargetUrlStub.onSecondCall().resolves();
+      setCookieAtTargetUrlStub.onSecondCall().resolves(false);
       stubs.push(setCookieAtTargetUrlStub);
       // Mock redirect.
       const setCurrentUrlStub = sinon.stub(utils, 'setCurrentUrl');

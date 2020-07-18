@@ -35,6 +35,9 @@ const IAP_HEADERS = {
   'Content-Type': 'application/json',
 };
 
+/** IAP set-cookie API response when third-party cookies are potentially disabled. */
+export const XSRF_CHECK_NEEDED = 'XsrfNonceCheckIsNeeded';
+
 /** IAP error code number to string mappings. */
 const IAP_ERROR_CODE: {[key: string]: string} = {
   8: 'AUTHENTICATION_URI_FAIL',
@@ -202,16 +205,20 @@ export class IAPRequestHandler {
    * @param targetUrl The target URL returned from exchange ID token endpoint,
    *     used to set the IAP cookie.
    * @param redirectToken The redirect token to pass to target URI.
-   * @return A promise that resolves on successful cookie setting.
+   * @return A promise that resolves on successful cookie setting. The promise resolves with
+   *     true if a redirect is required (3P cookies disabled) or not.
    */
-  public setCookieAtTargetUrl(targetUrl: string, redirectToken: string): Promise<void> {
+  public setCookieAtTargetUrl(targetUrl: string, redirectToken: string): Promise<boolean> {
     const urlParams = {targetUrl};
     const headers = {
       'x-iap-3p-token': redirectToken,
     };
     return IAPRequestHandler.SET_COOKIE.process(this.httpClient, urlParams, null, headers, this.timeout)
         .then((response: HttpResponse) => {
-          // Do nothing.
+          // Check if XSRF check failed which requires a redirect.
+          // This happens due to 3P cookies being disabled. This has been observed in
+          // Safari 13.1+ and Chrome Incognito 83+.
+          return response.data === XSRF_CHECK_NEEDED;
         })
         .catch((error: Error) => {
           throw this.translateLowLevelTextError(error);

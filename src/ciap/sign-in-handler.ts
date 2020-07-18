@@ -30,6 +30,12 @@ import { SharedSettings } from './shared-settings';
 export const FORCE_REFRESH_THRESHOLD = 1000 * 60 * 2;
 
 /**
+ * The redirect server token query parameter used to pass XSRF cookie and redirect
+ * server token to IAP when 3P cookies are disabled.
+ */
+export const REDIRECT_SERVER_TOKEN_QUERY_PARAM = 'rt';
+
+/**
  * Defines the sign-in operation handler.
  */
 export class SignInOperationHandler extends BaseOperationHandler {
@@ -170,6 +176,9 @@ export class SignInOperationHandler extends BaseOperationHandler {
   private finishSignIn(user: User): Promise<void> {
     let originalUrl: string;
     let currentUser: User;
+    let redirectToTargetUrl: boolean = false;
+    let targetUrl: string;
+    let redirectServerToken: string;
     // Process user first.
     return this.processUser(user)
       .then((processedUser) => {
@@ -200,21 +209,30 @@ export class SignInOperationHandler extends BaseOperationHandler {
       })
       .then((response: RedirectServerResponse) => {
         originalUrl = response.originalUri;
+        targetUrl = response.targetUri;
+        redirectServerToken = response.redirectToken;
         // Set cookie in targetUri.
-        return this.cache.cacheAndReturnResult<void>(
+        return this.cache.cacheAndReturnResult<boolean>(
             this.iapRequest.setCookieAtTargetUrl,
             this.iapRequest,
             [response.targetUri, response.redirectToken],
             CacheDuration.SetCookie);
       })
-      .then(() => {
+      .then((nonceCheckRedirectRequired) => {
+        redirectToTargetUrl = nonceCheckRedirectRequired;
         // Store tenant ID for signed in user. This will be used to make sign out from all
         // signed in tenants possible.
         return this.addAuthTenant(this.tenantId);
       })
       .then(() => {
-        // Redirect to original URI.
-        setCurrentUrl(window, originalUrl);
+        if (redirectToTargetUrl) {
+          const uri = new URL(targetUrl);
+          uri.searchParams.set(REDIRECT_SERVER_TOKEN_QUERY_PARAM, redirectServerToken);
+          setCurrentUrl(window, uri.toString());
+        } else {
+          // Redirect to original URI.
+          setCurrentUrl(window, originalUrl);
+        }
       })
       .catch((error) => {
         // Check if error thrown due to user being disabled, deleted or token revoked

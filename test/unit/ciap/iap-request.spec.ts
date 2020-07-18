@@ -24,6 +24,7 @@ import {
 } from '../../../src/utils/http-client';
 import {
   IAPRequestHandler, RedirectServerResponse, SessionInfoResponse,
+  XSRF_CHECK_NEEDED,
 } from '../../../src/ciap/iap-request';
 import * as validator from '../../../src/utils/validator';
 import { createMockLowLevelError } from '../../resources/utils';
@@ -45,14 +46,8 @@ const expect = chai.expect;
  * @return The corresponding mock HttpResponse.
  */
 function createMockHttpResponse(headers: object, response?: any): HttpResponse {
-  let data: any;
-  let text: any;
-  if (validator.isNonNullObject(response)) {
-    data = response;
-    text = JSON.stringify(response);
-  } else {
-    text = response;
-  }
+  const text = validator.isNonNullObject(response) ? JSON.stringify(response) : response;
+  const data = response;
   return {
     status: 200,
     headers,
@@ -397,15 +392,31 @@ describe('IAPRequestHandler', () => {
       timeout: 30000,
     };
     const jsonResponse = {};
-    const expectedResp = createMockHttpResponse({'Content-Type': 'application/json'}, jsonResponse);
+    const expectedRespWithoutXsrfCheck = createMockHttpResponse(
+      {'Content-Type': 'text/plain'}, '');
+    const expectedRespWithXsrfCheck = createMockHttpResponse(
+      {'Content-Type': 'text/plain'}, XSRF_CHECK_NEEDED);
 
-    it('should resolve on success', () => {
-      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+    it('should resolve with false on success and no XSRF check is needed', () => {
+      const stub = sinon.stub(HttpClient.prototype, 'send')
+        .resolves(expectedRespWithoutXsrfCheck);
       stubs.push(stub);
 
       return requestHandler.setCookieAtTargetUrl(targetUri, redirectToken)
-        .then((response: any) => {
-          expect(response).to.be.undefined;
+        .then((xsrfCheckNeeded: boolean) => {
+          expect(xsrfCheckNeeded).to.be.false;
+          expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
+        });
+    });
+
+    it('should resolve with true on success and XSRF check is needed', () => {
+      const stub = sinon.stub(HttpClient.prototype, 'send')
+        .resolves(expectedRespWithXsrfCheck);
+      stubs.push(stub);
+
+      return requestHandler.setCookieAtTargetUrl(targetUri, redirectToken)
+        .then((xsrfCheckNeeded: boolean) => {
+          expect(xsrfCheckNeeded).to.be.true;
           expect(stub).to.have.been.calledOnce.and.calledWith(expectedConfigRequest);
         });
     });
@@ -413,7 +424,8 @@ describe('IAPRequestHandler', () => {
     it('should use long timeout for mobile browsers', () => {
       // Mobile browsers should use long timeout.
       stubs.push(sinon.stub(browser, 'isMobileBrowser').returns(true));
-      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+      const stub = sinon.stub(HttpClient.prototype, 'send')
+        .resolves(expectedRespWithoutXsrfCheck);
       stubs.push(stub);
 
       const mobileConfigRequest = deepCopy(expectedConfigRequest);
@@ -422,15 +434,16 @@ describe('IAPRequestHandler', () => {
       const mobileRequestHandler = new IAPRequestHandler(httpClient);
       return mobileRequestHandler
         .setCookieAtTargetUrl(targetUri, redirectToken)
-        .then((response: any) => {
-          expect(response).to.be.undefined;
+        .then((xsrfCheckNeeded: boolean) => {
+          expect(xsrfCheckNeeded).to.be.false;
           expect(stub).to.have.been.calledOnce.and.calledWith(mobileConfigRequest);
         });
     });
 
     it('should reject on invalid URL', () => {
       const invalidUrl = 'invalid';
-      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+      const stub = sinon.stub(HttpClient.prototype, 'send')
+        .resolves(expectedRespWithoutXsrfCheck);
       stubs.push(stub);
 
       return requestHandler.setCookieAtTargetUrl(invalidUrl, redirectToken)
@@ -449,7 +462,8 @@ describe('IAPRequestHandler', () => {
 
     it('should reject on unsafe URL', () => {
       const unsafeUrl = 'javascript:doEvil()';
-      const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+      const stub = sinon.stub(HttpClient.prototype, 'send')
+        .resolves(expectedRespWithoutXsrfCheck);
       stubs.push(stub);
 
       return requestHandler.setCookieAtTargetUrl(unsafeUrl, redirectToken)
@@ -469,7 +483,8 @@ describe('IAPRequestHandler', () => {
     const invalidNonEmptyStrings = [null, NaN, 0, 1, true, false, [], '', ['a'], {}, { a: 1 }, _.noop];
     invalidNonEmptyStrings.forEach((invalidNonEmptyString) => {
       it('should reject on invalid redirectToken: ' + JSON.stringify(invalidNonEmptyString), () => {
-        const stub = sinon.stub(HttpClient.prototype, 'send').resolves(expectedResp);
+        const stub = sinon.stub(HttpClient.prototype, 'send')
+          .resolves(expectedRespWithoutXsrfCheck);
         stubs.push(stub);
 
         return requestHandler.setCookieAtTargetUrl(

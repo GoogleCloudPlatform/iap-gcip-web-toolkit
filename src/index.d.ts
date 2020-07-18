@@ -71,4 +71,5 @@ declare namespace ciap {
 declare module 'gcip-iap' {
 }
 
+/* tslint:disable:export-just-namespace */
 export = ciap;
