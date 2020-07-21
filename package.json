@@ -118,7 +118,7 @@
     "sinon-chai": "^2.8.0",
     "ts-node": "^3.3.0",
     "tslint": "^5.9.0",
-    "typescript": "^2.7.2",
+    "typescript": "^3.9.7",
     "url-polyfill": "^1.1.7",
     "webpack": "4.43.0",
     "whatwg-fetch": "^3.0.0",

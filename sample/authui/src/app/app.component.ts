@@ -47,16 +47,16 @@ const SAML_PROVIDER_ID = 'saml.okta-cicp-app';
   `,
 })
 export class AppComponent {
-  @ViewChild('ciapContainer', { read: ViewContainerRef, static: false }) private container: ViewContainerRef;
+  @ViewChild('ciapContainer', { read: ViewContainerRef }) private container: ViewContainerRef;
   private componentRef: ComponentRef<any>;
   private progressBarTimer: any;
   private config: any;
-  private link: string;
-  private originalUrl: string;
+  public link: string;
+  public originalUrl: string;
   private ciapInstance: ciap.Authentication;
-  private code?: string;
-  private message?: string;
-  private retry?: any;
+  public code?: string;
+  public message?: string;
+  public retry?: any;
 
   constructor(private resolver: ComponentFactoryResolver) {
     this.progressBarTimer = null;
