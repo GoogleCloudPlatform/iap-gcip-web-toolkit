@@ -1,0 +1,1 @@
+- Updates module to handle browsers with 3P cookies and site data being disabled.
