@@ -17,3 +17,9 @@ This includes trimming characters beyond the 63 character limit and requiring th
 gcr.io/gcip-iap/authui@sha256:a7dc58008bb7fb2510cb78c8c834f3b9d6ab9d03919b8c261bcb22e4cc7a848d
 
 Updates `firebaseui` version. The latest update supports customization of IdP buttons like Google, Email, etc. This includes the ability to overwrite the entire button label via `fullLabel` field.
+
+#v0.1.3
+
+gcr.io/gcip-iap/authui@sha256:3e2c606a2cce4944c9f7e816dacc968e3306d0a3aea6f14892b9837241497273
+
+Updates `gcip-iap` module dependency to handle browsers with 3P cookies and site data disabled.
