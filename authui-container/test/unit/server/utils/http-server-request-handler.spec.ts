@@ -600,7 +600,7 @@ describe('HttpServerRequest', () => {
         },
       }).post('/path/to/api', data)
         // Set exact timeout duration.
-        .socketDelay(timeoutDelay)
+        .delay(timeoutDelay)
         .reply(200, expectedResponse);
       mockedRequests.push(scope);
       const requestParams = {
