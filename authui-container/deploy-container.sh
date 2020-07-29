@@ -17,9 +17,9 @@
 # Sign in to gcloud with editor role in project ID gcip-iap is required.
 
 # GCP project ID.
-PROJECT_ID="gcip-iap"
+PROJECT_ID="cicpclientproj"
 # GCR container image name.
-IMG_NAME="authui"
+IMG_NAME="helloworld"
 # Version placeholder to replace in file.
 VERSION_PLACEHOLDER="__XXX_HOSTED_UI_VERSION_XXX__"
 

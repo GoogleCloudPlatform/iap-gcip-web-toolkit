@@ -29,6 +29,7 @@ interface TenantUiConfigSignInOption {
 }
 
 interface TenantUiConfig {
+  fullLabel?: string;
   displayName?: string;
   signInOptions: TenantUiConfigSignInOption[];
 }
@@ -57,6 +58,7 @@ interface SignInOption {
 }
 
 interface ExtendedTenantUiConfig {
+  fullLabel?: string;
   displayName: string;
   iconUrl: string;
   logoUrl?: string;
@@ -150,6 +152,13 @@ const VALIDATION_TREE: validators.ValidationTree = {
         nodes: {
           '*': {
             nodes: {
+              fullLabel: {
+                validator: (value: any, key: string) => {
+                  if (value && !validators.isSafeString(value)) {
+                    throw new Error(`"${key}" should be a valid string.`);
+                  }
+                },
+              },
               displayName: {
                 validator: (value: any, key: string) => {
                   if (!validators.isSafeString(value)) {

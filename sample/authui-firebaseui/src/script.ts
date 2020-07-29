@@ -37,6 +37,7 @@ function isSafari(): boolean {
 const tenantsConfig = {
   // Project level IdPs flow.
   '*': {
+    fullLabel: 'The Organization Portal',
     displayName: 'My Organization',
     signInOptions: [
       firebase.auth.FacebookAuthProvider.PROVIDER_ID,
@@ -49,8 +50,10 @@ const tenantsConfig = {
 
 // Fetch configuration via reserved Firebase Hosting URL.
 fetch('/__/firebase/init.json').then((response) => {
+  console.log('1');
   return response.json();
 }).then((config) => {
+  console.log('2');
   const configs = {};
   configs[config.apiKey] = {
     authDomain: config.authDomain,
