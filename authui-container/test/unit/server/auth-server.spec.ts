@@ -882,6 +882,7 @@ describe('AuthServer', () => {
     ];
     const tenantUiConfigMap = {
       _: {
+        fullLabel: 'ABCD Portal',
         displayName: 'ABCD',
         signInOptions: [
           {provider: 'facebook.com'},
@@ -889,6 +890,7 @@ describe('AuthServer', () => {
         ],
       },
       tenantId1: {
+        fullLabel: 'Tenant 1',
         displayName: 'Tenant-display-name-1',
         signInOptions: [
           {provider: 'password'},
@@ -899,6 +901,7 @@ describe('AuthServer', () => {
         ],
       },
       tenantId2: {
+        fullLabel: 'Tenant 2',
         displayName: 'Tenant-display-name-2',
         signInOptions: [
           {provider: 'microsoft.com'},
@@ -1324,6 +1327,7 @@ describe('AuthServer', () => {
     ];
     const tenantUiConfigMap = {
       _: {
+        fullLabel: 'ABCD Portal',
         displayName: 'ABCD',
         signInOptions: [
           {provider: 'facebook.com'},
@@ -1331,6 +1335,7 @@ describe('AuthServer', () => {
         ],
       },
       tenantId1: {
+        fullLabel: 'Tenant 1',
         displayName: 'Tenant-display-name-1',
         signInOptions: [
           {provider: 'password'},
@@ -1341,6 +1346,7 @@ describe('AuthServer', () => {
         ],
       },
       tenantId2: {
+        fullLabel: 'Tenant 2',
         displayName: 'Tenant-display-name-2',
         signInOptions: [
           {provider: 'microsoft.com'},
