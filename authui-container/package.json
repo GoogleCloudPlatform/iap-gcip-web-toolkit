@@ -56,7 +56,7 @@
     "css-loader": "^3.6.0",
     "file-loader": "^6.0.0",
     "firebase": "^7.16.1",
-    "firebaseui": "^4.6.0",
+    "firebaseui": "^4.6.1",
     "gcip-iap": "0.1.2",
     "handlebars": "^4.7.6",
     "jquery": "^3.5.1",
