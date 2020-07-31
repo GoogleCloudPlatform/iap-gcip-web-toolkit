@@ -411,14 +411,17 @@ export class DefaultUiConfigBuilder {
     tenantIds.forEach((tenantId) => {
       let key;
       let displayName;
+      let fullLabel;
       if (tenantId.charAt(0) === '_') {
         key = '_';
         displayName = (optionsMap[key] && optionsMap[key].displayName) ||
             'My Company';
+        fullLabel = optionsMap[key] && optionsMap[key].fullLabel;
       } else {
         key = tenantId;
         displayName = (optionsMap[key] && optionsMap[key].displayName) ||
             `Company ${String.fromCharCode(charCode)}`;
+        fullLabel = optionsMap[key] && optionsMap[key].fullLabel;
         charCode++;
       }
 
@@ -438,6 +441,10 @@ export class DefaultUiConfigBuilder {
         tosUrl: '',
         privacyPolicyUrl: '',
       };
+
+      if (fullLabel) {
+        tenantConfigs[key].fullLabel = fullLabel;
+      }
     });
     // IAP or IdPs not yet configured.
     if (totalSignInOptions === 0) {;
