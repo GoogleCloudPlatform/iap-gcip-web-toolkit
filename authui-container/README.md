@@ -144,6 +144,7 @@ configuration file.
     "privacyPolicyUrl": "https://awesome.com/abcd/privacypolicy.html",
     "tenants":{
       "tenant-a-id":{
+        "fullLabel": "Company A Portal",
         "displayName": "Company A",
         "iconUrl":"https://companya.com/img/icon.png",
         "logoUrl": "https://companya.com/img/logo.png",
@@ -170,6 +171,7 @@ configuration file.
         "privacyPolicyUrl": "https://companya.com/abcd/privacypolicy.html"
       },
       "tenant-b-id":{
+        "fullLabel": "Company B Portal",
         "displayName": "Company B",
         "iconUrl": "https://companyb.com/img/icon.png",
         "logoUrl": "https://companyb.com/img/logo.png",
@@ -187,6 +189,7 @@ configuration file.
         "privacyPolicyUrl": "https://companyb.com/abcd/privacypolicy.html"
       },
       "tenant-c-id":{
+        "fullLabel": "Company C Portal",
         "displayName": "Company C",
         "iconUrl": "https://companyc.com/img/icon.png",
         "logoUrl": "https://companyc.com/img/logo.png",
@@ -201,6 +204,7 @@ configuration file.
         "privacyPolicyUrl": "https://companyc.com/abcd/privacypolicy.html"
       },
       "tenant-d-id":{
+        "fullLabel": "Company D Portal",
         "displayName": "Company D",
         "iconUrl": "https://companyd.com/img/icon.png",
         "logoUrl": "https://companyd.com/img/logo.png",
