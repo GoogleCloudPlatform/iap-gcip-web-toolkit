@@ -29,6 +29,7 @@ interface TenantUiConfigSignInOption {
 }
 
 interface TenantUiConfig {
+  fullLabel?: string;
   displayName?: string;
   signInOptions: TenantUiConfigSignInOption[];
 }
@@ -57,6 +58,7 @@ interface SignInOption {
 }
 
 interface ExtendedTenantUiConfig {
+  fullLabel?: string;
   displayName: string;
   iconUrl: string;
   logoUrl?: string;
@@ -150,6 +152,13 @@ const VALIDATION_TREE: validators.ValidationTree = {
         nodes: {
           '*': {
             nodes: {
+              fullLabel: {
+                validator: (value: any, key: string) => {
+                  if (!validators.isSafeString(value)) {
+                    throw new Error(`"${key}" should be a valid string.`);
+                  }
+                },
+              },
               displayName: {
                 validator: (value: any, key: string) => {
                   if (!validators.isSafeString(value)) {
@@ -402,14 +411,17 @@ export class DefaultUiConfigBuilder {
     tenantIds.forEach((tenantId) => {
       let key;
       let displayName;
+      let fullLabel;
       if (tenantId.charAt(0) === '_') {
         key = '_';
         displayName = (optionsMap[key] && optionsMap[key].displayName) ||
             'My Company';
+        fullLabel = optionsMap[key] && optionsMap[key].fullLabel;
       } else {
         key = tenantId;
         displayName = (optionsMap[key] && optionsMap[key].displayName) ||
             `Company ${String.fromCharCode(charCode)}`;
+        fullLabel = optionsMap[key] && optionsMap[key].fullLabel;
         charCode++;
       }
 
@@ -429,6 +441,10 @@ export class DefaultUiConfigBuilder {
         tosUrl: '',
         privacyPolicyUrl: '',
       };
+
+      if (fullLabel) {
+        tenantConfigs[key].fullLabel = fullLabel;
+      }
     });
     // IAP or IdPs not yet configured.
     if (totalSignInOptions === 0) {;

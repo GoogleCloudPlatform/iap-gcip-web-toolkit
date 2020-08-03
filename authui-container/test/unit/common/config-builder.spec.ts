@@ -27,6 +27,7 @@ describe('DefaultUiConfigBuilder', () => {
   const AUTH_SUBDOMAIN = 'AUTH_SUBDOMAIN';
   const tenantUiConfigMap = {
     _: {
+      fullLabel: 'ABCD Portal',
       displayName: 'ABCD',
       signInOptions: [
         {provider: 'facebook.com'},
@@ -43,6 +44,7 @@ describe('DefaultUiConfigBuilder', () => {
       ],
     },
     tenantId1: {
+      fullLabel: 'Tenant 1',
       displayName: 'Tenant-display-name-1',
       signInOptions: [
         {provider: 'password'},
@@ -85,6 +87,7 @@ describe('DefaultUiConfigBuilder', () => {
       styleUrl: '',
       tenants: {
         _: {
+          fullLabel: 'ABCD Portal',
           displayName: 'ABCD',
           iconUrl: TENANT_ICON_URL,
           logoUrl: '',
@@ -108,6 +111,7 @@ describe('DefaultUiConfigBuilder', () => {
           ],
         },
         tenantId1: {
+          fullLabel: 'Tenant 1',
           displayName: 'Tenant-display-name-1',
           iconUrl: TENANT_ICON_URL,
           logoUrl: '',
@@ -289,6 +293,7 @@ describe('DefaultUiConfigBuilder', () => {
       privacyPolicyUrl: 'https://example.com/about/privacyPolicyUrl',
       tenants: {
         _: {
+          fullLabel: "My Company Portal",
           displayName: 'My Company',
           iconUrl: TENANT_ICON_URL,
           logoUrl: 'https://example.com/img/tenant-0.png',
@@ -340,6 +345,7 @@ describe('DefaultUiConfigBuilder', () => {
           ],
         },
         tenantId1: {
+          fullLabel: 'Company A Portal',
           displayName: 'Company A',
           iconUrl: TENANT_ICON_URL,
           logoUrl: 'https://example.com/img/tenant-1.png',
@@ -361,6 +367,7 @@ describe('DefaultUiConfigBuilder', () => {
           ],
         },
         tenantId2: {
+          fullLabel: 'Company B Portal',
           displayName: 'Company B',
           iconUrl: TENANT_ICON_URL,
           logoUrl: 'https://example.com/img/tenant-2.png',
@@ -548,6 +555,14 @@ describe('DefaultUiConfigBuilder', () => {
         invalidConfig[API_KEY].privacyPolicyUrl = 'javascript:doEvil()';
         DefaultUiConfigBuilder.validateConfig(invalidConfig);
       }).to.throw(`"${API_KEY}.privacyPolicyUrl" should be a valid HTTPS URL.`);
+    });
+
+    it('should throw on invalid *.tenants.*.fullLabel type', () => {
+      expect(() => {
+        const invalidConfig: any = deepCopy(expectedUiConfig);
+        invalidConfig[API_KEY].tenants.tenantId1.fullLabel = '<h1>Label</h1>';
+        DefaultUiConfigBuilder.validateConfig(invalidConfig);
+      }).to.throw(`"${API_KEY}.tenants.tenantId1.fullLabel" should be a valid string.`);
     });
 
     it('should throw on invalid *.tenants.*.displayName type', () => {

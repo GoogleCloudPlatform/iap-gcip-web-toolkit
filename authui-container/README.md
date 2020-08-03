@@ -69,6 +69,7 @@ resource:
 - Select tenant page title: By default, populated with default project ID.
 - Select tenant logo: This is not available by default.
 - Tenant button icon: By default, populated with some placeholder generic icon.
+- Tenant button full label: By default, populated with a tenant's full label.
 - Tenant button display name: By default, populated with a tenant's display name.
 - Tenant button color: By default, populated with a fixed color.
 - Terms of service URL: Not available by default.
@@ -79,6 +80,8 @@ You can also customize the tenant sign-in screen for every selected tenant:
   project-level IdPs, or tenant display name for tenant level IdPs.
 - Sign-in UI logo: This is not available by default.
 - OIDC and SAML button icon: By default, populated with placeholder icons.
+- OIDC and SAML button full label: By default, populated with the full label
+  as set in the Cloud Console for the corresponding provider.
 - OIDC and SAML button display name: By default, populated with the display name
   as set in the Cloud Console for the corresponding provider.
 - OIDC and SAML button color: By default, populated with a default color.
@@ -144,6 +147,7 @@ configuration file.
     "privacyPolicyUrl": "https://awesome.com/abcd/privacypolicy.html",
     "tenants":{
       "tenant-a-id":{
+        "fullLabel": "Company A Portal",
         "displayName": "Company A",
         "iconUrl":"https://companya.com/img/icon.png",
         "logoUrl": "https://companya.com/img/logo.png",
@@ -170,6 +174,7 @@ configuration file.
         "privacyPolicyUrl": "https://companya.com/abcd/privacypolicy.html"
       },
       "tenant-b-id":{
+        "fullLabel": "Company B Portal",
         "displayName": "Company B",
         "iconUrl": "https://companyb.com/img/icon.png",
         "logoUrl": "https://companyb.com/img/logo.png",
@@ -187,6 +192,7 @@ configuration file.
         "privacyPolicyUrl": "https://companyb.com/abcd/privacypolicy.html"
       },
       "tenant-c-id":{
+        "fullLabel": "Company C Portal",
         "displayName": "Company C",
         "iconUrl": "https://companyc.com/img/icon.png",
         "logoUrl": "https://companyc.com/img/logo.png",
@@ -201,6 +207,7 @@ configuration file.
         "privacyPolicyUrl": "https://companyc.com/abcd/privacypolicy.html"
       },
       "tenant-d-id":{
+        "fullLabel": "Company D Portal",
         "displayName": "Company D",
         "iconUrl": "https://companyd.com/img/icon.png",
         "logoUrl": "https://companyd.com/img/logo.png",
