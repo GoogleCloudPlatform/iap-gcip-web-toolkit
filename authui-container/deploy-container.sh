@@ -71,6 +71,10 @@ trap "echo 'Missing cat.'; exit 1" ERR
 which cat &> /dev/null
 trap - ERR
 
+trap "echo 'Missing jq.'; exit 1" ERR
+which jq &> /dev/null
+trap - ERR
+
 # Install all dependencies.
 npm install
 # Build all output files before deploying container.

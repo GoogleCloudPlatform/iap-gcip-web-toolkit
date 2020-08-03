@@ -23,3 +23,9 @@ Updates `firebaseui` version. The latest update supports customization of IdP bu
 gcr.io/gcip-iap/authui@sha256:3e2c606a2cce4944c9f7e816dacc968e3306d0a3aea6f14892b9837241497273
 
 Updates `gcip-iap` module dependency to handle browsers with 3P cookies and site data disabled.
+
+#v0.1.4
+
+gcr.io/gcip-iap/authui@sha256:5c3030f22afffba367c3106acb3674bbbee7be826c9b9de0c64e1b26885e64f6
+
+Updates `firebaseui` version. The latest update supports customization of tenant selection buttons. This includes the ability to overwrite the entire button label via `fullLabel` field.
