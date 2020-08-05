@@ -326,8 +326,8 @@ interface SignInOption {
 }
 
 interface ExtendedTenantUiConfig {
+  // The tenant full label. This is used for the "sign in with tenant" button label.
   // When not provided, "Sign in to ${displayName}" is used as the full label.
-  // By default, the configured tenant full label is used.
   fullLabel?: string;
   // The tenant display name. This is used for the "sign in with tenant" button label.
   // By default, the configured tenant display name is used. For project-level IdPs, this is set to the
