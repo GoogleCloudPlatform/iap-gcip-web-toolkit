@@ -69,7 +69,7 @@ resource:
 - Select tenant page title: By default, populated with default project ID.
 - Select tenant logo: This is not available by default.
 - Tenant button icon: By default, populated with some placeholder generic icon.
-- Tenant button full label: By default, populated with a tenant's full label.
+- Tenant button full label: When not provided, the tenant display name is used.
 - Tenant button display name: By default, populated with a tenant's display name.
 - Tenant button color: By default, populated with a fixed color.
 - Terms of service URL: Not available by default.
@@ -79,12 +79,12 @@ You can also customize the tenant sign-in screen for every selected tenant:
 - Sign-in UI title: By default, populated with the default project ID for
   project-level IdPs, or tenant display name for tenant level IdPs.
 - Sign-in UI logo: This is not available by default.
-- OIDC and SAML button icon: By default, populated with placeholder icons.
-- OIDC and SAML button full label: By default, populated with the full label
+- IdP button icon: By default, populated with placeholder icons.
+- IdP button full label: When not provided, the IdP display name, 
+  as set in the Cloud Console, is used.
+- IdP button display name: By default, populated with the display name
   as set in the Cloud Console for the corresponding provider.
-- OIDC and SAML button display name: By default, populated with the display name
-  as set in the Cloud Console for the corresponding provider.
-- OIDC and SAML button color: By default, populated with a default color.
+- IdP button color: By default, populated with a default color.
 - Terms of service URL for a specific tenant: Not available by default.
 - Privacy policy URL for a specific tenant: Not available by default.
 
@@ -326,6 +326,9 @@ interface SignInOption {
 }
 
 interface ExtendedTenantUiConfig {
+  // The tenant full label. This is used for the "sign in with tenant" button label.
+  // When not provided, "Sign in to ${displayName}" is used as the full label.
+  fullLabel?: string;
   // The tenant display name. This is used for the "sign in with tenant" button label.
   // By default, the configured tenant display name is used. For project-level IdPs, this is set to the
   // GCP project ID.
