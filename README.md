@@ -151,9 +151,10 @@ const configs = {
     tenants: {
       // Tenant configuration for tenant ID tenantId1.
       tenantId1: {
-        // Display name, button color and icon URL of the
+        // Full label, display name, button color and icon URL of the
         // tenant selection button. Only needed if you are
         // using the option first option.
+        fullLabel: "ACME Portal",
         displayName: 'ACME',
         buttonColor: '#2F2F2F',
         iconUrl: '<icon-url-of-sign-in-button>',
@@ -192,6 +193,7 @@ const configs = {
       },
       // Tenant configuration for tenant ID tenantId2.
       tenantId2: {
+        fullLabel: "OCP Portal",
         displayName: 'OCP',
         buttonColor: '#2F2F2F',
         iconUrl: '<icon-url-of-sign-in-button>',
