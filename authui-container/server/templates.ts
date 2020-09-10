@@ -16,6 +16,7 @@ import handlebars = require('handlebars');
 
 /** Main template used for handling sign-in with IAP. */
 const main = handlebars.compile(`
+<!DOCTYPE html>
 <html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -44,6 +45,7 @@ const main = handlebars.compile(`
  * Auth UI configuration.
  */
 const admin = handlebars.compile(`
+<!DOCTYPE html>
 <html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">

@@ -101,7 +101,8 @@ export interface LowLevelError extends Error {
 function sendRequest(config: HttpRequestConfig): Promise<LowLevelResponse> {
   let actualResponse: Response;
   let url = config.url;
-  const headers = new Headers(config.headers);
+  // Edge pre-chromium throws when undefined is provided.
+  const headers = new Headers(config.headers || {});
   let contentType = headers.get('content-type');
   let body: string;
 
