@@ -15,6 +15,7 @@
 import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
 import '../node_modules/firebaseui/dist/firebaseui.css';
 import '../public/style.css';
+import './polyfill';
 
 import { SignInUi } from './sign-in-ui';
 import { onDomReady } from './utils/index';

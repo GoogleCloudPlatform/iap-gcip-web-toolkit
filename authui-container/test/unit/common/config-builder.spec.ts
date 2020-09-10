@@ -293,7 +293,7 @@ describe('DefaultUiConfigBuilder', () => {
       privacyPolicyUrl: 'https://example.com/about/privacyPolicyUrl',
       tenants: {
         _: {
-          fullLabel: "My Company Portal",
+          fullLabel: 'My Company Portal',
           displayName: 'My Company',
           iconUrl: TENANT_ICON_URL,
           logoUrl: 'https://example.com/img/tenant-0.png',
