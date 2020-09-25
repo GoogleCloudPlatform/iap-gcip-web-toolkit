@@ -35,3 +35,9 @@ Updates `firebaseui` version. The latest update supports customization of tenant
 gcr.io/gcip-iap/authui@sha256:d74bcbc4ba8797da73bc98f1a2695625eb7df78eb5bb4405213265f8a2350baa
 
 Fixes authui-container support in pre-Chromium Edge and IE 11 browsers.
+
+#v0.1.6
+
+gcr.io/gcip-iap/authui@sha256:b7d58fed82542e39f12ac7d920c61629bde7f8baa3ba7abc5b2def7c16f6cb57
+
+Fixes unexpected fragment parsing when determining selected tenant info.
