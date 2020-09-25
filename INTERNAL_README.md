@@ -96,18 +96,23 @@ polyfills for them as peer dependencies.
 
 ### E2E tests
 This will require the following:
-- 2 GCIP projects should be enabled.
+- 3 GCIP projects should be enabled.
   - Email/password provider enabled on one.
   - A tenant should be created for the other and email/password enabled on it.
-- Both projects should also have Firebase Hosting and Cloud Resource Manager APIs
+  - More than 1 tenant should be created for the other and email/password enabled
+    on each.
+- All projects should also have Firebase Hosting and Cloud Resource Manager APIs
   enabled.
 - The projects have to be manually whitelisted / configured for IAP usage
   - One project should have a default GAE app configured with project-level IdPs.
   - Another project should have a default GAE app configured with a single
     tenant-level IdPs.
+  - The third project should have a default GAE app configured with multiple
+    tenant-level IdPs.
 - The service account JSON files need to be provided for both projects in:
   - For the project-level IdPs project: `test/resources/key.json`.
   - For the single tenant-level IdPs project: `test/resources/key_single_tenant.json`.
+  - For the multi-tenant-level IdPs project: `test/resources/key_multi_tenant.json`.
 - The associated sample GAE apps deployed for both projects.
   This is the one in `sample/app`.
 - Chrome browser installed.
