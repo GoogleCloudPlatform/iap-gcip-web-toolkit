@@ -1,6 +1,6 @@
 {
   "name": "gcip-iap",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "GCIP/IAP JS SDK",
   "author": "Google",
   "license": "Apache-2.0",
@@ -37,7 +37,7 @@
   "types": "dist/index.d.ts",
   "dependencies": {
     "@types/node": "^8.10.51",
-    "node-forge": "0.10.0"
+    "node-forge": "0.7.4"
   },
   "peerDependencies": {
     "firebase": "^7.16.1",
@@ -85,7 +85,7 @@
     "lodash": "^4.17.19",
     "merge2": "^1.2.4",
     "minimist": "^1.2.5",
-    "mocha": "^8.0.1",
+    "mocha": "^8.1.3",
     "nock": "^9.1.8",
     "npm-run-all": "^4.1.2",
     "promise-polyfill": "^8.1.0",
