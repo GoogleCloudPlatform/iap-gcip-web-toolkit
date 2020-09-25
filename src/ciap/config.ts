@@ -87,7 +87,7 @@ export class Config {
     } else if (hash) {
       // Populate from hash.
       const matches = SELECTED_TENANT_INFO_REGEXP.exec(hash);
-      if (matches.length > 1) {
+      if (matches && matches.length > 1) {
         selectedTenantInfo = {
           email: matches[1].trim(),
           providerIds: (matches[2] || '').split(','),

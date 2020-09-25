@@ -83,6 +83,13 @@ describe('Config', () => {
       expect(config.selectedTenantInfo).to.be.null;
     });
 
+    it('should nullify selectedTenantInfo when invalid fragment is available', () => {
+      const url = createMockUrl('login', apiKey, tid, redirectUri, state, hl) +
+          `#helloworld`;
+      const config = new Config(url);
+      expect(config.selectedTenantInfo).to.be.null;
+    });
+
     it('should populate selectedTenantInfo from history.state even when hash is available', () => {
       const url = createMockUrl('login', apiKey, tid, redirectUri, state, hl) +
           `#hint=${otherSelectedTenantInfo.email};${(otherSelectedTenantInfo.providerIds || []).join(',')}`;
