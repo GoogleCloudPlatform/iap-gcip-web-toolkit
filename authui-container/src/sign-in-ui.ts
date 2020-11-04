@@ -17,7 +17,7 @@ import {HttpClient, HttpRequestConfig} from './utils/http-client';
 import {getBrowserName, BrowserName} from './utils/browser';
 // Import Firebase dependencies.
 // tslint:disable-next-line
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 // tslint:disable-next-line
 import 'firebase/auth';
 // Import FirebaseUI dependencies.
