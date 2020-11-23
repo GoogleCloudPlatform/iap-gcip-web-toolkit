@@ -21,7 +21,7 @@ import ProgressBar from './progressbar';
 import { Navbar, NavbarParameters } from './navbar';
 import { Alert, AlertParameters } from './alert';
 // Import Firebase dependencies.
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 import 'firebase/auth';
 import 'jquery/dist/jquery.min.js'
 import 'bootstrap/dist/js/bootstrap.min.js'

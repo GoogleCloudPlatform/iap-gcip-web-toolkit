@@ -111,7 +111,7 @@ THe following snippet demonstrates using a shared authentication page for
 ```javascript
 // Import GCIP/Firebase and FirebaseUI dependencies.
 // These are installed with npm install.
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 import 'firebase/auth';
 import * as firebaseui from 'firebaseui';
 
@@ -291,7 +291,7 @@ Include the library as a dependency like this:
 
 ```javascript
 // Import Firebase/GCIP dependencies. These are installed on npm install.
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 import 'firebase/auth';
 // Import GCIP/IAP module.
 import * as ciap from 'gcip-iap';

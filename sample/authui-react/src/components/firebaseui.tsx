@@ -13,7 +13,7 @@
  */
 import React from 'react';
 // Import Firebase dependencies.
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 import 'firebase/auth';
 // Import FirebaseUI dependencies.
 import * as firebaseui from 'firebaseui';

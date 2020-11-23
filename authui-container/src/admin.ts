@@ -16,7 +16,7 @@ import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
 import '../node_modules/firebaseui/dist/firebaseui.css';
 import '../public/style.css';
 import './polyfill';
-import * as $ from 'jquery';
+import $ = require('jquery');
 (window as any).$ = (window as any).jQuery = $;
 
 import { AdminUi } from './admin-ui';
