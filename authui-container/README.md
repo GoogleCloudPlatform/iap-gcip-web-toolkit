@@ -538,8 +538,8 @@ by following these instructions:
 - Update the authentication UI URL in the IAP panel for the resource that was
   using it (by replacing the existing domain with the custom domain) and save
   it.
-- Whitelist the new domain with Identity Platform in the settings &gt; security
-  section and save it.
+- Add to the allowlist the new domain with Identity Platform in the
+  settings &gt; security section and save it.
 
 ### Using the same hosted Auth UI for multiple IAP resources
 
