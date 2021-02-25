@@ -1,6 +1,6 @@
 {
   "name": "gcip-iap",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "GCIP/IAP JS SDK",
   "author": "Google",
   "license": "Apache-2.0",
