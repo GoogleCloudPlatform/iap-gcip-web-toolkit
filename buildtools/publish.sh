@@ -164,7 +164,7 @@ cat CHANGELOG.md >> "${RELEASE_NOTES_FILE}"
 echo "Made the release notes."
 
 echo "Publishing to npm..."
-npm publish
+npm publish --registry https://wombat-dressing-room.appspot.com
 echo "Published to npm."
 
 echo "Cleaning up release notes..."
