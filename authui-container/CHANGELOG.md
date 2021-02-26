@@ -47,3 +47,9 @@ Fixes unexpected fragment parsing when determining selected tenant info.
 gcr.io/gcip-iap/authui@sha256:362f671689af6b265c8dbd59caf99d06fae1af425758df121f39e8193766d270
 
 Updates `firebaseui`, `firebase` versions and ES6 firebase/app import.
+
+#v0.1.8
+
+gcr.io/gcip-iap/authui@sha256:fa6d5e92351a4683235b5aaf1e126509667954a2ad5afa01b5f73f4e09f41ce0
+
+Updates `gcip-iap` module dependency to `0.1.4`.
