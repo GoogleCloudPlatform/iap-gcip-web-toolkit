@@ -38,3 +38,7 @@ test/resources/key*.json
 # Release tarballs should not be checked in
 gcip-iap-*.tgz
 firebase.tgz
+
+# Do not check in generated JS files in authui-container.
+authui-container/public/admin.js
+authui-container/public/script.js
