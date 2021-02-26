@@ -172,7 +172,7 @@ describe('HttpServerRequest', () => {
         reqheaders: {
           'Metadata-Flavor': 'Google',
         },
-      }).post('/path/to/api', {})
+      }).post('/path/to/api', undefined)
         .reply(200, expectedResponse);
       mockedRequests.push(scope);
 
@@ -196,7 +196,7 @@ describe('HttpServerRequest', () => {
         reqheaders: {
           'Metadata-Flavor': 'Google',
         },
-      }).post('/path/to/api', {})
+      }).post('/path/to/api', undefined)
         .reply(200, expectedResponse);
       mockedRequests.push(scope);
 

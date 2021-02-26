@@ -35,7 +35,7 @@ const tenantsConfig = {
     privacyPolicyUrl: '/privacypolicy',
   },
   // Single tenant flow.
-  1036546636501: {
+  'wtitenant-v0s72': {
     displayName: 'My Company',
     signInOptions: [
       firebase.auth.EmailAuthProvider.PROVIDER_ID,

@@ -22,11 +22,11 @@ import {HttpClient} from '../../../src/utils/http-client';
 import { UiConfig } from '../../../src/sign-in-ui';
 import {
   AdminUi, TIMEOUT_DURATION, OAUTH_SCOPES, MSG_CONFIGURATION_SAVED,
-  MSG_NO_USER_LOGGED_IN, MSG_INVALID_CONFIGURATION, MSG_CONFIGURATION_COPIED,
+  MSG_INVALID_CONFIGURATION, MSG_CONFIGURATION_COPIED,
   MSG_GOOGLE_PROVIDER_NOT_CONFIGURED, CODE_MIRROR_CONFIG, MSG_INVALID_CREDENTIALS,
 } from '../../../src/admin-ui';
 // tslint:disable-next-line
-import * as firebase from 'firebase/app';
+import firebase from 'firebase';
 import * as CodeMirror from '../../../node_modules/codemirror/lib/codemirror.js';
 
 /**
