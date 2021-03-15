@@ -57,7 +57,7 @@
     "es6-map": "^0.1.5",
     "file-loader": "^6.0.0",
     "firebase": "^8.0.0",
-    "firebaseui": "^4.7.1",
+    "firebaseui": "^4.8.0",
     "gcip-iap": "0.1.4",
     "handlebars": "^4.7.6",
     "jquery": "^3.5.1",

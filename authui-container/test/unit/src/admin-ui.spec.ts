@@ -19,7 +19,7 @@ import * as sinon from 'sinon';
 import * as testUtils from './test-utils';
 import * as utils from '../../../src/utils/index';
 import {HttpClient} from '../../../src/utils/http-client';
-import { UiConfig } from '../../../src/sign-in-ui';
+import { UiConfig } from '../../../common/config';
 import {
   AdminUi, TIMEOUT_DURATION, OAUTH_SCOPES, MSG_CONFIGURATION_SAVED,
   MSG_INVALID_CONFIGURATION, MSG_CONFIGURATION_COPIED,
