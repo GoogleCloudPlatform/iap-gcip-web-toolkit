@@ -53,3 +53,9 @@ Updates `firebaseui`, `firebase` versions and ES6 firebase/app import.
 gcr.io/gcip-iap/authui@sha256:fa6d5e92351a4683235b5aaf1e126509667954a2ad5afa01b5f73f4e09f41ce0
 
 Updates `gcip-iap` module dependency to `0.1.4`.
+
+#v0.1.9
+
+gcr.io/gcip-iap/authui@sha256:db842770d654782001b7aba24532458fdb9ef9953b70ea2fcd162b2a133abf29
+
+Updates `firebaseui` dependency version to `4.8.0` to support disabling new user sign up in email providers, disabling new user sign up via project settings and blocking functions.

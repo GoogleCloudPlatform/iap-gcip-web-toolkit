@@ -17,8 +17,8 @@
 import * as _ from 'lodash';
 import {expect} from 'chai';
 import {
-  DefaultUiConfigBuilder, TENANT_ICON_URL, UiConfig,
-} from '../../../common/config-builder';
+  DefaultUiConfigBuilder, TENANT_ICON_URL} from '../../../common/config-builder';
+import {UiConfig} from '../../../common/config';
 import { deepCopy } from '../../../common/deep-copy';
 
 describe('DefaultUiConfigBuilder', () => {
@@ -70,6 +70,19 @@ describe('DefaultUiConfigBuilder', () => {
         {
           provider: 'oidc.idp3',
           providerName: 'oidc-display-name-3',
+        },
+      ],
+    },
+    tenantId3: {
+      displayName: 'Tenant-display-name-3',
+      signInOptions: [
+        {
+          provider: 'password',
+          disableSignUp: {
+            status: true,
+            adminEmail: 'admin@example.com',
+            helpLink: 'https://www.example.com/trouble_signing_in',
+          }
         },
       ],
     },
@@ -151,6 +164,26 @@ describe('DefaultUiConfigBuilder', () => {
             {
               provider: 'oidc.idp3',
               providerName: 'oidc-display-name-3',
+            },
+          ],
+        },
+        tenantId3: {
+          displayName: 'Tenant-display-name-3',
+          iconUrl: TENANT_ICON_URL,
+          logoUrl: '',
+          buttonColor: '#007bff',
+          immediateFederatedRedirect: true,
+          signInFlow: 'redirect',
+          tosUrl: '',
+          privacyPolicyUrl: '',
+          signInOptions: [
+            {
+              provider: 'password',
+              disableSignUp: {
+                status: true,
+                adminEmail: 'admin@example.com',
+                helpLink: 'https://www.example.com/trouble_signing_in',
+              }
             },
           ],
         },
@@ -785,6 +818,30 @@ describe('DefaultUiConfigBuilder', () => {
         invalidConfig[API_KEY].tenants.tenantId1.signInOptions[0].blacklistedCountries = ['\\+44'];
         DefaultUiConfigBuilder.validateConfig(invalidConfig);
       }).to.throw(`"${API_KEY}.tenants.tenantId1.signInOptions[].blacklistedCountries[]" should be a valid string.`);
+    });
+
+    it('should throw on invalid *.tenants.*.signInOptions[].disableSignUp.status type', () => {
+      expect(() => {
+        const invalidConfig: any = deepCopy(expectedUiConfig);
+        invalidConfig[API_KEY].tenants.tenantId1.signInOptions[0].disableSignUp = {status: 'true'};
+        DefaultUiConfigBuilder.validateConfig(invalidConfig);
+      }).to.throw(`"${API_KEY}.tenants.tenantId1.signInOptions[].disableSignUp.status" should be a boolean.`);
+    });
+
+    it('should throw on invalid *.tenants.*.signInOptions[].disableSignUp.adminEmail type', () => {
+      expect(() => {
+        const invalidConfig: any = deepCopy(expectedUiConfig);
+        invalidConfig[API_KEY].tenants.tenantId1.signInOptions[0].disableSignUp = {status: true, adminEmail: 123};
+        DefaultUiConfigBuilder.validateConfig(invalidConfig);
+      }).to.throw(`"${API_KEY}.tenants.tenantId1.signInOptions[].disableSignUp.adminEmail" should be a valid email.`);
+    });
+
+    it('should throw on invalid *.tenants.*.signInOptions[].disableSignUp.helpLink type', () => {
+      expect(() => {
+        const invalidConfig: any = deepCopy(expectedUiConfig);
+        invalidConfig[API_KEY].tenants.tenantId1.signInOptions[0].disableSignUp = {status: true, helpLink: true};
+        DefaultUiConfigBuilder.validateConfig(invalidConfig);
+      }).to.throw(`"${API_KEY}.tenants.tenantId1.signInOptions[].disableSignUp.helpLink" should be a valid HTTPS URL.`);
     });
   });
 
