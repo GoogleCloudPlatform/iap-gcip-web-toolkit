@@ -16,7 +16,8 @@
 
 import {expect} from 'chai';
 import * as sinon from 'sinon';
-import { SignInUi, UiConfig, HOSTED_UI_VERSION } from '../../../src/sign-in-ui';
+import { SignInUi, HOSTED_UI_VERSION } from '../../../src/sign-in-ui';
+import { UiConfig } from '../../../common/config';
 import * as ciap from 'gcip-iap';
 import * as firebaseui from 'firebaseui';
 import * as utils from '../../../src/utils/index';

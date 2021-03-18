@@ -13,77 +13,11 @@
  */
 
 import * as validators from './validator';
+import {GcipConfig, TenantUiConfig, ExtendedTenantUiConfig, UiConfig} from './config';
 
 // TODO: Temporary URLs for now. Replace with production ones when ready.
 // This is the icon for each tenant button in the tenant selection screen.
 export const TENANT_ICON_URL = 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png';
-
-interface GcipConfig {
-  apiKey: string;
-  authDomain: string;
-}
-
-interface TenantUiConfigSignInOption {
-  provider: string;
-  providerName?: string;
-}
-
-interface TenantUiConfig {
-  fullLabel?: string;
-  displayName?: string;
-  signInOptions: TenantUiConfigSignInOption[];
-}
-
-interface SignInOption {
-  provider: string;
-  fullLabel?: string;
-  providerName?: string;
-  hd?: string;
-  buttonColor?: string;
-  iconUrl?: string;
-  scopes?: string[];
-  customParameters?: {[key: string]: any};
-  loginHintKey?: string;
-  requireDisplayName?: boolean;
-  recaptchaParameters?: {
-    type?: string;
-    size?: string;
-    badge?: string;
-  };
-  defaultCountry?: string;
-  defaultNationalNumber?: string;
-  loginHint?: string;
-  whitelistedCountries?: string[];
-  blacklistedCountries?: string[];
-}
-
-interface ExtendedTenantUiConfig {
-  fullLabel?: string;
-  displayName: string;
-  iconUrl: string;
-  logoUrl?: string;
-  buttonColor: string;
-  signInOptions: (SignInOption | string)[];
-  tosUrl?: string;
-  privacyPolicyUrl?: string;
-  immediateFederatedRedirect?: boolean;
-  signInFlow?: 'redirect' | 'popup';
-}
-
-export interface UiConfig {
-  [key: string]: {
-    authDomain?: string;
-    displayMode: string;
-    selectTenantUiTitle?: string;
-    selectTenantUiLogo?: string;
-    styleUrl?: string;
-    tenants: {
-      [key: string]: ExtendedTenantUiConfig;
-    };
-    tosUrl?: string,
-    privacyPolicyUrl?: string,
-  };
-}
 
 // List of required fields.
 const REQUIRED_FIELDS = [
@@ -357,6 +291,31 @@ const VALIDATION_TREE: validators.ValidationTree = {
                       if (!validators.isSafeString(value)) {
                         throw new Error(`"${key}" should be a valid string.`);
                       }
+                    },
+                  },
+                  disableSignUp: {
+                    nodes: {
+                      status: {
+                        validator: (value: any, key: string) => {
+                          if (!validators.isBoolean(value)) {
+                            throw new Error(`"${key}" should be a boolean.`);
+                          }
+                        },
+                      },
+                      adminEmail: {
+                        validator: (value: any, key: string) => {
+                          if (value && !validators.isEmail(value)) {
+                            throw new Error(`"${key}" should be a valid email.`);
+                          }
+                        },
+                      },
+                      helpLink: {
+                        validator: (value: any, key: string) => {
+                          if (value && !validators.isHttpsURL(value)) {
+                            throw new Error(`"${key}" should be a valid HTTPS URL.`);
+                          }
+                        },
+                      },
                     },
                   },
                 },

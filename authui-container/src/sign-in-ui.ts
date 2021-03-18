@@ -15,6 +15,7 @@
 import {deepCopy, setStyleSheet} from './utils/index';
 import {HttpClient, HttpRequestConfig} from './utils/http-client';
 import {getBrowserName, BrowserName} from './utils/browser';
+import {UiConfig} from '/../common/config';
 // Import Firebase dependencies.
 // tslint:disable-next-line
 import firebase from 'firebase/app';
@@ -24,56 +25,6 @@ import 'firebase/auth';
 import * as firebaseui from 'firebaseui';
 // Import GCIP/IAP module.
 import * as ciap from 'gcip-iap';
-
-interface SignInOption {
-  provider: string;
-  providerName?: string;
-  hd?: string;
-  buttonColor?: string;
-  iconUrl?: string;
-  scopes?: string[];
-  customParameters?: {[key: string]: any};
-  loginHintKey?: string;
-  requireDisplayName?: boolean;
-  recaptchaParameters?: {
-    type?: string;
-    size?: string;
-    badge?: string;
-  };
-  defaultCountry?: string;
-  defaultNationalNumber?: string;
-  loginHint?: string;
-  whitelistedCountries?: string[];
-  blacklistedCountries?: string[];
-  [key: string]: any;
-}
-
-interface ExtendedTenantUiConfig {
-  displayName: string;
-  iconUrl: string;
-  logoUrl: string;
-  buttonColor: string;
-  signInOptions: (SignInOption | string)[];
-  tosUrl?: string;
-  privacyPolicyUrl?: string;
-  immediateFederatedRedirect?: boolean;
-  signInFlow?: 'redirect' | 'popup';
-}
-
-export interface UiConfig {
-  [key: string]: {
-    authDomain?: string;
-    displayMode: string;
-    selectTenantUiTitle?: string;
-    selectTenantUiLogo?: string;
-    styleUrl?: string;
-    tenants: {
-      [key: string]: ExtendedTenantUiConfig;
-    };
-    tosUrl?: string,
-    privacyPolicyUrl?: string,
-  };
-}
 
 // The expected network timeout duraiton in milliseconds.
 const TIMEOUT_DURATION = 30000;

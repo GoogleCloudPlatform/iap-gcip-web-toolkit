@@ -13,7 +13,7 @@
  */
 
 import {deepCopy, copyTextAreaContent} from './utils/index';
-import {UiConfig} from './sign-in-ui';
+import {UiConfig} from '/../common/config';
 import {HttpClient, HttpRequestConfig, HttpResponse} from './utils/http-client';
 import {DefaultUiConfigBuilder} from '../common/config-builder';
 // Import Firebase dependencies.

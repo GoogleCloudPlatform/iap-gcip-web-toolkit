@@ -200,7 +200,12 @@ configuration file.
         "signInOptions":[
           {
             "provider": "password",
-            "requireDisplayName": false
+            "requireDisplayName": false,
+            "disableSignUp": {
+              "status": true,
+              "adminEmail": "admin@example.com",
+              "helpLink": "https://www.example.com/trouble_signing_in"
+            }
           }
         ],
         "tosUrl": "https://companyc.com/abcd/tos.html",
@@ -323,6 +328,19 @@ interface SignInOption {
   // Sets the blacklisted countries for phone providers. Accepts either ISO (alpha-2) or E164 formatted
   // country codes. Example: ['US', '+44']
   blacklistedCountries?: string[];
+  // Sets the disableSignUp config for Email Password/Link sign in method.
+  disableSignUp?: {
+    // Whether to disable user from signing up with email providers (email/password or email link).
+    status: boolean;
+    // The optional site administrator email to contact for access when sign up is disabled.
+    // eg. `admin@example.com`.
+    adminEmail?: string;
+    // The optional help link to provide information on how to get access to the site when sign up
+    // is disabled.
+    // eg. `https://www.example.com/trouble_signing_in`.
+    helpLink?: string;
+  }
+}
 }
 
 interface ExtendedTenantUiConfig {
