@@ -382,6 +382,7 @@ describe('HttpServerRequest', () => {
         }).catch((error) => {
           expect(error.message).to.deep.equal(expectedError.error.message);
           expect(error.rawResponse).to.deep.equal(expectedError);
+          expect(error.statusCode).to.equal(500);
           expect(error.cloudCompliant).to.be.true;
         });
     });
@@ -437,6 +438,7 @@ describe('HttpServerRequest', () => {
             '500 Response:', expectedError);
           expect(error.message).to.deep.equal(expectedError.error.message);
           expect(error.rawResponse).to.deep.equal(expectedError);
+          expect(error.statusCode).to.equal(500);
           expect(error.cloudCompliant).to.be.true;
         });
     });
@@ -480,12 +482,13 @@ describe('HttpServerRequest', () => {
         }).catch((error) => {
           expect(error.message).to.deep.equal(defaultMessage);
           expect(error.rawResponse).to.deep.equal({error: 'unexpected'});
+          expect(error.statusCode).to.equal(500);
           expect(error.cloudCompliant).to.be.false;
         });
     });
 
     it('will reject with response body error message string for non-200 status code', () => {
-      const responseBodyErrorString = 'Internal server error';
+      const responseBodyErrorString = 'Resource not found';
       const defaultMessage = 'Unexpected error';
       const data = {
         a: 1,
@@ -508,7 +511,7 @@ describe('HttpServerRequest', () => {
         },
       }).post('/path/to/api', data)
         .delay(10)
-        .reply(500, responseBodyErrorString);
+        .reply(404, responseBodyErrorString);
       mockedRequests.push(scope);
       const requestParams = {
         headers: {
@@ -524,6 +527,7 @@ describe('HttpServerRequest', () => {
         }).catch((error) => {
           expect(error.message).to.deep.equal(responseBodyErrorString);
           expect(error.rawResponse).to.deep.equal(responseBodyErrorString);
+          expect(error.statusCode).to.equal(404);
           expect(error.cloudCompliant).to.be.false;
         });
     });

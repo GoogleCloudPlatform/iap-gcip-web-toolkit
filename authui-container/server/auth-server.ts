@@ -414,7 +414,8 @@ export class AuthServer {
         return cloudStorageHandler.readFile(bucketName, fileName);
       })
       .catch((error) => {
-        if (error.message && error.message.toLowerCase().indexOf('not found') !== -1) {
+        if ((error.message && error.message.toLowerCase().indexOf('not found') !== -1) ||
+            error.statusCode === 404) {
           // Since we can't check permissions on a non-existant bucket,
           // check user can list buckets.
           return cloudStorageHandler.listBuckets()
@@ -449,7 +450,8 @@ export class AuthServer {
         return cloudStorageHandler.readFile(bucketName, fileName);
       })
       .catch((error) => {
-        if (error.message && error.message.toLowerCase().indexOf('not found') !== -1) {
+        if ((error.message && error.message.toLowerCase().indexOf('not found') !== -1) ||
+          error.statusCode === 404) {
           // Create bucket.
           return cloudStorageHandler.createBucket(bucketName);
         }

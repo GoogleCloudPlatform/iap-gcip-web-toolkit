@@ -195,6 +195,8 @@ export class HttpServerRequestHandler {
       addReadonlyGetter(error, 'cloudCompliant', false);
     }
     addReadonlyGetter(error, 'rawResponse', httpResponse.body);
+    // Append status code as it is more reliable than error messages.
+    addReadonlyGetter(error, 'statusCode', httpResponse.statusCode);
     return error;
   }
 }
