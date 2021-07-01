@@ -285,6 +285,63 @@ describe('AuthServer', () => {
       });
     });
 
+    it('creates bucket if readFile 404s', () => {
+      // HTTP status code alone should be sufficient to inform that the file is not found.
+      const notFoundError = {
+        statusCode: 404,
+        message: 'Unexpected message',
+      };
+      const expectedResponse = {
+        status: 200,
+        message: 'Changes successfully saved.',
+      };
+      const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
+      const fileName = 'config.json';
+      const bucketName = `gcip-iap-bucket-${K_CONFIGURATION}-${PROJECT_NUMBER}`;
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      // Get Storage bucket.
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(notFoundError);
+      stubs.push(readFileStub);
+      // Create Storage bucket.
+      const createBucketStub = sinon.stub(storage.CloudStorageHandler.prototype, 'createBucket')
+        .resolves();
+      stubs.push(createBucketStub);
+      // Save Storage bucket.
+      const writeFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'writeFile')
+        .resolves();
+      stubs.push(writeFileStub);
+
+      return request(authServer.server)
+        .post('/set_admin_config')
+        .send(config)
+        .set({'Authorization': `Bearer ${personalAccessToken}`})
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
+          // CloudStorageHandler initialized with expected OAuth access token.
+          expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
+          expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
+            .to.eventually.equal(personalAccessToken);
+          // Metadata server initialized with expected OAuth scopes.
+          expect(metadataServerSpy).to.have.been.calledOnce
+            .and.calledWith(AUTH_SERVER_SCOPES);
+          // readFile first called.
+          expect(readFileStub).to.have.been.calledOnce.and.calledWith(bucketName, fileName);
+          // Bucket should be created next.
+          expect(createBucketStub).to.have.been.calledOnce.and.calledWith(bucketName).and.calledAfter(readFileStub);
+          // writeFile should be called last.
+          expect(writeFileStub).to.have.been.calledOnce.and.calledWith(bucketName, fileName, config)
+            .and.calledAfter(createBucketStub);
+          expect(response.text).to.equal(JSON.stringify(expectedResponse));
+        });
+    });
+
     it('creates bucket if not already created', () => {
       const notFoundError = new Error('Not found');
       const expectedResponse = {
@@ -1612,6 +1669,82 @@ describe('AuthServer', () => {
         .expect(401)
         .then((response) => {
           expect(response.text).to.equal(JSON.stringify(ERROR_MAP.UNAUTHENTICATED));
+        });
+    });
+
+    it('responds with default config file if readFile 404s', () => {
+      // HTTP status code alone should be sufficient to inform that the file is not found.
+      const notFoundError = {
+        statusCode: 404,
+        message: 'Unexpected message',
+      };
+      const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
+      const fileName = 'config.json';
+      const bucketName = `gcip-iap-bucket-${K_CONFIGURATION}-${PROJECT_NUMBER}`;
+      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
+        .resolves(METADATA_ACCESS_TOKEN);
+      stubs.push(getAccessToken);
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(notFoundError);
+      stubs.push(readFileStub);
+      const listBucketsStub = sinon.stub(storage.CloudStorageHandler.prototype, 'listBuckets')
+        .resolves(listBucketsResponse);
+      stubs.push(listBucketsStub);
+      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
+        .resolves(gcipConfig);
+      stubs.push(getGcipConfigStub);
+      const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
+      getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
+      getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
+      getTenantUiConfigStub.withArgs('tenantId2').resolves(tenantUiConfigMap.tenantId2);
+      stubs.push(getTenantUiConfigStub);
+      const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
+        .resolves(iapSettings);
+      stubs.push(listIapSettingsStub);
+
+      return request(authServer.server)
+        .get('/get_admin_config')
+        .set({'Authorization': `Bearer ${personalAccessToken}`})
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .then((response) => {
+          // Confirm API handlers initialized with MetadataServer.
+          // This confirms that API handlers will log operations using MetadataServer#log.
+          assertApiHandlerInitializedWithMetadataServer(cloudStorageHandlerSpy, metadataServerSpy);
+          assertApiHandlerInitializedWithMetadataServer(gcipHandlerSpy, metadataServerSpy);
+          assertApiHandlerInitializedWithMetadataServer(iapSettingsHandlerSpy, metadataServerSpy);
+          // CloudStorageHandler initialized with expected OAuth access token.
+          expect(cloudStorageHandlerSpy).to.have.been.calledOnce;
+          expect(cloudStorageHandlerSpy.getCall(0).args[1].getAccessToken())
+            .to.eventually.equal(personalAccessToken);
+          // gcipHandler and iapSettingsHandler initialized with expected Matadata OAuth access token.
+          expect(gcipHandlerSpy).to.have.been.calledOnce;
+          expect(gcipHandlerSpy.getCall(0).args[1].getAccessToken())
+            .to.eventually.equal(METADATA_ACCESS_TOKEN);
+          expect(iapSettingsHandlerSpy).to.have.been.calledOnce;
+          expect(iapSettingsHandlerSpy.getCall(0).args[1].getAccessToken())
+            .to.eventually.equal(METADATA_ACCESS_TOKEN);
+          // Metadata server initialized with expected OAuth scopes.
+          expect(metadataServerSpy).to.have.been.calledOnce
+            .and.calledWith(AUTH_SERVER_SCOPES);
+          // readFile called.
+          expect(readFileStub).to.have.been.calledOnce.and.calledWith(bucketName, fileName);
+          // listBuckets called.
+          expect(listBucketsStub).to.have.been.calledOnce;
+          // getGcipConfig called next.
+          expect(getGcipConfigStub).to.have.been.calledOnce.and.calledAfter(readFileStub);
+          // listIapSettings called next.
+          expect(listIapSettingsStub).to.have.been.calledOnce.and.calledAfter(getGcipConfigStub);
+          // getTenantUiConfig called thrice.
+          expect(getTenantUiConfigStub).to.have.been.calledThrice.and.calledAfter(listIapSettingsStub);
+          // Expected default config returned.
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
         });
     });
 

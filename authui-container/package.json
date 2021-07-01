@@ -1,6 +1,6 @@
 {
   "name": "knative-serving-iap-gcip-authui",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Containerized Authentication UI for IAP external identities",
   "main": "dist/app.js",
   "scripts": {
@@ -61,7 +61,7 @@
     "gcip-iap": "0.1.4",
     "handlebars": "^4.7.6",
     "jquery": "^3.5.1",
-    "karma": "^5.1.0",
+    "karma": "^6.3.4",
     "karma-chai": "^0.1.0",
     "karma-chrome-launcher": "^3.1.0",
     "karma-cli": "^2.0.0",
