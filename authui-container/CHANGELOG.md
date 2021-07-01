@@ -59,3 +59,9 @@ Updates `gcip-iap` module dependency to `0.1.4`.
 gcr.io/gcip-iap/authui@sha256:db842770d654782001b7aba24532458fdb9ef9953b70ea2fcd162b2a133abf29
 
 Updates `firebaseui` dependency version to `4.8.0` to support disabling new user sign up in email providers, disabling new user sign up via project settings and blocking functions.
+
+#v0.1.10
+
+gcr.io/gcip-iap/authui@sha256:c9bc65e24793d5f69bfd5bfa3b518defd80ee39ee1a0efedac99b2b2c6ffba07
+
+Fixes GCS file/bucket not found error handling.
