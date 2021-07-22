@@ -1395,14 +1395,7 @@ describe('AuthServer', () => {
         fullLabel: 'Tenant 1',
         displayName: 'Tenant-display-name-1',
         signInOptions: [
-          {
-            provider: 'password',
-            disableSignUp: {
-              status: true,
-              adminEmail: 'admin@example.com',
-              helpLink: 'https://www.example.com/trouble_signing_in',
-            }
-          },
+          {provider: 'password'},
           {
             provider: 'saml.idp2',
             providerName: 'saml-display-name-2',
