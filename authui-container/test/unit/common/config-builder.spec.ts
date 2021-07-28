@@ -86,6 +86,24 @@ describe('DefaultUiConfigBuilder', () => {
         },
       ],
     },
+    tenantId4: {
+      displayName: 'Tenant-display-name-4',
+      signInOptions: [
+        {
+          provider: 'google.com',
+          scopes: ['scope1', 'scope2', 'https://example.com/scope3'],
+          loginHintKey: 'login_hint',
+          customParameters: {
+            prompt: 'consent',
+          },
+        },
+      ],
+      adminRestrictedOperation: {
+        status: true,
+        adminEmail: 'admin@example.com',
+        helpLink: 'https://www.example.com/trouble_signing_in',
+      }
+    },
   };
   const gcipConfig = {
     apiKey: API_KEY,
@@ -186,6 +204,31 @@ describe('DefaultUiConfigBuilder', () => {
               }
             },
           ],
+        },
+        tenantId4: {
+          displayName: 'Tenant-display-name-4',
+          iconUrl: TENANT_ICON_URL,
+          logoUrl: '',
+          buttonColor: '#007bff',
+          immediateFederatedRedirect: true,
+          signInFlow: 'redirect',
+          tosUrl: '',
+          privacyPolicyUrl: '',
+          signInOptions: [
+            {
+              provider: 'google.com',
+              scopes: ['scope1', 'scope2', 'https://example.com/scope3'],
+              loginHintKey: 'login_hint',
+              customParameters: {
+                prompt: 'consent',
+              },
+            },
+          ],
+          adminRestrictedOperation: {
+            status: true,
+            adminEmail: 'admin@example.com',
+            helpLink: 'https://www.example.com/trouble_signing_in',
+          }
         },
       },
       tosUrl: '',
@@ -842,6 +885,30 @@ describe('DefaultUiConfigBuilder', () => {
         invalidConfig[API_KEY].tenants.tenantId1.signInOptions[0].disableSignUp = {status: true, helpLink: true};
         DefaultUiConfigBuilder.validateConfig(invalidConfig);
       }).to.throw(`"${API_KEY}.tenants.tenantId1.signInOptions[].disableSignUp.helpLink" should be a valid HTTPS URL.`);
+    });
+
+    it('should throw on invalid *.tenants.*.adminRestrictedOperation.status type', () => {
+      expect(() => {
+        const invalidConfig: any = deepCopy(expectedUiConfig);
+        invalidConfig[API_KEY].tenants.tenantId1.adminRestrictedOperation = {status: 'true'};
+        DefaultUiConfigBuilder.validateConfig(invalidConfig);
+      }).to.throw(`"${API_KEY}.tenants.tenantId1.adminRestrictedOperation.status" should be a boolean.`);
+    });
+
+    it('should throw on invalid *.tenants.*.adminRestrictedOperation.adminEmail type', () => {
+      expect(() => {
+        const invalidConfig: any = deepCopy(expectedUiConfig);
+        invalidConfig[API_KEY].tenants.tenantId1.adminRestrictedOperation = {status: true, adminEmail: 123};
+        DefaultUiConfigBuilder.validateConfig(invalidConfig);
+      }).to.throw(`"${API_KEY}.tenants.tenantId1.adminRestrictedOperation.adminEmail" should be a valid email.`);
+    });
+
+    it('should throw on invalid *.tenants.*.adminRestrictedOperation.helpLink type', () => {
+      expect(() => {
+        const invalidConfig: any = deepCopy(expectedUiConfig);
+        invalidConfig[API_KEY].tenants.tenantId1.adminRestrictedOperation = {status: true, helpLink: true};
+        DefaultUiConfigBuilder.validateConfig(invalidConfig);
+      }).to.throw(`"${API_KEY}.tenants.tenantId1.adminRestrictedOperation.helpLink" should be a valid HTTPS URL.`);
     });
   });
 

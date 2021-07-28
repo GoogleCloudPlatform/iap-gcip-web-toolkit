@@ -227,9 +227,14 @@ configuration file.
             "whitelistedCountries": ["US", "+44"],
             "defaultCountry": "GB"
           }
-        ]
+        ],
         "tosUrl": "https://companyd.com/abcd/tos.html",
-        "privacyPolicyUrl": "https://companyd.com/abcd/privacypolicy.html"
+        "privacyPolicyUrl": "https://companyd.com/abcd/privacypolicy.html",
+        "adminRestrictedOperation": {
+          "status": true,
+          "adminEmail": "admin@example.com",
+          "helpLink": "https://www.example.com/trouble_signing_in"
+        }
       }
     }
   }
@@ -341,7 +346,6 @@ interface SignInOption {
     helpLink?: string;
   }
 }
-}
 
 interface ExtendedTenantUiConfig {
   // The tenant full label. This is used for the "sign in with tenant" button label.
@@ -379,6 +383,20 @@ interface ExtendedTenantUiConfig {
   // Whether to use popup or redirect flows for federated providers.
   // By default, redirect flows are used.
   signInFlow?: 'redirect' | 'popup';
+  // Sets the adminRestrictedOperation config for all providers(federated, email/password, email
+  // link and phone number).
+  adminRestrictedOperation?: {
+    // Whether to provide additional instructions to the end user when a user tries to create a
+    // new user account and the Auth server blocks the operation.
+    status: boolean;
+    // The optional site administrator email to contact for access when sign up is disabled.
+    // eg. `admin@example.com`.
+    adminEmail?: string;
+    // The optional help link to provide information on how to get access to the site when sign up
+    // is disabled.
+    // eg. `https://www.example.com/trouble_signing_in`.
+    helpLink?: string;
+  }
 }
 
 interface UiConfig {

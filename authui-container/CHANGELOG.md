@@ -65,3 +65,9 @@ Updates `firebaseui` dependency version to `4.8.0` to support disabling new user
 gcr.io/gcip-iap/authui@sha256:c9bc65e24793d5f69bfd5bfa3b518defd80ee39ee1a0efedac99b2b2c6ffba07
 
 Fixes GCS file/bucket not found error handling.
+
+#v0.1.11
+
+gcr.io/gcip-iap/authui@sha256:7703925296db259590bae47e7004118d75f1727a132b742e76991a8407755905
+
+Updates `firebaseui` dependency version to `4.8.1` to provide UI support for all identity provider sign up operations when they are restricted by site administrators.
