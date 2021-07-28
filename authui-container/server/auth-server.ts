@@ -228,7 +228,7 @@ export class AuthServer {
         });
     });
 
-    // Returns the custom config (if available) or the defaul config, needed to render
+    // Returns the custom config (if available) or the default config, needed to render
     // the sign-in UI for IAP.
     this.app.get('/config', (req: express.Request, res: express.Response) => {
       this.getFallbackConfig()

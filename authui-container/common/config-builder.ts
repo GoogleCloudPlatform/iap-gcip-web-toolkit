@@ -149,6 +149,31 @@ const VALIDATION_TREE: validators.ValidationTree = {
                   }
                 },
               },
+              adminRestrictedOperation: {
+                nodes: {
+                  status: {
+                    validator: (value: any, key: string) => {
+                      if (!validators.isBoolean(value)) {
+                        throw new Error(`"${key}" should be a boolean.`);
+                      }
+                    },
+                  },
+                  adminEmail: {
+                    validator: (value: any, key: string) => {
+                      if (value && !validators.isEmail(value)) {
+                        throw new Error(`"${key}" should be a valid email.`);
+                      }
+                    },
+                  },
+                  helpLink: {
+                    validator: (value: any, key: string) => {
+                      if (value && !validators.isHttpsURL(value)) {
+                        throw new Error(`"${key}" should be a valid HTTPS URL.`);
+                      }
+                    },
+                  },
+                },
+              },
               'signInOptions[]': {
                 // signInOptions can be a list of string too.
                 validator: (value: any, key: string) => {
@@ -386,6 +411,7 @@ export class DefaultUiConfigBuilder {
 
       totalSignInOptions += (optionsMap[key] &&
         optionsMap[key].signInOptions && optionsMap[key].signInOptions.length) || 0;
+      const adminRestrictedOperation = optionsMap[key] && optionsMap[key].adminRestrictedOperation;
 
       tenantConfigs[key] = {
         displayName,
@@ -399,7 +425,12 @@ export class DefaultUiConfigBuilder {
         signInOptions: (optionsMap[key] && optionsMap[key].signInOptions) || [],
         tosUrl: '',
         privacyPolicyUrl: '',
+        adminRestrictedOperation,
       };
+
+      if (!adminRestrictedOperation) {
+        delete tenantConfigs[key].adminRestrictedOperation;
+      }
 
       if (fullLabel) {
         tenantConfigs[key].fullLabel = fullLabel;

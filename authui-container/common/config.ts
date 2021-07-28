@@ -22,10 +22,17 @@ export interface TenantUiConfigSignInOption {
   providerName?: string;
 }
 
+interface DisableSignUpConfig {
+  status: boolean;
+  adminEmail?: string;
+  helpLink?: string;
+}
+
 export interface TenantUiConfig {
   fullLabel?: string;
   displayName?: string;
   signInOptions: TenantUiConfigSignInOption[];
+  adminRestrictedOperation?: DisableSignUpConfig;
 }
 
 export interface SignInOption {
@@ -49,11 +56,7 @@ export interface SignInOption {
   loginHint?: string;
   whitelistedCountries?: string[];
   blacklistedCountries?: string[];
-  disableSignUp?: {
-    adminEmail?: string;
-    helpLink?: string;
-    status: boolean;
-  };
+  disableSignUp?: DisableSignUpConfig;
 }
 
 export interface ExtendedTenantUiConfig {
@@ -67,6 +70,7 @@ export interface ExtendedTenantUiConfig {
   privacyPolicyUrl?: string;
   immediateFederatedRedirect?: boolean;
   signInFlow?: 'redirect' | 'popup';
+  adminRestrictedOperation?: DisableSignUpConfig;
 }
 
 export interface UiConfig {
