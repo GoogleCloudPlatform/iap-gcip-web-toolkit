@@ -14,8 +14,8 @@
 
 import { Component } from '@angular/core';
 // Import Firebase dependencies.
-import firebase from 'firebase/app';
-import 'firebase/auth';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 // Import FirebaseUI dependencies.
 import * as firebaseui from 'firebaseui';
 // Import GCIP/IAP module.
@@ -45,6 +45,8 @@ const tenantsConfig = {
         buttonColor: '#4666FF',
         iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
       },
+      firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+      firebase.auth.FacebookAuthProvider.PROVIDER_ID,
     ],
     signInFlow: 'redirect',
     // A boolean which determines whether to immediately redirect to the provider's site or
@@ -63,6 +65,7 @@ const tenantsConfig = {
     iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
     signInOptions: [
       firebase.auth.EmailAuthProvider.PROVIDER_ID,
+      firebase.auth.GoogleAuthProvider.PROVIDER_ID,
       {
         provider: 'saml.okta-cicp-app',
         providerName: 'SAML',

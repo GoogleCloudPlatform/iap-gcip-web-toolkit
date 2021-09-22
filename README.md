@@ -105,14 +105,36 @@ With `FirebaseUI`, a configuration object needs to be provided in order to rende
 authentication UI as required. Additional customizations can be done via CSS
 overrides or via provided callbacks.
 
-THe following snippet demonstrates using a shared authentication page for
-2 project configurations keyed by their respective API keys.
+Starting with version v1.0.0, `gcip-iap` requires the `firebase` V9 peer dependency or greater.
+No additional changes are needed beyond updating the import mechanism for `firebase` V9:
+
+```javascript
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+
+// The rest of the code is the same.
+// Import GCIP/IAP module.
+import * as ciap from 'gcip-iap';
+```
+
+See the Firebase [upgrade guide](https://firebase.google.com/docs/web/modular-upgrade) for more information.
+For integrations with FirebaseUI, `firebaseui` V6 or greater would be required.
+
+`firebaseui` import remains the same:
+
+```javascript
+import * as firebaseui from 'firebaseui';
+```
+
+The following snippet demonstrates using a shared authentication page for
+2 project configurations keyed by their respective API keys. Snippet below is
+using gcip-iap v1.0.0 requiring `firebase` V9 and `firebaseui` V6.
 
 ```javascript
 // Import GCIP/Firebase and FirebaseUI dependencies.
 // These are installed with npm install.
-import firebase from 'firebase/app';
-import 'firebase/auth';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 import * as firebaseui from 'firebaseui';
 
 // Import GCIP/IAP module.
@@ -287,7 +309,8 @@ Using the library is strongly recommended. It allows you to customize the entire
 authentication flow without worrying about the underlying exchanges between the
 UI and IAP.
 
-Include the library as a dependency like this:
+Include the library as a dependency like this, if you are using gcip-iap v0.1.4
+or less:
 
 ```javascript
 // Import Firebase/GCIP dependencies. These are installed on npm install.
@@ -296,6 +319,10 @@ import 'firebase/auth';
 // Import GCIP/IAP module.
 import * as ciap from 'gcip-iap';
 ```
+
+If you are migrating to gcip-iap v1.0.0, refer to above
+[create your own custom authentication UI](### Create your own Custom Authentication UI)
+for more details.
 
 ### Implementing AuthenticationHandler
 

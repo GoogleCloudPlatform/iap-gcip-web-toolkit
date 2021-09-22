@@ -18,9 +18,9 @@ import {HttpClient, HttpRequestConfig, HttpResponse} from './utils/http-client';
 import {DefaultUiConfigBuilder} from '../common/config-builder';
 // Import Firebase dependencies.
 // tslint:disable-next-line
-import firebase from 'firebase/app';
+import firebase from 'firebase/compat/app';
 // tslint:disable-next-line
-import 'firebase/auth';
+import 'firebase/compat/auth';
 import 'bootstrap';
 // Import codemirror dependencies.
 import '../node_modules/codemirror/lib/codemirror.css';

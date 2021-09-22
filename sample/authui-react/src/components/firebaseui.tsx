@@ -13,8 +13,8 @@
  */
 import React from 'react';
 // Import Firebase dependencies.
-import firebase from 'firebase/app';
-import 'firebase/auth';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 // Import FirebaseUI dependencies.
 import * as firebaseui from 'firebaseui';
 import '../../node_modules/firebaseui/dist/firebaseui.css';
