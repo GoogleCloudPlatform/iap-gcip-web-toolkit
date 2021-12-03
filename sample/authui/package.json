@@ -42,7 +42,7 @@
     "codelyzer": "^6.0.0",
     "firebase": "^8.0.0",
     "firebaseui": "^4.8.1",
-    "gcip-iap": "0.1.4",
+    "gcip-iap": "1.0.0",
     "jasmine-core": "~3.5.0",
     "jasmine-spec-reporter": "~5.0.0",
     "jquery": "^3.5.1",

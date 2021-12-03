@@ -42,4 +42,3 @@ firebase.tgz
 # Do not check in generated JS files in authui-container.
 authui-container/public/admin.js
 authui-container/public/script.js
-
