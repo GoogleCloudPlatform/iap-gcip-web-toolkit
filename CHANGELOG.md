@@ -1,1 +1,0 @@
-- Updates firebase peer dependency to v9.
