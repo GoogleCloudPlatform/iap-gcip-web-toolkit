@@ -18,9 +18,9 @@ import {getBrowserName, BrowserName} from './utils/browser';
 import {UiConfig} from '/../common/config';
 // Import Firebase dependencies.
 // tslint:disable-next-line
-import firebase from 'firebase/app';
+import firebase from 'firebase/compat/app';
 // tslint:disable-next-line
-import 'firebase/auth';
+import 'firebase/compat/auth';
 // Import FirebaseUI dependencies.
 import * as firebaseui from 'firebaseui';
 // Import GCIP/IAP module.

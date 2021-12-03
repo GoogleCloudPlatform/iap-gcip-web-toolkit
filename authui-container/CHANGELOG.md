@@ -71,3 +71,9 @@ Fixes GCS file/bucket not found error handling.
 gcr.io/gcip-iap/authui@sha256:7703925296db259590bae47e7004118d75f1727a132b742e76991a8407755905
 
 Updates `firebaseui` dependency version to `4.8.1` to provide UI support for all identity provider sign up operations when they are restricted by site administrators.
+
+#v0.1.12
+
+gcr.io/gcip-iap/authui@sha256:b87f3da6be2981a4182e6877855aec7c5d6c20c95c457877f2903cc47b27084f
+
+Updates `gcip-iap` module dependency to `1.0.0`, `firebase` module to `9.6.0` and `firebaseui` to `6.0.0`.
