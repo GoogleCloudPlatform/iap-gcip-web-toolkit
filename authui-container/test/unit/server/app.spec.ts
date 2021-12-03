@@ -31,7 +31,8 @@ describe('app server', () => {
   let currentPort: string;
   let startAuthServerSpy: sinon.SinonSpy;
   let stopAuthServerSpy: sinon.SinonSpy;
-  const TEST_PORT = '5000';
+  // Test with less frequently used port number.
+  const TEST_PORT = '5238';
 
   beforeEach(() =>  {
     // Save environment variable port if available.

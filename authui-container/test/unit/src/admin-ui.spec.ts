@@ -26,7 +26,7 @@ import {
   MSG_GOOGLE_PROVIDER_NOT_CONFIGURED, CODE_MIRROR_CONFIG, MSG_INVALID_CREDENTIALS,
 } from '../../../src/admin-ui';
 // tslint:disable-next-line
-import firebase from 'firebase';
+import firebase from 'firebase/compat/app';
 import * as CodeMirror from '../../../node_modules/codemirror/lib/codemirror.js';
 
 /**
@@ -1169,8 +1169,9 @@ describe('AdminUi', () => {
         email: EMAIL,
         reauthenticateWithPopup: sinon.stub().callsFake((provider) => {
           expect(provider.providerId).to.be.equal('google.com');
-          expect(addScopeStub).to.have.been.calledOnce;
-          expect(addScopeStub.getCall(0)).to.have.been.calledWith(OAUTH_SCOPES[0]);
+          expect(addScopeStub).to.have.been.calledTwice;
+          expect(addScopeStub.getCall(0)).to.have.been.calledWith('profile');
+          expect(addScopeStub.getCall(1)).to.have.been.calledWith(OAUTH_SCOPES[0]);
           expect(setCustomParametersStub).to.have.been.calledOnce
             .and.calledWith({login_hint: EMAIL, prompt: 'select_account'});
           return Promise.resolve({
@@ -1184,7 +1185,6 @@ describe('AdminUi', () => {
         }),
       };
       const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1', stubbedUserMethods);
-      const UNAUTHORIZED_USER_ERROR = 'Unauthorized user';
       const serverLowLevelError = testUtils.createMockLowLevelError(
           'Server responded with status 500',
           500,
@@ -1448,8 +1448,9 @@ describe('AdminUi', () => {
           expect(stubbedAuthMethods.setPersistence).to.have.been.calledOnce
             .and.calledWith('none');
           expect(provider.providerId).to.be.equal('google.com');
-          expect(addScopeStub).to.have.been.calledOnce;
-          expect(addScopeStub.getCall(0)).to.have.been.calledWith(OAUTH_SCOPES[0]);
+          expect(addScopeStub).to.have.been.calledTwice;
+          expect(addScopeStub.getCall(0)).to.have.been.calledWith('profile');
+          expect(addScopeStub.getCall(1)).to.have.been.calledWith(OAUTH_SCOPES[0]);
           expect(setCustomParametersStub).to.have.been.calledOnce
             .and.calledWith({login_hint: undefined, prompt: 'select_account'});
         }),

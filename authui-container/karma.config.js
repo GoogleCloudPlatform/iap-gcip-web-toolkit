@@ -42,7 +42,18 @@ module.exports = function(config) {
       },
       tsconfig: './tsconfig.webpack.json',
       bundlerOptions: {
-        transforms: [require('karma-typescript-es6-transform')()],
+        transforms: [require('karma-typescript-es6-transform')({
+          presets: [
+            [
+              "@babel/preset-env",
+              {
+                "targets": {
+                  "esmodules": true
+                }
+              }
+            ]
+          ]
+         })],
       },
     },
     reporters: ['verbose', 'progress', 'coverage', 'karma-typescript'],
