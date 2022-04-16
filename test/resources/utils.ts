@@ -186,6 +186,11 @@ export class MockAuth implements FirebaseAuth {
     return this.frameworks.slice();
   }
 
+  public updateCurrentUser(user: User | null): Promise<void> {
+    // This function is not used anywhere in unit tests but was added since we changed the
+    // FirebaseAuth interface in ciap module
+    return undefined;
+  }
   /** Clears logged frameworks. */
   public clearLoggedFrameworks() {
     this.frameworks = [];

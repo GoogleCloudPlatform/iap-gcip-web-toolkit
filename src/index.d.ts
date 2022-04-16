@@ -14,8 +14,19 @@
  * limitations under the License.
  */
 
-import { FirebaseAuth, UserCredential, User } from '@firebase/auth-types';
+/**
+ * Import these from ciap/firebase-auth rather than @firebase/auth-types because
+ * 1) @firebase/auth-types is not recommended for direct use -
+ * https://github.com/firebase/firebase-js-sdk/blob/master/packages/auth-types/README.md
+ *
+ * 2)The return values from methods implemented by AuthenticationHandler (like getAuth())
+ *are used by our SDK code and they use the ciap/firebase-auth types anyway -
+ * https://team.git.corp.google.com/cicp-eng/cicp-iap-js/+/refs/heads/master/src/ciap/base-operation-handler.ts#254,
+ * https://team.git.corp.google.com/cicp-eng/cicp-iap-js/+/refs/heads/master/src/ciap/base-operation-handler.ts#17
+ */
+import { User, FirebaseAuth, UserCredential } from './ciap/firebase-auth';
 
+// tslint:disable-next-line:no-namespace
 declare namespace ciap {
   interface CIAPError {
     httpErrorCode?: number;

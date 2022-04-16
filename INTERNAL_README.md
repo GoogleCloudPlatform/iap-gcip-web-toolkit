@@ -174,8 +174,7 @@ This can be illustrated as shown, using FirebaseUI.
 
 ```javascript
 // Import Firebase dependencies.
-import firebase from '@firebase/app';
-import '@firebase/auth';
+import { GoogleAuthProvider, EmailAuthProvider } from 'firebase/auth';
 
 // Import FirebaseUI dependencies.
 // firebaseui.auth.FirebaseUiHandler is required to be implemented.
@@ -192,8 +191,8 @@ const configs = {
       tenantId1: {
         // Tenant1 supports Google and Email sign-in.
         signInOptions: [
-          firebase.auth.GoogleAuthProvider.PROVIDER_ID,
-          firebase.auth.EmailAuthProvider.PROVIDER_ID,
+          GoogleAuthProvider.PROVIDER_ID,
+          EmailAuthProvider.PROVIDER_ID,
         ]
       },
       tenantId2: {
@@ -218,8 +217,8 @@ const configs = {
       _: {
         // Agent project supports Google and Email sign-in.
         signInOptions: [
-          firebase.auth.GoogleAuthProvider.PROVIDER_ID,
-          firebase.auth.EmailAuthProvider.PROVIDER_ID,
+          GoogleAuthProvider.PROVIDER_ID,
+          EmailAuthProvider.PROVIDER_ID,
         ]
       },
       tenantId4: {
