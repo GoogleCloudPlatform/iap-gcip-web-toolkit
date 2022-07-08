@@ -113,9 +113,11 @@ This will require the following:
   - For the project-level IdPs project: `test/resources/key.json`.
   - For the single tenant-level IdPs project: `test/resources/key_single_tenant.json`.
   - For the multi-tenant-level IdPs project: `test/resources/key_multi_tenant.json`.
+  - More information about keys can be found in the [document](https://docs.google.com/document/d/17LnUT8_dHBDZrgJQB15Zx3TgPgCrFJcmEium6Bhhi5o/edit?resourcekey=0-rLrDvcz_uMKUpP28kVIG2g#bookmark=id.qlp272u7jofx)
 - The associated sample GAE apps deployed for both projects.
   This is the one in `sample/app`.
 - Chrome browser installed.
+- Refer to troubleshooting section in the [document](http://go/aion-sdk/gcip/web-sdk-iap#troubleshooting-tests) for some known errors.
 
 To run E2E tests:
 ```bash
