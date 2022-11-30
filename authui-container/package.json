@@ -21,6 +21,7 @@
   "homepage": "https://github.com/GoogleCloudPlatform/iap-gcip-web-toolkit",
   "dependencies": {
     "express": "^4.17.1",
+    "http-proxy-middleware": "^2.0.6",
     "request": "^2.88.2",
     "request-promise": "^4.2.6"
   },
@@ -57,7 +58,7 @@
     "es6-map": "^0.1.5",
     "file-loader": "^6.0.0",
     "firebase": "^9.6.0",
-    "firebaseui": "^6.0.0",
+    "firebaseui": "^6.0.2",
     "gcip-iap": "1.0.0",
     "handlebars": "^4.7.6",
     "jquery": "^3.5.1",

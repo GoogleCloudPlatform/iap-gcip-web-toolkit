@@ -16,7 +16,7 @@ import express = require('express');
 import bodyParser = require('body-parser');
 import * as templates from  './templates';
 import path = require('path');
-import {Server} from 'http';
+import { Server } from 'http';
 import { MetadataServer } from './api/metadata-server';
 import { CloudStorageHandler } from './api/cloud-storage-handler';
 import { ErrorResponse, ERROR_MAP } from '../server/utils/error';
@@ -26,6 +26,7 @@ import { UiConfig } from '../common/config';
 import { IapSettingsHandler, IapSettings } from './api/iap-settings-handler';
 import { GcipHandler, TenantUiConfig, GcipConfig } from './api/gcip-handler';
 import { isLastCharLetterOrNumber } from '../common/index';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 // Defines the Auth server OAuth scopes needed for internal usage.
 // This is used to query APIs to determine the default config.
@@ -44,6 +45,13 @@ export const MAX_BUCKET_STRING_LENGTH = 63;
 // ends with a letter or number.
 export const ALLOWED_LAST_CHAR = '0';
 
+/**
+ * Executes post actions when proxy failed.
+ * @param target Target address which requests are proxied to.
+ */
+function errorCallback(err: Error, req: any, res: any, target?: any) {
+  log(`Failed to proxy requests to target ${target}: ${err.message}`);
+}
 /**
  * Renders the sign-in UI HTML container and serves it in the response.
  * @param req The expressjs request.
@@ -130,12 +138,70 @@ export class AuthServer {
    */
   private init() {
     this.app.enable('trust proxy');
-    // Support JSON-encoded bodies.
-    this.app.use(bodyParser.json());
-    // Support URL-encoded bodies.
-    this.app.use(bodyParser.urlencoded({
-      extended: true
-    }));
+    // Oauth handler widget code.
+    // Proxy these requests to <project>.firebaseapp.com.
+    // set this up before adding json body parser to the app. This causes POST requests to fail as mentioned in
+    // https://github.com/chimurai/http-proxy-middleware/issues/171#issuecomment-356218599
+    this.fetchAuthDomainProxyTarget().then(authDomainProxyTarget => {
+      log(`Proxy auth requests to target ${authDomainProxyTarget}`);
+      this.app.use('/__/auth/', createProxyMiddleware({
+        target: authDomainProxyTarget,
+        // set to true to pass SSL cert checks.
+        // This causes the SNI/Host Header of the proxy request to be set to the targetURL
+        // '<project>.firebaseapp.com'.
+        changeOrigin: true,
+        logLevel: 'debug',
+        onError: errorCallback
+      }));
+      // Support JSON-encoded bodies.
+      this.app.use(bodyParser.json());
+      // Support URL-encoded bodies.
+      this.app.use(bodyParser.urlencoded({
+        extended: true
+      }));
+
+      // Post requests needs bodyParser to be setup first.
+      // Otherwise, URLs in the request payload are not parsed correctly.
+      // Administrative API for writing a custom configuration to.
+      // This will save the configuration in a predetermined GCS bucket.
+      if (this.isAdminAllowed()) {
+        this.app.post('/set_admin_config', (req: express.Request, res: express.Response) => {
+          if (!req.headers.authorization ||
+              req.headers.authorization.split(' ').length <= 1) {
+            this.handleErrorResponse(res, ERROR_MAP.UNAUTHENTICATED);
+          } else if (!isNonNullObject(req.body) ||
+                    Object.keys(req.body).length === 0) {
+            this.handleErrorResponse(res, ERROR_MAP.INVALID_ARGUMENT);
+          } else {
+            const accessToken = req.headers.authorization.split(' ')[1];
+            try {
+              // Validate config before saving it.
+              DefaultUiConfigBuilder.validateConfig(req.body);
+              this.setConfigForAdmin(accessToken, req.body).then(() => {
+                res.set('Content-Type', 'application/json');
+                res.send(JSON.stringify({
+                  status: 200,
+                  message: 'Changes successfully saved.',
+                }));
+              }).catch((err) => {
+                this.handleError(res, err);
+              });
+            } catch (e) {
+              this.handleErrorResponse(
+                res,
+                {
+                  error: {
+                    code: 400,
+                    status: 'INVALID_ARGUMENT',
+                    message: e.message || 'Invalid UI configuration.',
+                  },
+                });
+            }
+          }
+        });
+     }
+    })
+
     // Static assets.
     // Note that in production, this is served from dist/server/auth-server.js.
     this.app.use('/static', express.static(path.join(__dirname, '../public')));
@@ -144,6 +210,21 @@ export class AuthServer {
     this.app.get('/', (req: express.Request, res: express.Response) => {
       // Serve content for signed in user.
       return serveContentForSignIn(req, res);
+    });
+
+    // Provide easy way for developer to determine the auth domain being used.
+    // This is the location to which requests are being proxied. This is same as
+    // the output of /gcipConfig authDomain, but it validates that the proxy target
+    // was read correctly by the constructor/init() code.
+    this.app.get('/authdomain-proxytarget', (req: express.Request, res: express.Response) => {
+      this.fetchAuthDomainProxyTarget()
+        .then((authDomainProxyTarget) => {
+          res.set('Content-Type', 'text/html');
+          res.end(authDomainProxyTarget);
+        })
+        .catch((err) => {
+          this.handleError(res, err);
+        });
     });
 
     // Provide easy way for developer to determine version.
@@ -168,50 +249,16 @@ export class AuthServer {
             req.headers.authorization.split(' ').length <= 1) {
           this.handleErrorResponse(res, ERROR_MAP.UNAUTHENTICATED);
         } else {
+          // Use the hostname of the request to figure out the URL of the hosted UI.
+          // This should be used as authDomain in admin config, unless it was overridden to a different value.
+          // This enables authDomain to be in the same origin as the sign-in UI.
           const accessToken = req.headers.authorization.split(' ')[1];
-          this.getConfigForAdmin(accessToken).then((config) => {
+          this.getConfigForAdmin(accessToken, req.hostname).then((config) => {
             res.set('Content-Type', 'application/json');
             res.send(JSON.stringify(config || {}));
           }).catch((err) => {
             this.handleError(res, err);
           });
-        }
-      });
-
-      // Administrative API for writing a custom configuration to.
-      // This will save the configuration in a predetermined GCS bucket.
-      this.app.post('/set_admin_config', (req: express.Request, res: express.Response) => {
-        if (!req.headers.authorization ||
-            req.headers.authorization.split(' ').length <= 1) {
-          this.handleErrorResponse(res, ERROR_MAP.UNAUTHENTICATED);
-        } else if (!isNonNullObject(req.body) ||
-                   Object.keys(req.body).length === 0) {
-          this.handleErrorResponse(res, ERROR_MAP.INVALID_ARGUMENT);
-        } else {
-          const accessToken = req.headers.authorization.split(' ')[1];
-          try {
-            // Validate config before saving it.
-            DefaultUiConfigBuilder.validateConfig(req.body);
-            this.setConfigForAdmin(accessToken, req.body).then(() => {
-              res.set('Content-Type', 'application/json');
-              res.send(JSON.stringify({
-                status: 200,
-                message: 'Changes successfully saved.',
-              }));
-            }).catch((err) => {
-              this.handleError(res, err);
-            });
-          } catch (e) {
-            this.handleErrorResponse(
-              res,
-              {
-                error: {
-                  code: 400,
-                  status: 'INVALID_ARGUMENT',
-                  message: e.message || 'Invalid UI configuration.',
-                },
-              });
-          }
         }
       });
     }
@@ -231,7 +278,10 @@ export class AuthServer {
     // Returns the custom config (if available) or the default config, needed to render
     // the sign-in UI for IAP.
     this.app.get('/config', (req: express.Request, res: express.Response) => {
-      this.getFallbackConfig()
+      // Use the hostname of the request to figure out the URL of the hosted UI.
+      // This should be used as authDomain in config, unless it was overridden to a different value.
+      // This enables authDomain to be in the same origin as the sign-in UI.
+      this.getFallbackConfig(req.hostname)
         .then((currentConfig) => {
           if (!currentConfig) {
             this.handleErrorResponse(res, ERROR_MAP.NOT_FOUND);
@@ -246,6 +296,15 @@ export class AuthServer {
     });
   }
 
+  /** @return Destination where requests with path "__/auth/" are proxied to. */
+  private fetchAuthDomainProxyTarget(): Promise<string> {
+    if (this.gcipHandler === undefined) {
+      return Promise.reject(new Error('Gcip handler has not been initialized!'));
+    }
+    return this.gcipHandler.getGcipConfig()
+        .then((gcipConfig) => `https://${gcipConfig.authDomain}`);
+  }
+
   /** @return Whether admin panel is allowed. */
   private isAdminAllowed(): boolean {
     return !(process.env.ALLOW_ADMIN === 'false' || process.env.ALLOW_ADMIN === '0');
@@ -253,8 +312,9 @@ export class AuthServer {
 
   /**
    * @return A promise that resolves with the current UI config.
+   * The hostname parameter is used to override the authDomain to the hostname of the signin-page, i.e the requester UI.
    */
-  private getFallbackConfig(): Promise<UiConfig | null> {
+  private getFallbackConfig(hostname: string): Promise<UiConfig | null> {
     // Parse config from environment variable first.
     if (process.env.UI_CONFIG) {
       try {
@@ -276,7 +336,7 @@ export class AuthServer {
         // If not available in GCS, use default config.
         if (!this.defaultConfigPromise) {
           // Default config should be retrieved once and cached in memory.
-          this.defaultConfigPromise = this.getDefaultConfig();
+          this.defaultConfigPromise = this.getDefaultConfig(hostname);
         }
         return this.defaultConfigPromise.then((config) => {
           if (!config) {
@@ -325,8 +385,9 @@ export class AuthServer {
   /**
    * @return A promise that resolves with the constructed default UI config if available.
    *     If IAP is not configured, null is returned instead.
+   * @param hostname The hostname of the requesting app. This will be used as the authDomain field in UiConfig.
    */
-  private getDefaultConfig(): Promise<UiConfig | null> {
+  private getDefaultConfig(hostname: string): Promise<UiConfig | null> {
     let gcipConfig: GcipConfig;
     let projectId: string;
     return this.metadataServer.getProjectId()
@@ -361,7 +422,7 @@ export class AuthServer {
         return this.getTenantUiConfigForTenants(tenantIds);
       })
       .then((optionsMap) => {
-        const defaultUiConfig = new DefaultUiConfigBuilder(projectId, gcipConfig, optionsMap);
+        const defaultUiConfig = new DefaultUiConfigBuilder(projectId, hostname, gcipConfig, optionsMap);
         return defaultUiConfig.build();
       });
   }
@@ -397,9 +458,10 @@ export class AuthServer {
    * Returns the current UI config if found in GCS. If not, the default config is
    * returned instead.
    * @param accessToken The personal admin user OAuth access token.
+   * @param hostname The hostname of the requesting app. This will be used as the authDomain field in UiConfig.
    * @return A promise that resolves with the UI config.
    */
-  private getConfigForAdmin(accessToken: string): Promise<UiConfig | null> {
+  private getConfigForAdmin(accessToken: string, hostname: string): Promise<UiConfig | null> {
     let bucketName: string;
     const fileName = CONFIG_FILE_NAME;
     // Required OAuth scope: https://www.googleapis.com/auth/devstorage.read_write
@@ -422,7 +484,7 @@ export class AuthServer {
             .then(() => {
               // If not found, but user can list buckets, return default config.
               // Otherwise throw an error.
-              return this.getDefaultConfig();
+              return this.getDefaultConfig(hostname);
             });
         }
         throw error;

@@ -25,6 +25,7 @@ describe('DefaultUiConfigBuilder', () => {
   const PROJECT_ID = 'project-id';
   const API_KEY = 'API_KEY';
   const AUTH_SUBDOMAIN = 'AUTH_SUBDOMAIN';
+  const HOST_NAME = 'gcip-iap-hosted-ui-xyz.uc.run.app';
   const tenantUiConfigMap = {
     _: {
       fullLabel: 'ABCD Portal',
@@ -914,19 +915,20 @@ describe('DefaultUiConfigBuilder', () => {
 
   describe('build()', () => {
     it('should return expected populated UiConfig', () => {
-      const configBuilder = new DefaultUiConfigBuilder(PROJECT_ID, gcipConfig, tenantUiConfigMap);
+      const configBuilder = new DefaultUiConfigBuilder(PROJECT_ID, '', gcipConfig, tenantUiConfigMap);
 
       expect(configBuilder.build()).to.deep.equal(expectedUiConfig);
     });
 
-    it('should return expected populated UiConfig with default displayNames', () => {
-      const configBuilder = new DefaultUiConfigBuilder(PROJECT_ID, gcipConfig, tenantUiConfigMapWithoutDisplayNames);
+    it('should return expected populated UiConfig with default displayNames and default AuthDomain', () => {
+      const configBuilder = new DefaultUiConfigBuilder(
+        PROJECT_ID, '', gcipConfig, tenantUiConfigMapWithoutDisplayNames);
 
       expect(configBuilder.build()).to.deep.equal(expectedUiConfigWithPopulatedDefaultDisplayNames);
     });
 
     it('should return null when no tenants are determined', () => {
-      const configBuilder = new DefaultUiConfigBuilder(PROJECT_ID, gcipConfig, {});
+      const configBuilder = new DefaultUiConfigBuilder(PROJECT_ID, '', gcipConfig, {});
 
       expect(configBuilder.build()).to.be.null;
     });
@@ -943,9 +945,16 @@ describe('DefaultUiConfigBuilder', () => {
           signInOptions: [],
         },
       };
-      const configBuilder = new DefaultUiConfigBuilder(PROJECT_ID, gcipConfig, emptyConfigMap);
+      const configBuilder = new DefaultUiConfigBuilder(PROJECT_ID, '', gcipConfig, emptyConfigMap);
 
       expect(configBuilder.build()).to.be.null;
+    });
+    it('should override the authDomain when main UI hostname is specified', () => {
+      const configBuilder = new DefaultUiConfigBuilder(PROJECT_ID, HOST_NAME, gcipConfig, tenantUiConfigMap);
+      const expectedUiConfigWithHostName = deepCopy(expectedUiConfig) as any;
+      expectedUiConfigWithHostName[API_KEY].authDomain = HOST_NAME;
+
+      expect(configBuilder.build()).to.deep.equal(expectedUiConfigWithHostName);
     });
   });
 });
