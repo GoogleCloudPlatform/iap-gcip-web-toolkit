@@ -22,7 +22,7 @@
     "css-loader": "3.6.0",
     "file-loader": "6.0.0",
     "firebase": "^8.0.0",
-    "firebase-tools": "^9.5.0",
+    "firebase-tools": "^9.23.3",
     "firebaseui": "^4.8.1",
     "gcip-iap": "1.0.1",
     "handlebars": "^4.7.6",
