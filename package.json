@@ -1,6 +1,6 @@
 {
   "name": "gcip-iap",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "GCIP/IAP JS SDK",
   "author": "Google",
   "license": "Apache-2.0",
@@ -37,7 +37,7 @@
   "types": "dist/index.d.ts",
   "dependencies": {
     "@types/node": "^8.10.51",
-    "node-forge": "^0.10.0"
+    "node-forge": "^1.3.1"
   },
   "peerDependencies": {
     "firebase": "^9.1.3",
@@ -61,7 +61,7 @@
     "del": "^2.2.1",
     "dtslint": "^4.2.1",
     "firebase": "^9.1.3",
-    "firebase-admin": "^9.5.0",
+    "firebase-admin": "^11.5.0",
     "firebase-tools": "^9.21.0",
     "gulp": "^4.0.2",
     "gulp-exit": "0.0.2",
@@ -71,7 +71,7 @@
     "gulp-tar": "^2.1.0",
     "gulp-tslint": "^8.1.4",
     "gulp-typescript": "^6.0.0-alpha.1",
-    "karma": "6.3.14",
+    "karma": "6.2.0",
     "karma-chai": "0.1.0",
     "karma-chrome-launcher": "3.1.0",
     "karma-cli": "2.0.0",

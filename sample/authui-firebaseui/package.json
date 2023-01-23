@@ -24,7 +24,7 @@
     "firebase": "^8.0.0",
     "firebase-tools": "^9.5.0",
     "firebaseui": "^4.8.1",
-    "gcip-iap": "1.0.0",
+    "gcip-iap": "1.0.1",
     "handlebars": "^4.7.6",
     "jquery": "^3.5.1",
     "popper.js": "^1.16.1",
