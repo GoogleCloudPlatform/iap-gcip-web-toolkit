@@ -68,9 +68,6 @@ fi
 echo "Environment variables checked."
 
 echo "Checking for commands..."
-trap "echo 'Missing hub.'; exit 1" ERR
-which hub &> /dev/null
-trap - ERR
 
 trap "echo 'Missing node.'; exit 1" ERR
 which node &> /dev/null
@@ -176,7 +173,7 @@ echo "Cleaned up release notes."
 echo "Publishing changes to internal repo: $INTERNAL_REPOSITORY"
 git push origin master
 
-GITHUB_REPOSITORY=$(jq -r ".repository.url" package.json)
+GITHUB_SSH_CLONE=$(jq -r .repository.sshclone package.json)
 echo "Moving to temporary directory..."
 TEMPDIR2=$(mktemp -d)
 echo "[DEBUG] ${TEMPDIR2}"
@@ -185,8 +182,8 @@ echo "Moved to temporary directory."
 
 WDIR2=$(pwd)
 
-echo "Cloning GitHub repository..."
-git clone "${GITHUB_REPOSITORY}.git"
+echo "Cloning GitHub repository, ensure that your ssh keys are setup as described in https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent"
+git clone "${GITHUB_SSH_CLONE}"
 # Only one directory should exist.
 cd *
 echo "Cloned GitHub repository."
@@ -229,10 +226,8 @@ git commit -m "[gcip-iap-release] Pushed v${NEW_VERSION}"
 git tag -a v${NEW_VERSION} -m "[gcip-iap-release] Pushed v${NEW_VERSION}"
 echo "Created release commit and tag in GitHub repository."
 
-# echo "Pushing release commit and tag to GitHub..."
+echo "Pushing release commit and tag to GitHub..."
 git push origin master --tags
-# echo "Pushed release commit and tag GitHub."
+echo "Pushed release commit and tag GitHub."
 
-# echo "Publishing release notes..."
-hub release create --file="${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
-# echo "Published release notes."
+echo "Last Step - Publish a new release from the github console at https://github.com/GoogleCloudPlatform/iap-gcip-web-toolkit/releases/new, with the v${NEW_VERSION} tag."
