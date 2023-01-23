@@ -1,1 +1,0 @@
-1.0.1 Upgrade node-forge to 1.3.1 to pick up vuln patch.
