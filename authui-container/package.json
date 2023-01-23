@@ -59,7 +59,7 @@
     "file-loader": "^6.0.0",
     "firebase": "^9.6.0",
     "firebaseui": "^6.0.2",
-    "gcip-iap": "1.0.0",
+    "gcip-iap": "1.0.1",
     "handlebars": "^4.7.6",
     "jquery": "^3.5.1",
     "karma": "^6.3.4",
