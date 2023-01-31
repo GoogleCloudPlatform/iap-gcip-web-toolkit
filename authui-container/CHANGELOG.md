@@ -77,3 +77,9 @@ Updates `firebaseui` dependency version to `4.8.1` to provide UI support for all
 gcr.io/gcip-iap/authui@sha256:b87f3da6be2981a4182e6877855aec7c5d6c20c95c457877f2903cc47b27084f
 
 Updates `gcip-iap` module dependency to `1.0.0`, `firebase` module to `9.6.0` and `firebaseui` to `6.0.0`.
+
+#v0.1.13
+
+gcr.io/gcip-iap/authui@sha256:ce274e63d3eb1e9ba526e6530a6ba6c8550ed746cfba2236941d648a31464e44
+
+Use the login page URL as authDomain for Hosted UI to prevent cross origin storage access in signInWithRedirect.
