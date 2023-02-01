@@ -18,10 +18,12 @@ import * as _ from 'lodash';
 import * as chai from 'chai';
 import * as sinonChai from 'sinon-chai';
 import * as chaiAsPromised from 'chai-as-promised';
+import * as proxy from 'http-proxy-middleware';
 import request = require('supertest');
 import * as templates from  '../../../server/templates';
 import * as fs from 'fs';
 import * as sinon from 'sinon';
+import * as http from 'http';
 import {
   AuthServer, AUTH_SERVER_SCOPES, HOSTED_UI_VERSION, MAX_BUCKET_STRING_LENGTH,
   ALLOWED_LAST_CHAR,
@@ -74,12 +76,17 @@ describe('AuthServer', () => {
   let cloudStorageHandlerSpy: sinon.SinonSpy;
   let gcipHandlerSpy: sinon.SinonSpy;
   let iapSettingsHandlerSpy: sinon.SinonSpy;
+  let fetchAuthSpy: sinon.SinonSpy;
   let stubs: sinon.SinonStub[] = [];
   let consoleStub: sinon.SinonStub;
+  let getGcipConfigStub: sinon.SinonStub;
+  let createProxyMiddlewareStub: sinon.SinonStub;
+
   const PROJECT_NUMBER = '1234567890';
   const PROJECT_ID = 'project-id';
   const API_KEY = 'API_KEY';
   const AUTH_SUBDOMAIN = 'AUTH_SUBDOMAIN';
+  const HOST_NAME = 'gcip-iap-hosted-ui-xyz.uc.run.app';
   const K_CONFIGURATION = 'service123';
   let app: express.Application;
   let authServer: AuthServer;
@@ -89,8 +96,13 @@ describe('AuthServer', () => {
   const previousAllowAdmin = process.env.ALLOW_ADMIN;
   const previousDebugConsole = process.env.DEBUG_CONSOLE;
   const METADATA_ACCESS_TOKEN = 'METADATA_ACCESS_TOKEN';
+  const CONFIG = {
+    apiKey: API_KEY,
+    authDomain: `${AUTH_SUBDOMAIN}.firebaseapp.com`,
+  };
+  let proxyRequest: http.ClientRequest | undefined;
 
-  beforeEach(() =>  {
+  beforeEach(async () =>  {
     process.env.K_CONFIGURATION = K_CONFIGURATION;
     delete process.env.GCS_BUCKET_NAME;
     delete process.env.UI_CONFIG;
@@ -101,8 +113,25 @@ describe('AuthServer', () => {
     gcipHandlerSpy = sinon.spy(gcip, 'GcipHandler');
     cloudStorageHandlerSpy = sinon.spy(storage, 'CloudStorageHandler');
     iapSettingsHandlerSpy = sinon.spy(iap, 'IapSettingsHandler');
+    fetchAuthSpy = sinon.spy(AuthServer.prototype, 'fetchAuthDomainProxyTarget' as any);
     consoleStub = sinon.stub(console, 'log');
+    const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
+      .resolves(METADATA_ACCESS_TOKEN);
+    stubs.push(getAccessToken);
+    getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
+      .resolves(CONFIG);
+    stubs.push(getGcipConfigStub);
+    const middleware = proxy.createProxyMiddleware({
+      target: `https://${CONFIG.authDomain}`,
+      changeOrigin: true,
+      onProxyReq: (proxyReq, req, res) => {
+        proxyRequest = proxyReq;
+      }
+    });
+    createProxyMiddlewareStub = sinon.stub(proxy, 'createProxyMiddleware').returns(middleware);
+    stubs.push(createProxyMiddlewareStub);
     authServer = new AuthServer(app);
+    await fetchAuthSpy;
     return authServer.start();
   });
 
@@ -118,9 +147,11 @@ describe('AuthServer', () => {
     gcipHandlerSpy.restore();
     iapSettingsHandlerSpy.restore();
     cloudStorageHandlerSpy.restore();
+    fetchAuthSpy.restore();
     _.forEach(stubs, (stub) => stub.restore());
     stubs = [];
     authServer.stop();
+    proxyRequest = undefined;
   });
 
   describe('logging', () => {
@@ -155,7 +186,7 @@ describe('AuthServer', () => {
         logger('hello', 'world');
         logger('foo bar');
         // Data should be logged.
-        expect(consoleStub).to.have.been.calledThrice;
+        expect(consoleStub).to.have.callCount(3);
         expect(consoleStub.firstCall).have.been.calledWith(
           'Server started with version', HOSTED_UI_VERSION);
         expect(consoleStub.secondCall).have.been.calledWith('hello', 'world');
@@ -187,6 +218,43 @@ describe('AuthServer', () => {
       .then((response) => {
         expect(response.text).to.equal(HOSTED_UI_VERSION);
       });
+  });
+
+  it('responds to /authdomain-proxytarget', () => {
+    return request(authServer.server)
+      .get('/authdomain-proxytarget')
+      .expect('Content-Type', /html/)
+      .expect(200)
+      .then(async (response) => {
+        // One for initiate the end-point, one for GET /authdomain-proxytarget
+        expect(fetchAuthSpy).to.have.been.calledTwice;
+        expect(await fetchAuthSpy.firstCall.returnValue).to.equal(`https://${CONFIG.authDomain}`);
+        expect(await fetchAuthSpy.secondCall.returnValue).to.equal(`https://${CONFIG.authDomain}`);
+        expect(gcipHandlerSpy).to.have.been.calledOnce;
+        expect(gcipHandlerSpy.getCall(0).args[1].getAccessToken())
+          .to.eventually.equal(METADATA_ACCESS_TOKEN);
+        // getGcipConfig called.
+        expect(getGcipConfigStub).to.have.been.calledTwice;
+        expect(response.text).to.equal(`https://${CONFIG.authDomain}`);
+      });
+  });
+
+  describe('responds to /__/auth', () => {
+    it('responds to /__/auth/handler', () => {
+      return request(authServer.server)
+        .get('/__/auth/handler')
+        .then(() => {
+          expect(proxyRequest?.getHeader('host')).to.equal(`${CONFIG.authDomain}`.toLowerCase());
+        });
+    });
+
+    it('responds to /__/auth/iframe', () => {
+      return request(authServer.server)
+        .get('/__/auth/iframe')
+        .then(() => {
+          expect(proxyRequest?.getHeader('host')).to.equal(`${CONFIG.authDomain}`.toLowerCase());
+        });
+    });
   });
 
   describe('responds to /admin', () => {
@@ -317,7 +385,7 @@ describe('AuthServer', () => {
       return request(authServer.server)
         .post('/set_admin_config')
         .send(config)
-        .set({'Authorization': `Bearer ${personalAccessToken}`})
+        .set({'Authorization': `Bearer ${personalAccessToken}`, 'Host': HOST_NAME})
         .expect('Content-Type', /json/)
         .expect(200)
         .then((response) => {
@@ -970,14 +1038,18 @@ describe('AuthServer', () => {
       },
     };
     const expectedUiConfig =
-        new DefaultUiConfigBuilder(PROJECT_ID, gcipConfig, tenantUiConfigMap).build();
+      new DefaultUiConfigBuilder(PROJECT_ID, '', gcipConfig, tenantUiConfigMap).build();
+    const expectedUiConfigWithHostNameAuthDomain =
+      new DefaultUiConfigBuilder(PROJECT_ID, HOST_NAME, gcipConfig, tenantUiConfigMap).build();
 
     it('returns config from UI_CONFIG environment variable', () => {
       process.env.UI_CONFIG = JSON.stringify(expectedUiConfig);
 
+      // Setting hostname will not change the authDomain since it is returned from UI_CONFIG environment variable.
       return request(authServer.server)
         .get('/config')
         .expect('Content-Type', /json/)
+        .set('Host', HOST_NAME)
         .expect(200)
         .then((response) => {
           expect(response.text).to.equal(JSON.stringify(expectedUiConfig));
@@ -987,9 +1059,6 @@ describe('AuthServer', () => {
     it('returns config from GCS using default location if available', () => {
       const fileName = 'config.json';
       const bucketName = `gcip-iap-bucket-${K_CONFIGURATION}-${PROJECT_NUMBER}`;
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
       const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
         .resolves(PROJECT_NUMBER);
       stubs.push(getProjectNumberStub);
@@ -1003,6 +1072,7 @@ describe('AuthServer', () => {
       return request(authServer.server)
         .get('/config')
         .expect('Content-Type', /json/)
+        .set('Host', HOST_NAME)
         .expect(200)
         .then((response) => {
           // Confirm API handlers initialized with MetadataServer.
@@ -1025,9 +1095,6 @@ describe('AuthServer', () => {
       process.env.GCS_BUCKET_NAME = 'custom-bucket-name';
       const fileName = 'config.json';
       const bucketName = process.env.GCS_BUCKET_NAME;
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
       const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
         .resolves(PROJECT_NUMBER);
       stubs.push(getProjectNumberStub);
@@ -1041,6 +1108,7 @@ describe('AuthServer', () => {
       return request(authServer.server)
         .get('/config')
         .expect('Content-Type', /json/)
+        .set('Host', HOST_NAME)
         .expect(200)
         .then((response) => {
           // Confirm API handlers initialized with MetadataServer.
@@ -1062,9 +1130,6 @@ describe('AuthServer', () => {
     it('returns config from default config when not found in GCS and caches it', () => {
       const fileName = 'config.json';
       const bucketName = `gcip-iap-bucket-${K_CONFIGURATION}-${PROJECT_NUMBER}`;
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
       const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
         .resolves(PROJECT_NUMBER);
       stubs.push(getProjectNumberStub);
@@ -1074,9 +1139,6 @@ describe('AuthServer', () => {
       const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
         .rejects(new Error('Not found'));
       stubs.push(readFileStub);
-      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
-        .resolves(gcipConfig);
-      stubs.push(getGcipConfigStub);
       const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
       getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
       getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
@@ -1089,6 +1151,7 @@ describe('AuthServer', () => {
       return request(authServer.server)
         .get('/config')
         .expect('Content-Type', /json/)
+        .set('Host', HOST_NAME)
         .expect(200)
         .then((response) => {
           // Confirm API handlers initialized with MetadataServer.
@@ -1113,12 +1176,12 @@ describe('AuthServer', () => {
           // readFile called.
           expect(readFileStub).to.have.been.calledOnce.and.calledWith(bucketName, fileName);
           // getGcipConfig called next.
-          expect(getGcipConfigStub).to.have.been.calledOnce.and.calledAfter(readFileStub);
+          expect(getGcipConfigStub).to.have.been.calledTwice.and.calledAfter(readFileStub);
           // listIapSettings called next.
           expect(listIapSettingsStub).to.have.been.calledOnce.and.calledAfter(getGcipConfigStub);
           // getTenantUiConfig called thrice.
           expect(getTenantUiConfigStub).to.have.been.calledThrice.and.calledAfter(listIapSettingsStub);
-          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
 
           // Try again. Cached result should be returned.
           return request(authServer.server)
@@ -1129,19 +1192,16 @@ describe('AuthServer', () => {
         .then((response) => {
           expect(readFileStub).to.have.been.calledTwice;
           // No additional calls to build default config.
-          expect(getGcipConfigStub).to.have.been.calledOnce;
+          expect(getGcipConfigStub).to.have.been.calledTwice;
           expect(listIapSettingsStub).to.have.been.calledOnce;
           expect(getTenantUiConfigStub).to.have.been.calledThrice;
-          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
         });
     });
 
     it('uses fallback when UI_CONFIG content is an invalid JSON', () => {
       // Invalid UI_CONFIG content.
       process.env.UI_CONFIG = '{"key": "invalid"';
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
       const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
         .resolves(PROJECT_NUMBER);
       stubs.push(getProjectNumberStub);
@@ -1151,9 +1211,6 @@ describe('AuthServer', () => {
       const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
         .rejects(new Error('Not found'));
       stubs.push(readFileStub);
-      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
-        .resolves(gcipConfig);
-      stubs.push(getGcipConfigStub);
       const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
       getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
       getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
@@ -1173,12 +1230,13 @@ describe('AuthServer', () => {
       return authServer.start().then(() => {
         return request(authServer.server)
           .get('/config')
+          .set('Host', HOST_NAME)
           .expect('Content-Type', /json/)
           .expect(200)
           .then((response) => {
             expect(consoleStub).to.have.been.calledWith(
               'Invalid configuration in environment variable UI_CONFIG: Unexpected end of JSON input');
-            expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+            expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
           });
       });
     });
@@ -1188,9 +1246,6 @@ describe('AuthServer', () => {
       const invalidUiConfig = deepCopy(expectedUiConfig);
       invalidUiConfig[API_KEY].selectTenantUiLogo = 'invalid';
       process.env.UI_CONFIG = JSON.stringify(invalidUiConfig);
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
       const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
         .resolves(PROJECT_NUMBER);
       stubs.push(getProjectNumberStub);
@@ -1200,9 +1255,6 @@ describe('AuthServer', () => {
       const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
         .rejects(new Error('Not found'));
       stubs.push(readFileStub);
-      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
-        .resolves(gcipConfig);
-      stubs.push(getGcipConfigStub);
       const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
       getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
       getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
@@ -1222,21 +1274,19 @@ describe('AuthServer', () => {
       return authServer.start().then(() => {
         return request(authServer.server)
           .get('/config')
+          .set('Host', HOST_NAME)
           .expect('Content-Type', /json/)
           .expect(200)
           .then((response) => {
             expect(consoleStub).to.have.been.calledWith(
               'Invalid configuration in environment variable UI_CONFIG: ' +
               `"${API_KEY}.selectTenantUiLogo" should be a valid HTTPS URL.`);
-            expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+            expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
           });
       });
     });
 
     it('returns 404 when fallback fails', () => {
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
       const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
         .resolves(PROJECT_NUMBER);
       stubs.push(getProjectNumberStub);
@@ -1246,9 +1296,6 @@ describe('AuthServer', () => {
       const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
         .rejects(new Error('Not found'));
       stubs.push(readFileStub);
-      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
-        .resolves(gcipConfig);
-      stubs.push(getGcipConfigStub);
       const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
       listIapSettingsStub.onFirstCall().resolves([]);
       listIapSettingsStub.onSecondCall().resolves(iapSettings);
@@ -1269,11 +1316,12 @@ describe('AuthServer', () => {
           // Confirm, null default config is not stored.
           return request(authServer.server)
             .get('/config')
+            .set('Host', HOST_NAME)
             .expect('Content-Type', /json/)
             .expect(200);
         })
         .then((response) => {
-          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
           expect(listIapSettingsStub).to.have.been.calledTwice;
           // Result should be cached now.
           return request(authServer.server)
@@ -1284,7 +1332,7 @@ describe('AuthServer', () => {
         .then((response) => {
           // No additional calls.
           expect(listIapSettingsStub).to.have.been.calledTwice;
-          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
         });
     });
 
@@ -1297,9 +1345,6 @@ describe('AuthServer', () => {
         },
       };
       const expectedError = createError(expectedResponse);
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
       const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
         .resolves(PROJECT_NUMBER);
       stubs.push(getProjectNumberStub);
@@ -1309,10 +1354,9 @@ describe('AuthServer', () => {
       const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
         .rejects(new Error('Not found'));
       stubs.push(readFileStub);
-      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig');
       // Simulate first call fails.
-      getGcipConfigStub.onFirstCall().rejects(expectedError);
-      getGcipConfigStub.onSecondCall().resolves(gcipConfig);
+      getGcipConfigStub.onSecondCall().rejects(expectedError);
+      getGcipConfigStub.onThirdCall().resolves(gcipConfig);
       stubs.push(getGcipConfigStub);
       const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
         .resolves(iapSettings);
@@ -1325,6 +1369,7 @@ describe('AuthServer', () => {
 
       return request(authServer.server)
         .get('/config')
+        .set('Host', HOST_NAME)
         .expect('Content-Type', /json/)
         .expect(400)
         .then((response) => {
@@ -1333,11 +1378,12 @@ describe('AuthServer', () => {
           // Confirm, default config error should not be cached.
           return request(authServer.server)
             .get('/config')
+            .set('Host', HOST_NAME)
             .expect('Content-Type', /json/)
             .expect(200);
         })
         .then((response) => {
-          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
           expect(listIapSettingsStub).to.have.been.calledOnce;
           // Result should be cached now.
           return request(authServer.server)
@@ -1348,7 +1394,7 @@ describe('AuthServer', () => {
         .then((response) => {
           // No additional calls.
           expect(listIapSettingsStub).to.have.been.calledOnce;
-          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
         });
     });
   });
@@ -1469,7 +1515,9 @@ describe('AuthServer', () => {
       ],
     };
     const expectedUiConfig =
-        new DefaultUiConfigBuilder(PROJECT_ID, gcipConfig, tenantUiConfigMap).build();
+        new DefaultUiConfigBuilder(PROJECT_ID, '', gcipConfig, tenantUiConfigMap).build();
+    const expectedUiConfigWithHostNameAuthDomain =
+        new DefaultUiConfigBuilder(PROJECT_ID, HOST_NAME, gcipConfig, tenantUiConfigMap).build();
 
     it('returns 404 when ALLOW_ADMIN environment variable is false', () => {
       const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
@@ -1492,9 +1540,6 @@ describe('AuthServer', () => {
       const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
       const fileName = 'config.json';
       const bucketName = `gcip-iap-bucket-${K_CONFIGURATION}-${PROJECT_NUMBER}`;
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
       const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
         .resolves(PROJECT_NUMBER);
       stubs.push(getProjectNumberStub);
@@ -1532,9 +1577,6 @@ describe('AuthServer', () => {
       const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
       const fileName = 'config.json';
       const bucketName = process.env.GCS_BUCKET_NAME;
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
       const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
         .resolves(PROJECT_NUMBER);
       stubs.push(getProjectNumberStub);
@@ -1674,9 +1716,6 @@ describe('AuthServer', () => {
       const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
       const fileName = 'config.json';
       const bucketName = `gcip-iap-bucket-${K_CONFIGURATION}-${PROJECT_NUMBER}`;
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
       const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
         .resolves(PROJECT_NUMBER);
       stubs.push(getProjectNumberStub);
@@ -1689,9 +1728,6 @@ describe('AuthServer', () => {
       const listBucketsStub = sinon.stub(storage.CloudStorageHandler.prototype, 'listBuckets')
         .resolves(listBucketsResponse);
       stubs.push(listBucketsStub);
-      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
-        .resolves(gcipConfig);
-      stubs.push(getGcipConfigStub);
       const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
       getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
       getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
@@ -1703,7 +1739,7 @@ describe('AuthServer', () => {
 
       return request(authServer.server)
         .get('/get_admin_config')
-        .set({'Authorization': `Bearer ${personalAccessToken}`})
+        .set({'Authorization': `Bearer ${personalAccessToken}`, 'Host': HOST_NAME})
         .expect('Content-Type', /json/)
         .expect(200)
         .then((response) => {
@@ -1731,13 +1767,13 @@ describe('AuthServer', () => {
           // listBuckets called.
           expect(listBucketsStub).to.have.been.calledOnce;
           // getGcipConfig called next.
-          expect(getGcipConfigStub).to.have.been.calledOnce.and.calledAfter(readFileStub);
+          expect(getGcipConfigStub).to.have.been.calledTwice.and.calledAfter(readFileStub);
           // listIapSettings called next.
           expect(listIapSettingsStub).to.have.been.calledOnce.and.calledAfter(getGcipConfigStub);
           // getTenantUiConfig called thrice.
           expect(getTenantUiConfigStub).to.have.been.calledThrice.and.calledAfter(listIapSettingsStub);
           // Expected default config returned.
-          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
         });
     });
 
@@ -1745,9 +1781,6 @@ describe('AuthServer', () => {
       const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
       const fileName = 'config.json';
       const bucketName = `gcip-iap-bucket-${K_CONFIGURATION}-${PROJECT_NUMBER}`;
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
       const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
         .resolves(PROJECT_NUMBER);
       stubs.push(getProjectNumberStub);
@@ -1760,9 +1793,6 @@ describe('AuthServer', () => {
       const listBucketsStub = sinon.stub(storage.CloudStorageHandler.prototype, 'listBuckets')
         .resolves(listBucketsResponse);
       stubs.push(listBucketsStub);
-      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
-        .resolves(gcipConfig);
-      stubs.push(getGcipConfigStub);
       const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
       getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
       getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
@@ -1774,7 +1804,7 @@ describe('AuthServer', () => {
 
       return request(authServer.server)
         .get('/get_admin_config')
-        .set({'Authorization': `Bearer ${personalAccessToken}`})
+        .set({'Authorization': `Bearer ${personalAccessToken}`, 'Host': HOST_NAME})
         .expect('Content-Type', /json/)
         .expect(200)
         .then((response) => {
@@ -1802,13 +1832,13 @@ describe('AuthServer', () => {
           // listBuckets called.
           expect(listBucketsStub).to.have.been.calledOnce;
           // getGcipConfig called next.
-          expect(getGcipConfigStub).to.have.been.calledOnce.and.calledAfter(readFileStub);
+          expect(getGcipConfigStub).to.have.been.calledTwice.and.calledAfter(readFileStub);
           // listIapSettings called next.
           expect(listIapSettingsStub).to.have.been.calledOnce.and.calledAfter(getGcipConfigStub);
           // getTenantUiConfig called thrice.
           expect(getTenantUiConfigStub).to.have.been.calledThrice.and.calledAfter(listIapSettingsStub);
           // Expected default config returned.
-          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
         });
     });
 
@@ -1823,9 +1853,6 @@ describe('AuthServer', () => {
       const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
       const fileName = 'config.json';
       const bucketName = `gcip-iap-bucket-${K_CONFIGURATION}-${PROJECT_NUMBER}`;
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
       const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
         .resolves(PROJECT_NUMBER);
       stubs.push(getProjectNumberStub);
@@ -1838,9 +1865,6 @@ describe('AuthServer', () => {
       const listBucketsStub = sinon.stub(storage.CloudStorageHandler.prototype, 'listBuckets')
         .rejects(expectedError);
       stubs.push(listBucketsStub);
-      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
-        .resolves(gcipConfig);
-      stubs.push(getGcipConfigStub);
       const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
       getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
       getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
@@ -1880,7 +1904,7 @@ describe('AuthServer', () => {
           // listBuckets called.
           expect(listBucketsStub).to.have.been.calledOnce;
           // getGcipConfig called next.
-          expect(getGcipConfigStub).to.not.have.been.called;
+          expect(getGcipConfigStub).to.have.been.calledOnce;
           expect(response.text).to.equal(JSON.stringify(expectedResponse));
         });
     });
@@ -1889,9 +1913,6 @@ describe('AuthServer', () => {
       const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
       const fileName = 'config.json';
       const bucketName = `gcip-iap-bucket-${K_CONFIGURATION}-${PROJECT_NUMBER}`;
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
       const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
         .resolves(PROJECT_NUMBER);
       stubs.push(getProjectNumberStub);
@@ -1904,9 +1925,6 @@ describe('AuthServer', () => {
       const listBucketsStub = sinon.stub(storage.CloudStorageHandler.prototype, 'listBuckets')
         .resolves(emptyListBucketsResponse);
       stubs.push(listBucketsStub);
-      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
-        .resolves(gcipConfig);
-      stubs.push(getGcipConfigStub);
       const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
         .rejects(new Error('some error'));
       stubs.push(listIapSettingsStub);
@@ -1941,7 +1959,7 @@ describe('AuthServer', () => {
           // listBuckets called.
           expect(listBucketsStub).to.have.been.calledOnce;
           // getGcipConfig called next.
-          expect(getGcipConfigStub).to.have.been.calledOnce.and.calledAfter(readFileStub);
+          expect(getGcipConfigStub).to.have.been.calledTwice.and.calledAfter(readFileStub);
           // listIapSettings called next.
           expect(listIapSettingsStub).to.have.been.calledOnce.and.calledAfter(getGcipConfigStub);
           // Expected empty object returned.
@@ -1961,9 +1979,6 @@ describe('AuthServer', () => {
       const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
       const fileName = 'config.json';
       const bucketName = `gcip-iap-bucket-${K_CONFIGURATION}-${PROJECT_NUMBER}`;
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
       const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
         .resolves(PROJECT_NUMBER);
       stubs.push(getProjectNumberStub);
@@ -1976,9 +1991,9 @@ describe('AuthServer', () => {
         .resolves(emptyListBucketsResponse);
       stubs.push(listBucketsStub);
       stubs.push(readFileStub);
-      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
+      getGcipConfigStub.restore();
+      getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
         .rejects(expectedError);
-      stubs.push(getGcipConfigStub);
 
       return request(authServer.server)
         .get('/get_admin_config')
@@ -2027,9 +2042,6 @@ describe('AuthServer', () => {
       const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
       const fileName = 'config.json';
       const bucketName = `gcip-iap-bucket-${K_CONFIGURATION}-${PROJECT_NUMBER}`;
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
       const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
         .resolves(PROJECT_NUMBER);
       stubs.push(getProjectNumberStub);
@@ -2042,9 +2054,6 @@ describe('AuthServer', () => {
       const listBucketsStub = sinon.stub(storage.CloudStorageHandler.prototype, 'listBuckets')
         .resolves(emptyListBucketsResponse);
       stubs.push(listBucketsStub);
-      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
-        .resolves(gcipConfig);
-      stubs.push(getGcipConfigStub);
       const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
       getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
       getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
@@ -2084,7 +2093,7 @@ describe('AuthServer', () => {
           // listBuckets called.
           expect(listBucketsStub).to.have.been.calledOnce;
           // getGcipConfig called next.
-          expect(getGcipConfigStub).to.have.been.calledOnce.and.calledAfter(readFileStub);
+          expect(getGcipConfigStub).to.have.been.calledTwice.and.calledAfter(readFileStub);
           // listIapSettings called next.
           expect(listIapSettingsStub).to.have.been.calledOnce.and.calledAfter(getGcipConfigStub);
           // getTenantUiConfig called.
@@ -2095,19 +2104,8 @@ describe('AuthServer', () => {
   });
 
   describe('responds to /gcipConfig', () => {
-    const config = {
-      apiKey: API_KEY,
-      authDomain: `${AUTH_SUBDOMAIN}.firebaseapp.com`,
-    };
 
     it('returns expected config on success', () => {
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
-      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
-        .resolves(config);
-      stubs.push(getGcipConfigStub);
-
       return request(authServer.server)
         .get('/gcipConfig')
         .expect('Content-Type', /json/)
@@ -2124,8 +2122,8 @@ describe('AuthServer', () => {
           expect(metadataServerSpy).to.have.been.calledOnce
             .and.calledWith(AUTH_SERVER_SCOPES);
           // getGcipConfig called.
-          expect(getGcipConfigStub).to.have.been.calledOnce;
-          expect(response.text).to.equal(JSON.stringify(config));
+          expect(getGcipConfigStub).to.have.been.calledTwice;
+          expect(response.text).to.equal(JSON.stringify(CONFIG));
         });
     });
 
@@ -2138,12 +2136,9 @@ describe('AuthServer', () => {
           message: 'unexpected error',
         },
       };
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
-      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
+      getGcipConfigStub.restore();
+      getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
         .rejects(expectedError);
-      stubs.push(getGcipConfigStub);
 
       return request(authServer.server)
         .get('/gcipConfig')
@@ -2175,12 +2170,9 @@ describe('AuthServer', () => {
         },
       };
       const expectedError = createError(expectedResponse);
-      const getAccessToken = sinon.stub(metadata.MetadataServer.prototype, 'getAccessToken')
-        .resolves(METADATA_ACCESS_TOKEN);
-      stubs.push(getAccessToken);
-      const getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
+      getGcipConfigStub.restore();
+      getGcipConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getGcipConfig')
         .rejects(expectedError);
-      stubs.push(getGcipConfigStub);
 
       return request(authServer.server)
         .get('/gcipConfig')
