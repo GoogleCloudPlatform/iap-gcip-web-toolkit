@@ -148,6 +148,12 @@ custom authentication, additional changes will be needed:
 Install the Firebase command line tool with `npm install -g firebase-tools` (See
 [docs](https://firebase.google.com/docs/cli/#setup)).
 
+If you are doing this for the first time, you may want to login first with your google account.
+
+```bash
+firebase login
+```
+
 Deploy the sample app to one of your own Firebase Hosting instance,
 configure it using the following command:
 

@@ -14,8 +14,8 @@
 
 import { Component } from '@angular/core';
 // Import Firebase dependencies.
-import firebase from 'firebase/app';
-import 'firebase/auth';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 // Import FirebaseUI dependencies.
 import * as firebaseui from 'firebaseui';
 // Import GCIP/IAP module.
@@ -34,8 +34,12 @@ const tenantsConfig = {
     tosUrl: '/tos',
     privacyPolicyUrl: '/privacypolicy',
   },
-  // Single tenant flow.
-  'wtitenant-v0s72': {
+
+  /* 
+    Single tenant flow.
+    Maps to tenants in a sample project. Find the tenants from your project and populate it here.
+  */
+  'tenant-a-l41js': {
     displayName: 'My Company',
     signInOptions: [
       firebase.auth.EmailAuthProvider.PROVIDER_ID,
@@ -45,6 +49,8 @@ const tenantsConfig = {
         buttonColor: '#4666FF',
         iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
       },
+      firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+      firebase.auth.FacebookAuthProvider.PROVIDER_ID,
     ],
     signInFlow: 'redirect',
     // A boolean which determines whether to immediately redirect to the provider's site or
@@ -56,13 +62,17 @@ const tenantsConfig = {
     tosUrl: '/tos',
     privacyPolicyUrl: '/privacypolicy',
   },
-  // Multiple tenants flow.
-  'tenant-a-esjtn': {
+  /* 
+    Multiple tenants flow.
+    Maps to tenants in a sample project. Find the tenants from your project and populate it here.
+  */
+  'tenant-a-omli0': {
     displayName: 'Company A',
     buttonColor: '#007bff',
     iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
     signInOptions: [
       firebase.auth.EmailAuthProvider.PROVIDER_ID,
+      firebase.auth.GoogleAuthProvider.PROVIDER_ID,
       {
         provider: 'saml.okta-cicp-app',
         providerName: 'SAML',
@@ -73,7 +83,7 @@ const tenantsConfig = {
     tosUrl: '/tos',
     privacyPolicyUrl: '/privacypolicy',
   },
-  'tenant-b-59ih0': {
+  'tenant-b-9t9qm': {
     displayName: 'Company B',
     buttonColor: '#007bff',
     iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
@@ -89,7 +99,7 @@ const tenantsConfig = {
     tosUrl: '/tos',
     privacyPolicyUrl: '/privacypolicy',
   },
-  'tenant-c-iooex': {
+  'tenant-c-hhtch': {
     displayName: 'Company C',
     buttonColor: '#007bff',
     iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
@@ -99,7 +109,7 @@ const tenantsConfig = {
     tosUrl: '/tos',
     privacyPolicyUrl: '/privacypolicy',
   },
-  'tenant-d-9t831': {
+  'tenant-d-9x6ia': {
     displayName: 'Company D',
     buttonColor: '#007bff',
     iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',

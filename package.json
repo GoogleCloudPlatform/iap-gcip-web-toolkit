@@ -21,7 +21,8 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/GoogleCloudPlatform/iap-gcip-web-toolkit"
+    "url": "https://github.com/GoogleCloudPlatform/iap-gcip-web-toolkit",
+    "sshclone": "git@github.com:GoogleCloudPlatform/iap-gcip-web-toolkit.git"
   },
   "publishConfig": {
     "registry": "https://wombat-dressing-room.appspot.com"
