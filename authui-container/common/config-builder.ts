@@ -374,6 +374,7 @@ export class DefaultUiConfigBuilder {
    */
   constructor(
       private readonly projectId: string,
+      private readonly hostName: string,
       private readonly gcipConfig: GcipConfig,
       private readonly tenantUiConfigMap: {[key: string]: TenantUiConfig}) {}
 
@@ -440,10 +441,16 @@ export class DefaultUiConfigBuilder {
     if (totalSignInOptions === 0) {;
       return null;
     }
-
+    let authDomain = this.gcipConfig.authDomain;
+    // override authDomain to be the current IAP URL by default,
+    // so that requests to "/__/auth" are sent on the same domain as the main UI.
+    // These requests will be proxied to the original authDomain in auth-server.ts.
+    if (validators.isNonEmptyString(this.hostName)) {
+      authDomain = this.hostName;
+    }
     return {
       [this.gcipConfig.apiKey]: {
-        authDomain: this.gcipConfig.authDomain,
+        authDomain,
         displayMode: 'optionFirst',
         selectTenantUiTitle: this.projectId,
         selectTenantUiLogo: '',

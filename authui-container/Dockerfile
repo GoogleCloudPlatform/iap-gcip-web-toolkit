@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Use the official lightweight Node.js 12 image.
+# Use the official lightweight Node.js 19 image.
 # https://hub.docker.com/_/node
-FROM node:12-slim
+FROM node:19-slim
 
 # Create and change to the app directory.
 WORKDIR /usr/src/app
