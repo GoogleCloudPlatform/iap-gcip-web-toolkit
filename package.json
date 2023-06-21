@@ -1,30 +1,12 @@
 {
   "name": "gcip-iap",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "GCIP/IAP JS SDK",
   "author": "Google",
   "license": "Apache-2.0",
   "homepage": "https://github.com/GoogleCloudPlatform/iap-gcip-web-toolkit",
   "engines": {
     "node": ">=8.0.0"
-  },
-  "scripts": {
-    "build": "gulp build",
-    "build-alpha": "npm run test:e2e && gulp build-alpha",
-    "build-ciap": "npm run build && gulp copy-ciap-builds",
-    "clean": "gulp cleanup",
-    "rollup": "rollup -c",
-    "lint": "run-p lint:src lint:unit lint:integration lint:typings",
-    "prepare": "npm run build",
-    "prepublish": "npm run build",
-    "test": "run-s lint test:unit",
-    "test:unit": "karma start karma.config.js --type=unit",
-    "test:integration": "mocha test/integration/index.spec.ts --slow 5000 --timeout 90000 --require ts-node/register",
-    "test:e2e": "./build-authui.sh && npm run test:integration",
-    "lint:src": "tslint --format stylish -p tsconfig.json src/**/*.ts src/index.ts",
-    "lint:unit": "tslint -c tslint-test.json --format stylish test/unit/*.ts test/unit/**/*.ts test/resources/**/*.ts",
-    "lint:integration": "tslint -c tslint-test.json --format stylish test/integration/*.ts",
-    "lint:typings": "tslint -c tslint-types.json --format stylish src/index.d.ts"
   },
   "keywords": [
     "cloud",
