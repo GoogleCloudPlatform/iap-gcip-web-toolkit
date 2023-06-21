@@ -24,12 +24,9 @@ import {SignOutComponent} from './signout.component';
 import {ProgressBarComponent} from './progressbar.component';
 
 // Import Firebase dependencies.
-// tslint:disable-next-line:no-submodule-imports
-import { initializeApp, getApp } from 'firebase/app';
-// tslint:disable-next-line:no-submodule-imports
-import {  getAuth, SAMLAuthProvider, FacebookAuthProvider, GoogleAuthProvider, Auth, UserCredential, updateProfile,
-   // tslint:disable-next-line:no-submodule-imports
-   signInWithRedirect, fetchSignInMethodsForEmail, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+import { UserCredential, FirebaseAuth } from '@firebase/auth-types';
 // Import GCIP/IAP module.
 import * as ciap from 'gcip-iap';
 import * as $ from 'jquery';
@@ -81,17 +78,17 @@ export class AppComponent {
     });
   }
 
-  public getAuth(apiKey: string, tenantId: string | null): Auth {
+  public getAuth(apiKey: string, tenantId: string | null): FirebaseAuth {
     let auth = null;
     if (apiKey !== this.config.apiKey) {
       throw new Error('Invalid project!');
     }
     try {
-      auth = getAuth(getApp(tenantId || undefined));
+      auth = firebase.app(tenantId || undefined).auth();
       // Tenant ID should be already set on initialization below.
     } catch (e) {
-      const app = initializeApp(this.config, tenantId || '[DEFAULT]');
-      auth = getAuth(app);
+      const app = firebase.initializeApp(this.config, tenantId || '[DEFAULT]');
+      auth = app.auth();
       auth.tenantId = tenantId || null;
     }
     return auth;
@@ -129,13 +126,13 @@ export class AppComponent {
     });
   }
 
-  public startSignIn(auth: Auth, selectedTenantInfo: ciap.SelectedTenantInfo): Promise<UserCredential> {
+  public startSignIn(auth: FirebaseAuth, selectedTenantInfo: ciap.SelectedTenantInfo): Promise<UserCredential> {
     return new Promise((resolve, reject) => {
       this.signIn(
           !!auth.tenantId,
           () => {
             this.updateError(null);
-            signInWithRedirect(auth, new (SAMLAuthProvider as any)(SAML_PROVIDER_ID))
+            auth.signInWithRedirect(new (firebase.auth.SAMLAuthProvider as any)(SAML_PROVIDER_ID))
               .catch((error) => {
                 this.updateError(error);
               });
@@ -143,7 +140,7 @@ export class AppComponent {
           },
           () => {
             this.updateError(null);
-            signInWithRedirect(auth, new GoogleAuthProvider())
+            auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider())
               .catch((error) => {
                 this.updateError(error);
               });
@@ -151,7 +148,7 @@ export class AppComponent {
           },
           () => {
             this.updateError(null);
-            signInWithRedirect(auth, new FacebookAuthProvider())
+            auth.signInWithRedirect(new firebase.auth.FacebookAuthProvider())
               .catch((error) => {
                 this.updateError(error);
               });
@@ -159,7 +156,7 @@ export class AppComponent {
           },
           (email) => {
             this.updateError(null);
-            fetchSignInMethodsForEmail(auth, email)
+            auth.fetchSignInMethodsForEmail(email)
               .then((signInMethods) => {
                 if (signInMethods.length) {
                   // Show password sign in.
@@ -167,7 +164,7 @@ export class AppComponent {
                       email,
                       (password) => {
                         this.updateError(null);
-                        signInWithEmailAndPassword(auth, email, password)
+                        auth.signInWithEmailAndPassword(email, password)
                           .then((userCredential) => {
                             resolve(userCredential);
                           })
@@ -182,9 +179,9 @@ export class AppComponent {
                       email,
                       (displayName, password) => {
                         this.updateError(null);
-                        createUserWithEmailAndPassword(auth, email, password)
+                        auth.createUserWithEmailAndPassword(email, password)
                           .then((userCredential) => {
-                            return updateProfile(userCredential.user, {displayName})
+                            return userCredential.user.updateProfile({displayName})
                               .then(() => {
                                 resolve(userCredential);
                               });

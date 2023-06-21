@@ -191,7 +191,7 @@ const configs = {
           },
           // Email/password sign-in.
           {
-            provider: EmailAuthProvider.PROVIDER_ID,
+            provider: firebase.auth.EmailAuthProvider.PROVIDER_ID,
             // Do not require display name on sign up.
             requireDisplayName: false
           },
@@ -221,7 +221,7 @@ const configs = {
         signInOptions: [
           // Email/password sign-in.
           {
-            provider: EmailAuthProvider.PROVIDER_ID,
+            provider: firebase.auth.EmailAuthProvider.PROVIDER_ID,
             // Do not require display name on sign up.
             requireDisplayName: false
           },
@@ -394,8 +394,8 @@ selectTenant(projectConfig, tenantIds) {
 #### Getting the Auth object
 
 Once you have a tenant, you need a way of obtaining an `Auth` object.
-Implement the `getAuth()` callback to return an
-[`Auth`](https://firebase.google.com/docs/reference/js/auth)
+Implement the `getAuth()` callback to return a
+[`firebase.auth.Auth`](https://firebase.google.com/docs/reference/js/firebase.auth.Auth)
 instance corresponding to the API key and tenant ID provided.
 If no tenant ID is provided, it should use project-level identity providers
 instead.
@@ -426,7 +426,7 @@ getAuth(apiKey, tenantId) {
 
 To handle sign in, implement the `startSignIn()` callback. It should display
 a UI for the user to authenticate, and then return a
-[`UserCredential`](https://firebase.google.com/docs/reference/js/auth.usercredential)
+[`UserCredential`](https://firebase.google.com/docs/reference/js/firebase.auth#usercredential)
 for the signed in user on completion.
 
 This example demonstrates how to sign in a user with a SAML provider using a
@@ -440,7 +440,7 @@ startSignIn(auth, selectedTenantInfo) {
     // For example sign-in with popup using a SAML provider.
     // The method of sign in may have already been determined from the
     // selectedTenantInfo object.
-    const provider = new SAMLAuthProvider('saml.myProvider');
+    const provider = new firebase.auth.SAMLAuthProvider('saml.myProvider');
     auth.signInWithPopup(provider)
       .then((userCredential) => {
         resolve(userCredential);

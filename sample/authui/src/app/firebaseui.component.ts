@@ -14,8 +14,8 @@
 
 import { Component } from '@angular/core';
 // Import Firebase dependencies.
-// tslint:disable-next-line:no-submodule-imports
-import { EmailAuthProvider, GoogleAuthProvider, FacebookAuthProvider } from 'firebase/auth';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 // Import FirebaseUI dependencies.
 import * as firebaseui from 'firebaseui';
 // Import GCIP/IAP module.
@@ -27,9 +27,9 @@ const tenantsConfig = {
   _: {
     displayName: 'My Organization',
     signInOptions: [
-      EmailAuthProvider.PROVIDER_ID,
-      GoogleAuthProvider.PROVIDER_ID,
-      FacebookAuthProvider.PROVIDER_ID,
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
+      firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+      firebase.auth.FacebookAuthProvider.PROVIDER_ID,
     ],
     tosUrl: '/tos',
     privacyPolicyUrl: '/privacypolicy',
@@ -42,15 +42,15 @@ const tenantsConfig = {
   'tenant-a-l41js': {
     displayName: 'My Company',
     signInOptions: [
-      EmailAuthProvider.PROVIDER_ID,
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
       {
         provider: 'saml.okta-cicp-app',
         providerName: 'SAML',
         buttonColor: '#4666FF',
         iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
       },
-      GoogleAuthProvider.PROVIDER_ID,
-      FacebookAuthProvider.PROVIDER_ID,
+      firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+      firebase.auth.FacebookAuthProvider.PROVIDER_ID,
     ],
     signInFlow: 'redirect',
     // A boolean which determines whether to immediately redirect to the provider's site or
@@ -71,8 +71,8 @@ const tenantsConfig = {
     buttonColor: '#007bff',
     iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
     signInOptions: [
-      EmailAuthProvider.PROVIDER_ID,
-      GoogleAuthProvider.PROVIDER_ID,
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
+      firebase.auth.GoogleAuthProvider.PROVIDER_ID,
       {
         provider: 'saml.okta-cicp-app',
         providerName: 'SAML',
@@ -88,7 +88,7 @@ const tenantsConfig = {
     buttonColor: '#007bff',
     iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
     signInOptions: [
-      EmailAuthProvider.PROVIDER_ID,
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
       {
         provider: 'saml.okta-cicp-app',
         providerName: 'SAML',
@@ -104,7 +104,7 @@ const tenantsConfig = {
     buttonColor: '#007bff',
     iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
     signInOptions: [
-      EmailAuthProvider.PROVIDER_ID,
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
     ],
     tosUrl: '/tos',
     privacyPolicyUrl: '/privacypolicy',
@@ -114,7 +114,7 @@ const tenantsConfig = {
     buttonColor: '#007bff',
     iconUrl: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/anonymous.png',
     signInOptions: [
-      EmailAuthProvider.PROVIDER_ID,
+      firebase.auth.EmailAuthProvider.PROVIDER_ID,
     ],
     tosUrl: '/tos',
     privacyPolicyUrl: '/privacypolicy',

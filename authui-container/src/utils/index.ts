@@ -13,8 +13,7 @@
  */
 
 import {isNonNullObject} from './validator';
-// tslint:disable-next-line:no-submodule-imports
-import { UserCredential, GoogleAuthProvider } from 'firebase/auth';
+
 /**
  * Defines a new read-only property directly on an object and returns the object.
  *
@@ -188,16 +187,3 @@ export function copyTextAreaContent(textAreaElement: HTMLTextAreaElement) {
   textAreaElement.select();
   document.execCommand('copy');
 }
-
-/**
- * Returns the OAuthCredential from the provided authentication result, if not null.
- * Returns null otherwise.
- * @param result  The authentication result to extract the credential from.
- */
-export function getCredentialFromResult(result: UserCredential){
-    let credential = null;
-    if (result){
-      credential = GoogleAuthProvider.credentialFromResult(result);
-    }
-    return credential;
-  }
