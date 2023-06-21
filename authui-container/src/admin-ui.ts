@@ -17,10 +17,10 @@ import {UiConfig} from '/../common/config';
 import {HttpClient, HttpRequestConfig, HttpResponse} from './utils/http-client';
 import {DefaultUiConfigBuilder} from '../common/config-builder';
 // Import Firebase dependencies.
-// tslint:disable-next-line
-import firebase from 'firebase/compat/app';
-// tslint:disable-next-line
-import 'firebase/compat/auth';
+// tslint:disable-next-line:no-submodule-imports
+import {Auth, GoogleAuthProvider, setPersistence, OAuthCredential, inMemoryPersistence}  from 'firebase/auth';
+import FirebaseWrapper from './utils/FirebaseWrapper';
+
 import 'bootstrap';
 // Import codemirror dependencies.
 import '../node_modules/codemirror/lib/codemirror.css';
@@ -125,13 +125,13 @@ function getElementByClass(className: string, container: Element): Element | nul
  * @param scopes The optional OAuth scopes to set.
  * @return The GoogleAuthProvider object to sign in with.
  */
-function initializeProvider(email?: string, scopes: string[] = []): firebase.auth.GoogleAuthProvider {
+function initializeProvider(email?: string, scopes: string[] = []): GoogleAuthProvider {
   // Require user to select an account.
   const customParameters = {
     login_hint: email,
     prompt: 'select_account',
   };
-  const provider = new firebase.auth.GoogleAuthProvider();
+  const provider = new GoogleAuthProvider();
   scopes.forEach((scope) => {
     provider.addScope(scope);
   });
@@ -154,9 +154,8 @@ export class AdminUi {
   private alertStatusElement: HTMLElement;
   private alertMessageElement: HTMLElement;
   private adminFormElement: HTMLElement;
-  private auth: firebase.auth.Auth;
+  private auth: Auth;
   private editor: CodeMirror.EditorFromTextArea;
-
   /**
    * Instantiates a AdminUi instance to facilitate customization of the sign-in UI configuration.
    * @param container The container element / identifier where the UI will be rendered.
@@ -204,18 +203,19 @@ export class AdminUi {
     return this.getGcipConfig()
       .then((gcipConfig) => {
         // Initialize Auth instance using in-memory persistence.
-        const app = firebase.initializeApp(gcipConfig);
-        this.auth = app.auth();
-        this.auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
+        const app = FirebaseWrapper._initializeApp(gcipConfig);
+        this.auth =  FirebaseWrapper._getAuth(app);
+        setPersistence(this.auth, inMemoryPersistence);
         // Get redirect result.
-        return this.auth.getRedirectResult();
+        return FirebaseWrapper._getRedirectResult(this.auth);
       })
       .then((authResult) => {
         // Get Google Oauth access token.
-        if (authResult &&
-            authResult.credential &&
-            (authResult.credential as any).accessToken) {
-          this.accessToken = (authResult.credential as any).accessToken;
+        // get credential for the particular auth provider
+        const credential = FirebaseWrapper._getCredentialFromResult(authResult);
+        if (credential &&
+            (credential as OAuthCredential).accessToken) {
+          this.accessToken = (credential as OAuthCredential).accessToken;
           // Load saved config using admin's OAuth access token.
           return this.getAdminConfig()
             .then((adminConfig) => {
@@ -252,7 +252,7 @@ export class AdminUi {
             })
         } else {
           // No access token available. Trigger sign-in with redirect.
-          return this.auth.signInWithRedirect(initializeProvider(undefined, OAUTH_SCOPES));
+          return FirebaseWrapper._signInWithRedirect(this.auth, initializeProvider(undefined, OAUTH_SCOPES));
         }
       })
       .catch((error) => {
@@ -324,9 +324,10 @@ export class AdminUi {
     this.reauthElement.addEventListener('click', (e) => {
       if (this.auth.currentUser) {
         const email = this.auth.currentUser.email;
-        this.auth.currentUser.reauthenticateWithPopup(initializeProvider(email, OAUTH_SCOPES))
+        FirebaseWrapper._reauthenticateWithPopup(this.auth.currentUser, initializeProvider(email, OAUTH_SCOPES))
           .then((result) => {
-            this.accessToken = (result.credential as any).accessToken;
+            const credential = FirebaseWrapper._getCredentialFromResult(result);
+            this.accessToken = (credential as OAuthCredential).accessToken;
             this.reauthElement.style.display = 'none';
           })
           .catch((error) => {

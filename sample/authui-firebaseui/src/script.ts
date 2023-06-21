@@ -17,8 +17,7 @@ import '../node_modules/firebaseui/dist/firebaseui.css';
 import '../public/style.css';
 
 // Import Firebase dependencies.
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
+import {FacebookAuthProvider} from 'firebase/auth';
 // Import FirebaseUI dependencies.
 import * as firebaseui from 'firebaseui';
 // Import GCIP/IAP module.
@@ -39,7 +38,7 @@ const tenantsConfig = {
   '*': {
     displayName: 'My Organization',
     signInOptions: [
-      firebase.auth.FacebookAuthProvider.PROVIDER_ID,
+      FacebookAuthProvider.PROVIDER_ID,
     ],
     // Do not trigger immediate redirect in Safari without some user
     // interaction.
