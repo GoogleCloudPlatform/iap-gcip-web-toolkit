@@ -1,1 +1,1 @@
-Updated IAP SDK to use modular firebse web
+Updated IAP SDK to use modular firebase web sdk
