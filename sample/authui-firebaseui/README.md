@@ -87,7 +87,7 @@ change the following line in `sample/authui-firebaseui/src/script.ts`:
 // ...
 signInOptions: [
   // Replace Facebook if you want to use a different IdP.
-  // FacebookAuthProvider.PROVIDER_ID,
+  // firebase.auth.FacebookAuthProvider.PROVIDER_ID,
   {
     // Copy provider ID from the Cloud Console.
     provider: 'saml.myProvider', // or 'oidc.myProvider', etc.

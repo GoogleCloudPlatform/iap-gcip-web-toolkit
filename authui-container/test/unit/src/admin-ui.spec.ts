@@ -26,10 +26,9 @@ import {
   MSG_GOOGLE_PROVIDER_NOT_CONFIGURED, CODE_MIRROR_CONFIG, MSG_INVALID_CREDENTIALS,
 } from '../../../src/admin-ui';
 // tslint:disable-next-line
+import firebase from 'firebase/compat/app';
 import * as CodeMirror from '../../../node_modules/codemirror/lib/codemirror.js';
-import FirebaseWrapper from '../../../src/utils/FirebaseWrapper';
-// tslint:disable-next-line
-import { GoogleAuthProvider, inMemoryPersistence } from 'firebase/auth';
+
 /**
  * Asserts toast message and status.
  * @param status The expected status.
@@ -176,7 +175,6 @@ describe('AdminUi', () => {
     document.body.appendChild(mainContainer);
     httpClientSendStub = sinon.stub(HttpClient.prototype, 'send');
     stubs.push(httpClientSendStub);
-
   });
 
   afterEach(() => {
@@ -252,9 +250,18 @@ describe('AdminUi', () => {
   describe('render()', () => {
     it('should populate the admin config after successful sign-in redirect', () => {
       const stubbedAuthMethods = {
-      // TODO - Investigate why we need this stub for tests. We don't use auth.setPersistence anymore,
-      // we call setPersistence directly.
-        setPersistence: sinon.stub()
+        setPersistence: sinon.stub(),
+        getRedirectResult: sinon.stub().callsFake(() => {
+          const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
+          app.auth().setCurrentMockUser(mockUser);
+          return Promise.resolve({
+            user: mockUser,
+            credential: {
+              providerId: 'google.com',
+              accessToken: OAUTH_ACCESS_TOKEN,
+            },
+          });
+        }),
       };
       const app = testUtils.createMockApp(
           expectedGcipConfig,
@@ -282,43 +289,20 @@ describe('AdminUi', () => {
         }
         throw new Error('Unexpected call');
       });
-      const firebaseStubInitializeApp = sinon.stub(FirebaseWrapper, '_initializeApp');
-      const firebaseStubGetAuth = sinon.stub(FirebaseWrapper, '_getAuth');
-      const firebaseStubGetRedirectResult = sinon.stub(FirebaseWrapper, '_getRedirectResult');
-      const firebaseStubGetCredentialFromResult = sinon.stub(FirebaseWrapper, '_getCredentialFromResult')
-
-      firebaseStubInitializeApp.callsFake((config) => {
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
         expect(config).to.deep.equal(expectedGcipConfig);
         return app as any;
       });
-      firebaseStubGetAuth.callsFake((mockApp) => {
-        return mockApp.mockAuth;
-      });
-      firebaseStubGetRedirectResult.callsFake(() => {
-        const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
-        app.auth().setCurrentMockUser(mockUser);
-        return Promise.resolve({
-          user: mockUser,
-          credential: {
-            providerId: 'google.com',
-            accessToken: OAUTH_ACCESS_TOKEN,
-          },
-        }) as any;
-      });
-      firebaseStubGetCredentialFromResult.callsFake((result) => {
-        return result.credential;
-      })
-      stubs.push(firebaseStubInitializeApp);
-      stubs.push(firebaseStubGetAuth);
-      stubs.push(firebaseStubGetRedirectResult);
-      stubs.push(firebaseStubGetCredentialFromResult);
+      stubs.push(firebaseStub);
 
       const adminUi = new AdminUi(mainContainer, showToast);
+      // Copy button should be initially hidden.
       const copyToClipboardButton = document.getElementsByClassName('copy-to-clipboard')[0] as HTMLButtonElement;
       expect(copyToClipboardButton.style.display).to.be.equal('none');
       return adminUi.render()
         .then(() => {
-          expect(firebaseStubGetRedirectResult).to.have.been.calledOnce;
+          expect(stubbedAuthMethods.getRedirectResult).to.have.been.calledOnce;
           expect(httpClientSendStub).to.have.been.calledTwice;
           // Confirm loaded admin config displayed in textarea.
           const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
@@ -347,7 +331,11 @@ describe('AdminUi', () => {
         message: 'The identity provider configuration is not found.',
       };
       const stubbedAuthMethods = {
-        setPersistence: sinon.stub()
+        setPersistence: sinon.stub(),
+        getRedirectResult: sinon.stub().callsFake(() => {
+          // Simulate Google provider is not enabled.
+          return Promise.reject(expectedError);
+        }),
       };
       const app = testUtils.createMockApp(
           expectedGcipConfig,
@@ -366,23 +354,12 @@ describe('AdminUi', () => {
         }
         throw new Error('Unexpected call');
       });
-      const firebaseStubInitializeApp = sinon.stub(FirebaseWrapper, '_initializeApp');
-      const firebaseStubGetAuth = sinon.stub(FirebaseWrapper, '_getAuth');
-      const firebaseStubGetRedirectResult = sinon.stub(FirebaseWrapper, '_getRedirectResult');
-      firebaseStubInitializeApp.callsFake((config) => {
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
         expect(config).to.deep.equal(expectedGcipConfig);
         return app as any;
       });
-      firebaseStubGetAuth.callsFake((mockApp) => {
-        return mockApp.mockAuth;
-      });
-      firebaseStubGetRedirectResult.callsFake(() => {
-        // Simulate Google provider is not enabled.
-        return Promise.reject(expectedError);
-      });
-      stubs.push(firebaseStubInitializeApp);
-      stubs.push(firebaseStubGetAuth);
-      stubs.push(firebaseStubGetRedirectResult);
+      stubs.push(firebaseStub);
 
       const adminUi = new AdminUi(mainContainer, showToast);
       const copyToClipboardButton = document.getElementsByClassName('copy-to-clipboard')[0] as HTMLButtonElement;
@@ -392,7 +369,7 @@ describe('AdminUi', () => {
         })
         .catch((error) => {
           expect(error).to.deep.equal(expectedError);
-          expect(firebaseStubGetRedirectResult).to.have.been.calledOnce;
+          expect(stubbedAuthMethods.getRedirectResult).to.have.been.calledOnce;
           expect(httpClientSendStub).to.have.been.calledOnce;
           expect(mainContainer.style.display).to.be.equal('block');
           expect(mainContainer.innerText).to.be.equal(MSG_GOOGLE_PROVIDER_NOT_CONFIGURED);
@@ -455,35 +432,13 @@ describe('AdminUi', () => {
         }
         throw new Error('Unexpected call');
       });
-      const firebaseStubInitializeApp = sinon.stub(FirebaseWrapper, '_initializeApp');
-      const firebaseStubGetAuth = sinon.stub(FirebaseWrapper, '_getAuth');
-      const firebaseStubGetRedirectResult = sinon.stub(FirebaseWrapper, '_getRedirectResult');
-      const firebaseStubGetCredentialFromResult = sinon.stub(FirebaseWrapper, '_getCredentialFromResult')
-      firebaseStubInitializeApp.callsFake((config) => {
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
         expect(config).to.deep.equal(expectedGcipConfig);
         return app as any;
       });
-      firebaseStubGetAuth.callsFake((mockApp) => {
-        return mockApp.mockAuth;
-      });
-      firebaseStubGetRedirectResult.callsFake(() => {
-        const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
-        app.auth().setCurrentMockUser(mockUser);
-        return Promise.resolve({
-          user: mockUser,
-          credential: {
-            providerId: 'google.com',
-            accessToken: OAUTH_ACCESS_TOKEN,
-          }
-        }) as any;
-      })
-      firebaseStubGetCredentialFromResult.callsFake((result) => {
-        return result.credential;
-      })
-      stubs.push(firebaseStubInitializeApp);
-      stubs.push(firebaseStubGetAuth);
-      stubs.push(firebaseStubGetRedirectResult);
-      stubs.push(firebaseStubGetCredentialFromResult);
+      stubs.push(firebaseStub);
+
       const adminUi = new AdminUi(mainContainer, showToast);
       return adminUi.render()
         .then(() => {
@@ -569,35 +524,12 @@ describe('AdminUi', () => {
         }
         throw new Error('Unexpected call');
       });
-      const firebaseStubInitializeApp = sinon.stub(FirebaseWrapper, '_initializeApp');
-      const firebaseStubGetAuth = sinon.stub(FirebaseWrapper, '_getAuth');
-      const firebaseStubGetRedirectResult = sinon.stub(FirebaseWrapper, '_getRedirectResult');
-      const firebaseStubGetCredentialFromResult = sinon.stub(FirebaseWrapper, '_getCredentialFromResult')
-      firebaseStubInitializeApp.callsFake((config) => {
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
         expect(config).to.deep.equal(expectedGcipConfig);
         return app as any;
       });
-      firebaseStubGetAuth.callsFake((mockApp) => {
-          return mockApp.mockAuth;
-        });
-      firebaseStubGetRedirectResult.callsFake(() => {
-          const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
-          app.auth().setCurrentMockUser(mockUser);
-          return Promise.resolve({
-            user: mockUser,
-            credential: {
-              providerId: 'google.com',
-              accessToken: OAUTH_ACCESS_TOKEN,
-            }
-          }) as any;
-        })
-      firebaseStubGetCredentialFromResult.callsFake((result) => {
-          return result.credential;
-        })
-      stubs.push(firebaseStubInitializeApp);
-      stubs.push(firebaseStubGetAuth);
-      stubs.push(firebaseStubGetRedirectResult);
-      stubs.push(firebaseStubGetCredentialFromResult);
+      stubs.push(firebaseStub);
       const copyTextAreaContentStub = sinon.stub(utils, 'copyTextAreaContent');
       stubs.push(copyTextAreaContentStub);
 
@@ -636,7 +568,18 @@ describe('AdminUi', () => {
       // Use invalid field.
       updatedUiConfig[API_KEY].selectTenantUiTitle = '<h1>Cool App</h1>';
       const stubbedAuthMethods = {
-        setPersistence: sinon.stub()
+        setPersistence: sinon.stub(),
+        getRedirectResult: sinon.stub().callsFake(() => {
+          const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
+          app.auth().setCurrentMockUser(mockUser);
+          return Promise.resolve({
+            user: mockUser,
+            credential: {
+              providerId: 'google.com',
+              accessToken: OAUTH_ACCESS_TOKEN,
+            },
+          });
+        }),
       };
       const app = testUtils.createMockApp(
           expectedGcipConfig,
@@ -664,35 +607,12 @@ describe('AdminUi', () => {
         }
         throw new Error('Unexpected call');
       });
-      const firebaseStubInitializeApp = sinon.stub(FirebaseWrapper, '_initializeApp');
-      const firebaseStubGetAuth = sinon.stub(FirebaseWrapper, '_getAuth');
-      const firebaseStubGetRedirectResult = sinon.stub(FirebaseWrapper, '_getRedirectResult');
-      const firebaseStubGetCredentialFromResult = sinon.stub(FirebaseWrapper, '_getCredentialFromResult')
-      firebaseStubInitializeApp.callsFake((config) => {
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
         expect(config).to.deep.equal(expectedGcipConfig);
         return app as any;
       });
-      firebaseStubGetAuth.callsFake((mockApp) => {
-        return mockApp.mockAuth;
-      });
-      firebaseStubGetRedirectResult.callsFake(() => {
-      const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
-      app.auth().setCurrentMockUser(mockUser);
-      return Promise.resolve({
-          user: mockUser,
-          credential: {
-          providerId: 'google.com',
-          accessToken: OAUTH_ACCESS_TOKEN,
-          }
-      }) as any;
-      })
-      firebaseStubGetCredentialFromResult.callsFake((result) => {
-        return result.credential;
-      })
-      stubs.push(firebaseStubInitializeApp);
-      stubs.push(firebaseStubGetAuth);
-      stubs.push(firebaseStubGetRedirectResult);
-      stubs.push(firebaseStubGetCredentialFromResult);
+      stubs.push(firebaseStub);
       const copyTextAreaContentStub = sinon.stub(utils, 'copyTextAreaContent');
       stubs.push(copyTextAreaContentStub);
 
@@ -723,7 +643,18 @@ describe('AdminUi', () => {
       const updatedUiConfig = utils.deepCopy(expectedUiConfig);
       updatedUiConfig[API_KEY].selectTenantUiTitle = 'Custom title';
       const stubbedAuthMethods = {
-        setPersistence: sinon.stub()
+        setPersistence: sinon.stub(),
+        getRedirectResult: sinon.stub().callsFake(() => {
+          const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
+          app.auth().setCurrentMockUser(mockUser);
+          return Promise.resolve({
+            user: mockUser,
+            credential: {
+              providerId: 'google.com',
+              accessToken: OAUTH_ACCESS_TOKEN,
+            },
+          });
+        }),
       };
       const app = testUtils.createMockApp(
           expectedGcipConfig,
@@ -763,35 +694,12 @@ describe('AdminUi', () => {
         }
         throw new Error('Unexpected call');
       });
-      const firebaseStubInitializeApp = sinon.stub(FirebaseWrapper, '_initializeApp');
-      const firebaseStubGetAuth = sinon.stub(FirebaseWrapper, '_getAuth');
-      const firebaseStubGetRedirectResult = sinon.stub(FirebaseWrapper, '_getRedirectResult');
-      const firebaseStubGetCredentialFromResult = sinon.stub(FirebaseWrapper, '_getCredentialFromResult')
-      firebaseStubInitializeApp.callsFake((config) => {
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
         expect(config).to.deep.equal(expectedGcipConfig);
         return app as any;
       });
-      firebaseStubGetAuth.callsFake((mockApp) => {
-          return mockApp.mockAuth;
-        });
-      firebaseStubGetRedirectResult.callsFake(() => {
-      const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
-      app.auth().setCurrentMockUser(mockUser);
-      return Promise.resolve({
-          user: mockUser,
-          credential: {
-          providerId: 'google.com',
-          accessToken: OAUTH_ACCESS_TOKEN,
-          }
-      }) as any;
-      })
-      firebaseStubGetCredentialFromResult.callsFake((result) => {
-          return result.credential;
-        })
-      stubs.push(firebaseStubInitializeApp);
-      stubs.push(firebaseStubGetAuth);
-      stubs.push(firebaseStubGetRedirectResult);
-      stubs.push(firebaseStubGetCredentialFromResult);
+      stubs.push(firebaseStub);
       const copyTextAreaContentStub = sinon.stub(utils, 'copyTextAreaContent');
       stubs.push(copyTextAreaContentStub);
 
@@ -827,7 +735,18 @@ describe('AdminUi', () => {
 
     it('should catch invalid provided JSON configuration', () => {
       const stubbedAuthMethods = {
-        setPersistence: sinon.stub()
+        setPersistence: sinon.stub(),
+        getRedirectResult: sinon.stub().callsFake(() => {
+          const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
+          app.auth().setCurrentMockUser(mockUser);
+          return Promise.resolve({
+            user: mockUser,
+            credential: {
+              providerId: 'google.com',
+              accessToken: OAUTH_ACCESS_TOKEN,
+            },
+          });
+        }),
       };
       const app = testUtils.createMockApp(
           expectedGcipConfig,
@@ -858,35 +777,12 @@ describe('AdminUi', () => {
         }
         throw new Error('Unexpected call');
       });
-      const firebaseStubInitializeApp = sinon.stub(FirebaseWrapper, '_initializeApp');
-      const firebaseStubGetAuth = sinon.stub(FirebaseWrapper, '_getAuth');
-      const firebaseStubGetRedirectResult = sinon.stub(FirebaseWrapper, '_getRedirectResult');
-      const firebaseStubGetCredentialFromResult = sinon.stub(FirebaseWrapper, '_getCredentialFromResult')
-      firebaseStubInitializeApp.callsFake((config) => {
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
         expect(config).to.deep.equal(expectedGcipConfig);
         return app as any;
       });
-      firebaseStubGetAuth.callsFake((mockApp) => {
-          return mockApp.mockAuth;
-        });
-      firebaseStubGetRedirectResult.callsFake(() => {
-      const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
-      app.auth().setCurrentMockUser(mockUser);
-      return Promise.resolve({
-          user: mockUser,
-          credential: {
-          providerId: 'google.com',
-          accessToken: OAUTH_ACCESS_TOKEN,
-          }
-      }) as any;
-      })
-      firebaseStubGetCredentialFromResult.callsFake((result) => {
-          return result.credential;
-        })
-      stubs.push(firebaseStubInitializeApp);
-      stubs.push(firebaseStubGetAuth);
-      stubs.push(firebaseStubGetRedirectResult);
-      stubs.push(firebaseStubGetCredentialFromResult);
+      stubs.push(firebaseStub);
       const copyTextAreaContentStub = sinon.stub(utils, 'copyTextAreaContent');
       stubs.push(copyTextAreaContentStub);
 
@@ -927,7 +823,18 @@ describe('AdminUi', () => {
       // Use invalid field.
       updatedUiConfig[API_KEY].selectTenantUiTitle = '<h1>Cool App</h1>';
       const stubbedAuthMethods = {
-        setPersistence: sinon.stub()
+        setPersistence: sinon.stub(),
+        getRedirectResult: sinon.stub().callsFake(() => {
+          const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
+          app.auth().setCurrentMockUser(mockUser);
+          return Promise.resolve({
+            user: mockUser,
+            credential: {
+              providerId: 'google.com',
+              accessToken: OAUTH_ACCESS_TOKEN,
+            },
+          });
+        }),
       };
       const app = testUtils.createMockApp(
           expectedGcipConfig,
@@ -958,35 +865,12 @@ describe('AdminUi', () => {
         }
         throw new Error('Unexpected call');
       });
-      const firebaseStubInitializeApp = sinon.stub(FirebaseWrapper, '_initializeApp');
-      const firebaseStubGetAuth = sinon.stub(FirebaseWrapper, '_getAuth');
-      const firebaseStubGetRedirectResult = sinon.stub(FirebaseWrapper, '_getRedirectResult');
-      const firebaseStubGetCredentialFromResult = sinon.stub(FirebaseWrapper, '_getCredentialFromResult')
-      firebaseStubInitializeApp.callsFake((config) => {
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
         expect(config).to.deep.equal(expectedGcipConfig);
         return app as any;
       });
-      firebaseStubGetAuth.callsFake((mockApp) => {
-          return mockApp.mockAuth;
-        });
-      firebaseStubGetRedirectResult.callsFake(() => {
-      const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
-      app.auth().setCurrentMockUser(mockUser);
-      return Promise.resolve({
-          user: mockUser,
-          credential: {
-          providerId: 'google.com',
-          accessToken: OAUTH_ACCESS_TOKEN,
-          }
-      }) as any;
-      })
-      firebaseStubGetCredentialFromResult.callsFake((result) => {
-          return result.credential;
-        })
-      stubs.push(firebaseStubInitializeApp);
-      stubs.push(firebaseStubGetAuth);
-      stubs.push(firebaseStubGetRedirectResult);
-      stubs.push(firebaseStubGetCredentialFromResult);
+      stubs.push(firebaseStub);
       const copyTextAreaContentStub = sinon.stub(utils, 'copyTextAreaContent');
       stubs.push(copyTextAreaContentStub);
 
@@ -1038,37 +922,19 @@ describe('AdminUi', () => {
       const updatedUiConfig = utils.deepCopy(expectedUiConfig);
       updatedUiConfig[API_KEY].selectTenantUiTitle = 'Custom title';
       const stubbedAuthMethods = {
-        setPersistence: sinon.stub()
+        setPersistence: sinon.stub(),
+        getRedirectResult: sinon.stub().callsFake(() => {
+          const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
+          app.auth().setCurrentMockUser(mockUser);
+          return Promise.resolve({
+            user: mockUser,
+            credential: {
+              providerId: 'google.com',
+              accessToken: OAUTH_ACCESS_TOKEN,
+            },
+          });
+        }),
       };
-      const firebaseStubInitializeApp = sinon.stub(FirebaseWrapper, '_initializeApp');
-      const firebaseStubGetAuth = sinon.stub(FirebaseWrapper, '_getAuth');
-      const firebaseStubGetRedirectResult = sinon.stub(FirebaseWrapper, '_getRedirectResult');
-      const firebaseStubGetCredentialFromResult = sinon.stub(FirebaseWrapper, '_getCredentialFromResult')
-      firebaseStubInitializeApp.callsFake((config) => {
-        expect(config).to.deep.equal(expectedGcipConfig);
-        return app as any;
-      });
-      firebaseStubGetAuth.callsFake((mockApp) => {
-          return mockApp.mockAuth;
-        });
-      firebaseStubGetRedirectResult.callsFake(() => {
-      const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1');
-      app.auth().setCurrentMockUser(mockUser);
-      return Promise.resolve({
-          user: mockUser,
-          credential: {
-          providerId: 'google.com',
-          accessToken: OAUTH_ACCESS_TOKEN,
-          }
-      }) as any;
-      })
-      firebaseStubGetCredentialFromResult.callsFake((result) => {
-          return result.credential;
-        })
-      stubs.push(firebaseStubInitializeApp);
-      stubs.push(firebaseStubGetAuth);
-      stubs.push(firebaseStubGetRedirectResult);
-      stubs.push(firebaseStubGetCredentialFromResult);
       const app = testUtils.createMockApp(
           expectedGcipConfig,
           stubbedAuthMethods);
@@ -1106,7 +972,12 @@ describe('AdminUi', () => {
         }
         throw new Error('Unexpected call');
       });
-
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
+        expect(config).to.deep.equal(expectedGcipConfig);
+        return app as any;
+      });
+      stubs.push(firebaseStub);
       const copyTextAreaContentStub = sinon.stub(utils, 'copyTextAreaContent');
       stubs.push(copyTextAreaContentStub);
 
@@ -1146,27 +1017,24 @@ describe('AdminUi', () => {
       const reauthButton = document.getElementsByClassName('reauth')[0] as HTMLButtonElement;
       const adminFormButton = mainContainer.querySelector('button[type="submit"]') as HTMLButtonElement;
       const stubbedUserMethods = {
-        email: EMAIL
+        email: EMAIL,
+        reauthenticateWithPopup: sinon.stub().callsFake((provider) => {
+          expect(provider.providerId).to.be.equal('google.com');
+          expect(addScopeStub).to.have.been.calledOnce;
+          expect(addScopeStub.getCall(0)).to.have.been.calledWith(OAUTH_SCOPES[0]);
+          expect(setCustomParametersStub).to.have.been.calledOnce
+            .and.calledWith({login_hint: EMAIL, prompt: 'select_account'});
+          return Promise.resolve({
+            user: mockUser,
+            credential: {
+              providerId: 'google.com',
+              // Return updated OAuth access token.
+              accessToken: UPDATED_OAUTH_ACCESS_TOKEN,
+            },
+          })
+        }),
       };
-
-      const firebaseReauthenticateWithPopupStub = sinon.stub(FirebaseWrapper, '_reauthenticateWithPopup');
-      firebaseReauthenticateWithPopupStub.callsFake((mockUser, provider) => {
-        expect(provider.providerId).to.be.equal('google.com');
-        expect(addScopeStub).to.have.been.calledOnce;
-        expect(addScopeStub.getCall(0)).to.have.been.calledWith(OAUTH_SCOPES[0]);
-        expect(setCustomParametersStub).to.have.been.calledOnce
-          .and.calledWith({login_hint: EMAIL, prompt: 'select_account'});
-        return Promise.resolve({
-          user: mockUser,
-          credential: {
-            providerId: 'google.com',
-            // Return updated OAuth access token.
-            accessToken: UPDATED_OAUTH_ACCESS_TOKEN,
-          },
-        }) as any;
-      });
-      stubs.push(firebaseReauthenticateWithPopupStub);
-
+      const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1', stubbedUserMethods);
       const UNAUTHORIZED_USER_ERROR =
         `${EMAIL} does not have storage.buckets.create access to project ${PROJECT_NUMBER}.`;
       const serverLowLevelError = testUtils.createMockLowLevelError(
@@ -1190,7 +1058,17 @@ describe('AdminUi', () => {
       const updatedUiConfig = utils.deepCopy(expectedUiConfig);
       updatedUiConfig[API_KEY].selectTenantUiTitle = 'Custom title';
       const stubbedAuthMethods = {
-        setPersistence: sinon.stub()
+        setPersistence: sinon.stub(),
+        getRedirectResult: sinon.stub().callsFake(() => {
+          app.auth().setCurrentMockUser(mockUser);
+          return Promise.resolve({
+            user: mockUser,
+            credential: {
+              providerId: 'google.com',
+              accessToken: OAUTH_ACCESS_TOKEN,
+            },
+          });
+        }),
       };
       const app = testUtils.createMockApp(
           expectedGcipConfig,
@@ -1242,39 +1120,16 @@ describe('AdminUi', () => {
         }
         throw new Error('Unexpected call');
       });
-      const firebaseStubInitializeApp = sinon.stub(FirebaseWrapper, '_initializeApp');
-      const firebaseStubGetAuth = sinon.stub(FirebaseWrapper, '_getAuth');
-      const firebaseStubGetRedirectResult = sinon.stub(FirebaseWrapper, '_getRedirectResult');
-      const firebaseStubGetCredentialFromResult = sinon.stub(FirebaseWrapper, '_getCredentialFromResult')
-      firebaseStubInitializeApp.callsFake((config) => {
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
         expect(config).to.deep.equal(expectedGcipConfig);
         return app as any;
       });
-      firebaseStubGetAuth.callsFake((mockApp) => {
-          return mockApp.mockAuth;
-        });
-      firebaseStubGetRedirectResult.callsFake(() => {
-      const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1', stubbedUserMethods);
-      app.auth().setCurrentMockUser(mockUser);
-      return Promise.resolve({
-          user: mockUser,
-          credential: {
-          providerId: 'google.com',
-          accessToken: OAUTH_ACCESS_TOKEN,
-          }
-      }) as any;
-      })
-      firebaseStubGetCredentialFromResult.callsFake((result) => {
-          return result.credential;
-        })
-      stubs.push(firebaseStubInitializeApp);
-      stubs.push(firebaseStubGetAuth);
-      stubs.push(firebaseStubGetRedirectResult);
-      stubs.push(firebaseStubGetCredentialFromResult);
+      stubs.push(firebaseStub);
       // GoogleAuthProvider stubs.
-      const addScopeStub = sinon.stub(GoogleAuthProvider.prototype, 'addScope');
+      const addScopeStub = sinon.stub(firebase.auth.GoogleAuthProvider.prototype, 'addScope');
       stubs.push(addScopeStub);
-      const setCustomParametersStub = sinon.stub(GoogleAuthProvider.prototype, 'setCustomParameters');
+      const setCustomParametersStub = sinon.stub(firebase.auth.GoogleAuthProvider.prototype, 'setCustomParameters');
       stubs.push(setCustomParametersStub);
 
       const adminUi = new AdminUi(mainContainer, showToast);
@@ -1311,27 +1166,25 @@ describe('AdminUi', () => {
       const reauthButton = document.getElementsByClassName('reauth')[0] as HTMLButtonElement;
       const adminFormButton = mainContainer.querySelector('button[type="submit"]') as HTMLButtonElement;
       const stubbedUserMethods = {
-        email: EMAIL
+        email: EMAIL,
+        reauthenticateWithPopup: sinon.stub().callsFake((provider) => {
+          expect(provider.providerId).to.be.equal('google.com');
+          expect(addScopeStub).to.have.been.calledTwice;
+          expect(addScopeStub.getCall(0)).to.have.been.calledWith('profile');
+          expect(addScopeStub.getCall(1)).to.have.been.calledWith(OAUTH_SCOPES[0]);
+          expect(setCustomParametersStub).to.have.been.calledOnce
+            .and.calledWith({login_hint: EMAIL, prompt: 'select_account'});
+          return Promise.resolve({
+            user: mockUser,
+            credential: {
+              providerId: 'google.com',
+              // Return updated OAuth access token.
+              accessToken: UPDATED_OAUTH_ACCESS_TOKEN,
+            },
+          })
+        }),
       };
       const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1', stubbedUserMethods);
-      const firebaseReauthenticateWithPopupStub = sinon.stub(FirebaseWrapper, '_reauthenticateWithPopup');
-      firebaseReauthenticateWithPopupStub.callsFake((user, provider) => {
-        expect(provider.providerId).to.be.equal('google.com');
-        expect(addScopeStub).to.have.been.calledTwice;
-        expect(addScopeStub.getCall(0)).to.have.been.calledWith('profile');
-        expect(addScopeStub.getCall(1)).to.have.been.calledWith(OAUTH_SCOPES[0]);
-        expect(setCustomParametersStub).to.have.been.calledOnce
-          .and.calledWith({login_hint: EMAIL, prompt: 'select_account'});
-        return Promise.resolve({
-          user: mockUser,
-          credential: {
-            providerId: 'google.com',
-            // Return updated OAuth access token.
-            accessToken: UPDATED_OAUTH_ACCESS_TOKEN,
-          },
-        }) as any;
-      })
-      stubs.push(firebaseReauthenticateWithPopupStub);
       const serverLowLevelError = testUtils.createMockLowLevelError(
           'Server responded with status 500',
           500,
@@ -1346,7 +1199,17 @@ describe('AdminUi', () => {
       const updatedUiConfig = utils.deepCopy(expectedUiConfig);
       updatedUiConfig[API_KEY].selectTenantUiTitle = 'Custom title';
       const stubbedAuthMethods = {
-        setPersistence: sinon.stub()
+        setPersistence: sinon.stub(),
+        getRedirectResult: sinon.stub().callsFake(() => {
+          app.auth().setCurrentMockUser(mockUser);
+          return Promise.resolve({
+            user: mockUser,
+            credential: {
+              providerId: 'google.com',
+              accessToken: OAUTH_ACCESS_TOKEN,
+            },
+          });
+        }),
       };
       const app = testUtils.createMockApp(
           expectedGcipConfig,
@@ -1398,39 +1261,16 @@ describe('AdminUi', () => {
         }
         throw new Error('Unexpected call');
       });
-      const firebaseStubInitializeApp = sinon.stub(FirebaseWrapper, '_initializeApp');
-      const firebaseStubGetAuth = sinon.stub(FirebaseWrapper, '_getAuth');
-      const firebaseStubGetRedirectResult = sinon.stub(FirebaseWrapper, '_getRedirectResult');
-      const firebaseStubGetCredentialFromResult = sinon.stub(FirebaseWrapper, '_getCredentialFromResult')
-      firebaseStubInitializeApp.callsFake((config) => {
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
         expect(config).to.deep.equal(expectedGcipConfig);
         return app as any;
       });
-      firebaseStubGetAuth.callsFake((mockApp) => {
-          return mockApp.mockAuth;
-        });
-      firebaseStubGetRedirectResult.callsFake(() => {
-
-      app.auth().setCurrentMockUser(mockUser);
-      return Promise.resolve({
-          user: mockUser,
-          credential: {
-          providerId: 'google.com',
-          accessToken: OAUTH_ACCESS_TOKEN,
-          }
-      }) as any;
-      })
-      firebaseStubGetCredentialFromResult.callsFake((result) => {
-          return result.credential;
-        })
-      stubs.push(firebaseStubInitializeApp);
-      stubs.push(firebaseStubGetAuth);
-      stubs.push(firebaseStubGetRedirectResult);
-      stubs.push(firebaseStubGetCredentialFromResult);
+      stubs.push(firebaseStub);
       // GoogleAuthProvider stubs.
-      const addScopeStub = sinon.stub(GoogleAuthProvider.prototype, 'addScope');
+      const addScopeStub = sinon.stub(firebase.auth.GoogleAuthProvider.prototype, 'addScope');
       stubs.push(addScopeStub);
-      const setCustomParametersStub = sinon.stub(GoogleAuthProvider.prototype, 'setCustomParameters');
+      const setCustomParametersStub = sinon.stub(firebase.auth.GoogleAuthProvider.prototype, 'setCustomParameters');
       stubs.push(setCustomParametersStub);
 
       const adminUi = new AdminUi(mainContainer, showToast);
@@ -1485,19 +1325,17 @@ describe('AdminUi', () => {
       const reauthButton = document.getElementsByClassName('reauth')[0] as HTMLButtonElement;
       const adminFormButton = mainContainer.querySelector('button[type="submit"]') as HTMLButtonElement;
       const stubbedUserMethods = {
-        email: EMAIL
+        email: EMAIL,
+        reauthenticateWithPopup: sinon.stub().callsFake((provider) => {
+          expect(provider.providerId).to.be.equal('google.com');
+          expect(addScopeStub).to.have.been.calledOnce;
+          expect(addScopeStub.getCall(0)).to.have.been.calledWith(OAUTH_SCOPES[0]);
+          expect(setCustomParametersStub).to.have.been.calledOnce
+            .and.calledWith({login_hint: EMAIL, prompt: 'select_account'});
+          return Promise.reject(expectedError);
+        }),
       };
       const mockUser = new testUtils.MockUser('UID123', 'ID_TOKEN1', stubbedUserMethods);
-      const firebaseReauthenticateWithPopupStub = sinon.stub(FirebaseWrapper, '_reauthenticateWithPopup');
-      firebaseReauthenticateWithPopupStub.callsFake((user, provider) => {
-        expect(provider.providerId).to.be.equal('google.com');
-        expect(addScopeStub).to.have.been.calledOnce;
-        expect(addScopeStub.getCall(0)).to.have.been.calledWith(OAUTH_SCOPES[0]);
-        expect(setCustomParametersStub).to.have.been.calledOnce
-            .and.calledWith({login_hint: EMAIL, prompt: 'select_account'});
-        return  Promise.reject(expectedError);
-      })
-      stubs.push(firebaseReauthenticateWithPopupStub);
       const UNAUTHORIZED_USER_ERROR = 'Unauthorized user';
       const serverLowLevelError = testUtils.createMockLowLevelError(
           'Server responded with status 401',
@@ -1513,7 +1351,17 @@ describe('AdminUi', () => {
       const updatedUiConfig = utils.deepCopy(expectedUiConfig);
       updatedUiConfig[API_KEY].selectTenantUiTitle = 'Custom title';
       const stubbedAuthMethods = {
-        setPersistence: sinon.stub()
+        setPersistence: sinon.stub(),
+        getRedirectResult: sinon.stub().callsFake(() => {
+          app.auth().setCurrentMockUser(mockUser);
+          return Promise.resolve({
+            user: mockUser,
+            credential: {
+              providerId: 'google.com',
+              accessToken: OAUTH_ACCESS_TOKEN,
+            },
+          });
+        }),
       };
       const app = testUtils.createMockApp(
           expectedGcipConfig,
@@ -1553,39 +1401,16 @@ describe('AdminUi', () => {
         }
         throw new Error('Unexpected call');
       });
-      const firebaseStubInitializeApp = sinon.stub(FirebaseWrapper, '_initializeApp');
-      const firebaseStubGetAuth = sinon.stub(FirebaseWrapper, '_getAuth');
-      const firebaseStubGetRedirectResult = sinon.stub(FirebaseWrapper, '_getRedirectResult');
-      const firebaseStubGetCredentialFromResult = sinon.stub(FirebaseWrapper, '_getCredentialFromResult')
-      firebaseStubInitializeApp.callsFake((config) => {
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
         expect(config).to.deep.equal(expectedGcipConfig);
         return app as any;
       });
-      firebaseStubGetAuth.callsFake((mockApp) => {
-          return mockApp.mockAuth;
-        });
-      firebaseStubGetRedirectResult.callsFake(() => {
-      app.auth().setCurrentMockUser(mockUser);
-      return Promise.resolve({
-          user: mockUser,
-          credential: {
-          providerId: 'google.com',
-          accessToken: OAUTH_ACCESS_TOKEN,
-          }
-      }) as any;
-      })
-      firebaseStubGetCredentialFromResult.callsFake((result) => {
-          return result.credential;
-        })
-      stubs.push(firebaseStubInitializeApp);
-      stubs.push(firebaseStubGetAuth);
-      stubs.push(firebaseStubGetRedirectResult);
-      stubs.push(firebaseStubGetCredentialFromResult);
-
+      stubs.push(firebaseStub);
       // GoogleAuthProvider stubs.
-      const addScopeStub = sinon.stub(GoogleAuthProvider.prototype, 'addScope');
+      const addScopeStub = sinon.stub(firebase.auth.GoogleAuthProvider.prototype, 'addScope');
       stubs.push(addScopeStub);
-      const setCustomParametersStub = sinon.stub(GoogleAuthProvider.prototype, 'setCustomParameters');
+      const setCustomParametersStub = sinon.stub(firebase.auth.GoogleAuthProvider.prototype, 'setCustomParameters');
       stubs.push(setCustomParametersStub);
 
       const adminUi = new AdminUi(mainContainer, showToast);
@@ -1618,25 +1443,20 @@ describe('AdminUi', () => {
 
     it('should trigger signInWithRedirect with expected provider when no credential is available', () => {
       const stubbedAuthMethods = {
-        setPersistence: sinon.stub()
+        signInWithRedirect: sinon.stub().callsFake((provider) => {
+          expect(stubbedAuthMethods.getRedirectResult).to.have.been.calledOnce;
+          expect(stubbedAuthMethods.setPersistence).to.have.been.calledOnce
+            .and.calledWith('none');
+          expect(provider.providerId).to.be.equal('google.com');
+          expect(addScopeStub).to.have.been.calledTwice;
+          expect(addScopeStub.getCall(0)).to.have.been.calledWith('profile');
+          expect(addScopeStub.getCall(1)).to.have.been.calledWith(OAUTH_SCOPES[0]);
+          expect(setCustomParametersStub).to.have.been.calledOnce
+            .and.calledWith({login_hint: undefined, prompt: 'select_account'});
+        }),
+        setPersistence: sinon.stub(),
+        getRedirectResult: sinon.stub().resolves({user: null, credential: null}),
       };
-      const firebaseStubSignInWithRedirect = sinon.stub(FirebaseWrapper, '_signInWithRedirect')
-      firebaseStubSignInWithRedirect.callsFake((auth, provider) => {
-        expect(firebaseStubGetRedirectResult).to.have.been.calledOnce;
-        expect(stubbedAuthMethods.setPersistence).to.have.been.calledOnce
-          .and.calledWith(inMemoryPersistence);
-
-        expect(provider.providerId).to.be.equal('google.com');
-        expect(addScopeStub).to.have.been.calledTwice;
-        expect(addScopeStub.getCall(0)).to.have.been.calledWith('profile');
-        expect(addScopeStub.getCall(1)).to.have.been.calledWith(OAUTH_SCOPES[0]);
-        expect(setCustomParametersStub).to.have.been.calledOnce
-        .and.calledWith({login_hint: undefined, prompt: 'select_account'});
-
-        return Promise.resolve() as any;
-      })
-
-      stubs.push(firebaseStubSignInWithRedirect);
       const app = testUtils.createMockApp(
           expectedGcipConfig,
           stubbedAuthMethods);
@@ -1654,37 +1474,16 @@ describe('AdminUi', () => {
         }
         throw new Error('Unexpected call');
       });
-      const firebaseStubInitializeApp = sinon.stub(FirebaseWrapper, '_initializeApp');
-      const firebaseStubGetAuth = sinon.stub(FirebaseWrapper, '_getAuth');
-      const firebaseStubGetRedirectResult = sinon.stub(FirebaseWrapper, '_getRedirectResult');
-      const firebaseStubGetCredentialFromResult = sinon.stub(FirebaseWrapper, '_getCredentialFromResult')
-      firebaseStubInitializeApp.callsFake((config) => {
+      const firebaseStub = sinon.stub(firebase, 'initializeApp');
+      firebaseStub.callsFake((config) => {
         expect(config).to.deep.equal(expectedGcipConfig);
         return app as any;
       });
-      firebaseStubGetAuth.callsFake((mockApp) => {
-          return mockApp.mockAuth;
-        });
-      firebaseStubGetRedirectResult.callsFake(() => {
-      return Promise.resolve({
-          user: null,
-          credential: null
-      }) as any;
-      })
-      firebaseStubGetCredentialFromResult.callsFake((result) => {
-          return result.credential;
-        })
-      stubs.push(firebaseStubInitializeApp);
-      stubs.push(firebaseStubGetAuth);
-      stubs.push(firebaseStubGetRedirectResult);
-      stubs.push(firebaseStubGetCredentialFromResult);
-
-
-
+      stubs.push(firebaseStub);
       // GoogleAuthProvider stubs.
-      const addScopeStub = sinon.stub(GoogleAuthProvider.prototype, 'addScope');
+      const addScopeStub = sinon.stub(firebase.auth.GoogleAuthProvider.prototype, 'addScope');
       stubs.push(addScopeStub);
-      const setCustomParametersStub = sinon.stub(GoogleAuthProvider.prototype, 'setCustomParameters');
+      const setCustomParametersStub = sinon.stub(firebase.auth.GoogleAuthProvider.prototype, 'setCustomParameters');
       stubs.push(setCustomParametersStub);
 
       const adminUi = new AdminUi(mainContainer, showToast);
@@ -1692,7 +1491,7 @@ describe('AdminUi', () => {
       return adminUi.render()
         .then(() => {
           expect(httpClientSendStub).to.have.been.calledOnce;
-          expect(firebaseStubSignInWithRedirect).to.have.been.calledOnce.and.calledAfter(httpClientSendStub);
+          expect(stubbedAuthMethods.signInWithRedirect).to.have.been.calledOnce.and.calledAfter(httpClientSendStub);
           expect(mainContainer.style.display).to.be.equal('none');
           const area = document.getElementsByClassName('config')[0] as HTMLTextAreaElement;
           expect(area.value).to.be.equal('');
