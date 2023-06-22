@@ -30,7 +30,7 @@
   "devDependencies": {
     "@angular-devkit/build-angular": "^0.1002.0",
     "@angular-devkit/build-ng-packagr": "~0.1000.3",
-    "@angular/cli": "^10.0.3",
+    "@angular/cli": "^15.1.4",
     "@angular/compiler-cli": "^10.0.4",
     "@angular/language-service": "^10.0.4",
     "@types/bootstrap": "4.5.0",
