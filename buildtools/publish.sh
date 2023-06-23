@@ -34,7 +34,7 @@ INTERNAL_REPOSITORY="sso://team/${INTERNAL_REPOSITORY_TEAM}/${INTERNAL_REPOSITOR
 SAMPLE_APPS=( "authui" "authui-react" "authui-firebaseui" )
 set -e
 
-printusage() {
+print_usage() {
   echo "publish.sh <version> <push_sample_apps>"
   echo ""
   echo "Arguments:"
@@ -42,15 +42,40 @@ printusage() {
   echo "  push_sample_apps: 'y', 'n'. Default is 'n'."
 }
 
+# expects the first param as the line number, second param as working dir, third+ params as dirs to be deleted.
+handle_github_error() {
+  echo "Hit error on line $1"
+  echo "Github clone failed. Ensure that your ssh keys are setup as described in https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent"
+  cd $2
+  # delete directories specified as arg3 and later
+  for i in "${@:3}"
+  do
+    echo "Deleting temp directory $i"
+    rm -rf $i
+  done
+}
+
+# expects the first param as the working dir, second+ params as dirs to be deleted.
+cleanup_and_exit() {
+  cd $1
+  # delete directories specified as arg2 and later
+  for i in "${@:2}"
+  do
+    echo "Deleting temp directory $i"
+    rm -rf $i
+  done
+  exit 1
+}
+
 VERSION=$1
 PUSH_SAMPLE_APPS=$2
 if [[ $VERSION == "" ]]; then
-  printusage
+  print_usage
   exit 1
 elif [[ ! ($VERSION == "patch" || \
            $VERSION == "minor" || \
            $VERSION == "major") ]]; then
-  printusage
+  print_usage
   exit 1
 fi
 
@@ -107,15 +132,25 @@ npm whoami --registry https://wombat-dressing-room.appspot.com
 trap - ERR
 echo "Checked for logged-in npm user."
 
-echo "Moving to temporary directory..."
+CURRENTDIR=$(pwd)
+TEMPDIRGITHUB=$(mktemp -d)
+GITHUB_SSH_CLONE=$(jq -r .repository.sshclone package.json)
+echo -e "Attempting git clone in ${TEMPDIRGITHUB} to make sure the SSH keys are setup correctly. Another clone will be done later.\n\n";
+cd "${TEMPDIRGITHUB}"
+echo "Moved to temporary directory for github cloning."
+trap 'handle_github_error $LINENO $CURRENTDIR $TEMPDIRGITHUB' ERR
+git clone "${GITHUB_SSH_CLONE}"
+trap - ERR
+cd "${CURRENTDIR}"
+rm -rf "${TEMPDIRGITHUB}"
+echo -e "Verified that git clone works.\n\n";
+
 TEMPDIR1=$(mktemp -d)
-echo "[DEBUG] ${TEMPDIR1}"
+echo -e "Moving to temporary directory ${TEMPDIR1} for testing + release...\n\n"
 cd "${TEMPDIR1}"
 echo "Moved to temporary directory."
 
-WDIR1=$(pwd)
-
-echo "Cloning internal repo ${INTERNAL_REPOSITORY}..."
+echo -e "Cloning internal repo ${INTERNAL_REPOSITORY}...\n\n"
 trap "echo 'Please login to corp account using \`glogin\` or \`prodaccess\`'; exit 1" ERR
 git clone $INTERNAL_REPOSITORY
 trap - ERR
@@ -126,7 +161,7 @@ cd $INTERNAL_REPOSITORY_NAME
 echo "Making sure there is a changelog..."
 if [ ! -s CHANGELOG.md ]; then
   echo "CHANGELOG.md is empty. Aborting."
-  exit 1
+  cleanup_and_exit $CURRENTDIR $TEMPDIR1
 fi
 echo "Made sure there is a changelog."
 
@@ -134,7 +169,7 @@ echo "Running npm install..."
 npm install
 echo "Ran npm install."
 
-echo "Running tests..."
+echo -e "Running tests...\n\n"
 # Copy key files needed for e2e tests to new directory.
 echo "${SA_KEY_NONE}" > test/resources/key.json
 echo "${SA_KEY_SINGLE}" > test/resources/key_single_tenant.json
@@ -145,24 +180,29 @@ npm test
 # Run integration tests.
 npm run test:e2e
 trap - ERR
-echo "Tests passed."
+echo -e "Tests passed.\n\n"
 
 echo "Making a $VERSION version..."
 npm version $VERSION
 NEW_VERSION=$(jq -r ".version" package.json)
-echo "Made a $VERSION version: $NEW_VERSION."
+echo -e "Made a $VERSION version: $NEW_VERSION.\n\n"
 
-echo "Making the release notes..."
 RELEASE_NOTES_FILE=$(mktemp)
-echo "[DEBUG] ${RELEASE_NOTES_FILE}"
+echo "Making the release notes in file ${RELEASE_NOTES_FILE}..."
 echo "v${NEW_VERSION}" >> "${RELEASE_NOTES_FILE}"
 echo "" >> "${RELEASE_NOTES_FILE}"
 cat CHANGELOG.md >> "${RELEASE_NOTES_FILE}"
-echo "Made the release notes."
+echo -e "Made the release notes.\n\n"
+
+read -p "Do you want to continue publishing to npm?(Y/N)" continue
+if [[ $continue != "y" && $continue != "Y" ]]; then
+  echo "Exiting."
+  cleanup_and_exit $CURRENTDIR $TEMPDIR1
+fi
 
 echo "Publishing to npm..."
 npm publish --registry https://wombat-dressing-room.appspot.com
-echo "Published to npm."
+echo -e "Published to npm.\n\n"
 
 echo "Cleaning up release notes..."
 rm CHANGELOG.md
@@ -173,29 +213,27 @@ echo "Cleaned up release notes."
 echo "Publishing changes to internal repo: $INTERNAL_REPOSITORY"
 git push origin master
 
-GITHUB_SSH_CLONE=$(jq -r .repository.sshclone package.json)
-echo "Moving to temporary directory..."
 TEMPDIR2=$(mktemp -d)
-echo "[DEBUG] ${TEMPDIR2}"
+echo "Moving to temporary directory ${TEMPDIR2} for github cloning..."
 cd "${TEMPDIR2}"
 echo "Moved to temporary directory."
 
-WDIR2=$(pwd)
-
-echo "Cloning GitHub repository, ensure that your ssh keys are setup as described in https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent"
+echo "Cloning GitHub repository.."
+trap 'handle_github_error $LINENO $CURRENTDIR $TEMPDIR1 $TEMPDIR2' ERR
 git clone "${GITHUB_SSH_CLONE}"
+trap - ERR
 # Only one directory should exist.
 cd *
 echo "Cloned GitHub repository."
 
 # Copy package.json and README from internal repo to public one.
 echo "Copying package.json and README..."
-cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/package.json" .
-cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/README.md" .
+cp "${TEMPDIR1}/${INTERNAL_REPOSITORY_NAME}/package.json" .
+cp "${TEMPDIR1}/${INTERNAL_REPOSITORY_NAME}/README.md" .
 # Copy other required files.
-cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/CONTRIBUTING.md" .
-cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/LICENSE" .
-cp "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/.gitignore" .
+cp "${TEMPDIR1}/${INTERNAL_REPOSITORY_NAME}/CONTRIBUTING.md" .
+cp "${TEMPDIR1}/${INTERNAL_REPOSITORY_NAME}/LICENSE" .
+cp "${TEMPDIR1}/${INTERNAL_REPOSITORY_NAME}/.gitignore" .
 # Remove scripts from package.json
 jq "del(.scripts)" package.json > tmp.$$.json && mv tmp.$$.json package.json
 echo "Copied package.json and README."
@@ -203,7 +241,7 @@ echo "Copied package.json and README."
 # Update sample apps if needed.
 if [[ $PUSH_SAMPLE_APPS = "y" ]] || [[ $PUSH_SAMPLE_APPS = "Y" ]]; then
   echo "Copying sample apps..."
-  cp -r "${WDIR1}/${INTERNAL_REPOSITORY_NAME}/sample" "./sample"
+  cp -r "${TEMPDIR1}/${INTERNAL_REPOSITORY_NAME}/sample" "./sample"
   echo "Copied sample apps."
 fi
 
@@ -219,6 +257,13 @@ do
 done
 echo "Updated gcip-iap dependencies in sample apps..."
 
+read -p "Do you want to push a release tag on github? (Y/N)" continue
+if [[ $continue != "y" && $continue != "Y" ]]; then
+  echo "Exiting."
+  cleanup_and_exit $CURRENTDIR $TEMPDIR1 $TEMPDIR2
+  exit 1
+fi
+
 # Commit the change and create a release tag.
 echo "Creating release commit and tag in GitHub repository..."
 git add -A
@@ -226,8 +271,8 @@ git commit -m "[gcip-iap-release] Pushed v${NEW_VERSION}"
 git tag -a v${NEW_VERSION} -m "[gcip-iap-release] Pushed v${NEW_VERSION}"
 echo "Created release commit and tag in GitHub repository."
 
-echo "Pushing release commit and tag to GitHub..."
+echo -e "Pushing release commit and tag to GitHub...\n\n"
 git push origin master --tags
-echo "Pushed release commit and tag GitHub."
+echo -e "Pushed release commit and tag to GitHub.\n\n"
 
 echo "Last Step - Publish a new release from the github console at https://github.com/GoogleCloudPlatform/iap-gcip-web-toolkit/releases/new, with the v${NEW_VERSION} tag."
