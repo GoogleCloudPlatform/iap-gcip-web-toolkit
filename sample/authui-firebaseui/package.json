@@ -19,7 +19,7 @@
     "@babel/register": "^7.10.5",
     "babel-loader": "^8.1.0",
     "bootstrap": "4.5.0",
-    "css-loader": "3.6.0",
+    "css-loader": "6.8.1",
     "file-loader": "6.0.0",
     "firebase": "^9.8.3",
     "firebase-tools": "^9.21.0",
