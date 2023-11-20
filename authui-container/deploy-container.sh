@@ -78,7 +78,11 @@ trap - ERR
 # Install all dependencies.
 npm install
 # Build all output files before deploying container.
+
+trap "echo 'Failed to create the bundle.'; exit 1" ERR
 npm run bundle
+trap - ERR
+
 # Skip for non-production builds.
 if [[ $VERSION != "test" ]]; then
   # Create new version of hosted UI.
