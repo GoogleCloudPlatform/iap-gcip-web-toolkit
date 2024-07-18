@@ -202,6 +202,12 @@ export class AdminUi {
     // Get GCIP config to initialize the Auth instance.
     return this.getGcipConfig()
       .then((gcipConfig) => {
+        // Use the admin UI hostname as the authDomain so the redirect_uri for
+        // google sign in will be "https://<adminui>/__/auth/handler which will
+        // be the same origin.
+        // Without this, the redirect_uri be "https://project.firebaseapp.com/__/auth/handler".
+        // More info at https://firebase.google.com/docs/auth/web/redirect-best-practices
+        gcipConfig.authDomain = window.location.host;
         // Initialize Auth instance using in-memory persistence.
         const app = FirebaseWrapper._initializeApp(gcipConfig);
         this.auth =  FirebaseWrapper._getAuth(app);
