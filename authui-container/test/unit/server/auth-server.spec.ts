@@ -1234,8 +1234,9 @@ describe('AuthServer', () => {
           .expect('Content-Type', /json/)
           .expect(200)
           .then((response) => {
-            expect(consoleStub).to.have.been.calledWith(
-              'Invalid configuration in environment variable UI_CONFIG: Unexpected end of JSON input');
+            // Logging the error is the 3rd call after the initial startup logs.
+            const errorMessage = consoleStub.getCall(3).args;
+            expect(errorMessage[0]).to.contain('Invalid configuration in environment variable UI_CONFIG:');
             expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
           });
       });

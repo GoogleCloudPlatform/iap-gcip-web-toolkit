@@ -83,3 +83,16 @@ Updates `gcip-iap` module dependency to `1.0.0`, `firebase` module to `9.6.0` an
 gcr.io/gcip-iap/authui@sha256:ce274e63d3eb1e9ba526e6530a6ba6c8550ed746cfba2236941d648a31464e44
 
 Use the login page URL as authDomain for Hosted UI to prevent cross origin storage access in signInWithRedirect.
+
+##v1.0.0
+
+gcr.io/gcip-iap/authui@sha256:9d60aa020b50949a8c91fb102813dc5a37887680baebe878a5236996a8691573
+
+Use modular web SDK v9 to refactor IAP SDK.
+
+
+#v1.0.1
+
+gcr.io/gcip-iap/authui@sha256:27c7908ccc66941a89e4774a858d75d514a0422ab4d9b0600bd41332d9e57bd1
+
+Update the admin UI to use the IAP page URL as the authDomain.
