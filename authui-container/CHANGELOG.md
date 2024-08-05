@@ -96,3 +96,10 @@ Use modular web SDK v9 to refactor IAP SDK.
 gcr.io/gcip-iap/authui@sha256:27c7908ccc66941a89e4774a858d75d514a0422ab4d9b0600bd41332d9e57bd1
 
 Update the admin UI to use the IAP page URL as the authDomain.
+
+
+#v1.0.2
+
+gcr.io/gcip-iap/authui@sha256:eca6362af482a523c3d7f889728c8c36e2ebbc394a1a5033666456b2fd2fa8ff
+
+Updated authui-container to use latest IAP SDK.

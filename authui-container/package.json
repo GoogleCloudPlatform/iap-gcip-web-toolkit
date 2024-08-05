@@ -1,6 +1,6 @@
 {
   "name": "knative-serving-iap-gcip-authui",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Containerized Authentication UI for IAP external identities",
   "main": "dist/app.js",
   "scripts": {
@@ -58,7 +58,7 @@
     "es6-map": "^0.1.5",
     "file-loader": "^6.0.0",
     "firebaseui": "^6.0.2",
-    "gcip-iap": "1.0.1",
+    "gcip-iap": "2.0.0",
     "firebase": "^9.8.3",
     "handlebars": "^4.7.6",
     "jquery": "^3.5.1",
