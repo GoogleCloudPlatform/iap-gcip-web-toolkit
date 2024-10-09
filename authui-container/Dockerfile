@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Use the official lightweight Node.js 19 image.
+# Use the official lightweight Node.js 22 image.
 # https://hub.docker.com/_/node
-FROM node:19-slim
+FROM node:22-slim
+
+# Update OS image
+RUN apt update && apt -y upgrade
+RUN apt -y autoremove
 
 # Create and change to the app directory.
 WORKDIR /usr/src/app

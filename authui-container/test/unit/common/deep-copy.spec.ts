@@ -90,7 +90,8 @@ describe('deepExtend()', () => {
       // null function.
     };
     const target = () => {
-      this.prop = 'target';
+      const prop = 'target';
+      return prop;
     };
     const source = {
       a: -0.1, b: 'str', c: false, d: ['a', -0.5, true], e: {},

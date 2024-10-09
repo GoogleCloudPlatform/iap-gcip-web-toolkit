@@ -103,3 +103,9 @@ Update the admin UI to use the IAP page URL as the authDomain.
 gcr.io/gcip-iap/authui@sha256:eca6362af482a523c3d7f889728c8c36e2ebbc394a1a5033666456b2fd2fa8ff
 
 Updated authui-container to use latest IAP SDK.
+
+#v1.0.3
+
+gcr.io/gcip-iap/authui@sha256:ccd62095da439d2685df163eb2ce61ce7d709f7fb88bd98cedf3bcbe5fcfe218
+
+Dependency version bump to fix known vulnerabilities in the older versions

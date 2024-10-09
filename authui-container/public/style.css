@@ -25,10 +25,6 @@ body {
   margin: 50;
 }
 
-.toast {
-  width: 250px;
-}
-
 .main-container {
   max-width: 400px;
   margin: 0 auto;
@@ -114,16 +110,11 @@ h3.line-through:after {
 
 /** Alert styles. */
 .toast-container {
-  position: fixed;
-  right: 20;
-  top: 20;
-  z-index: 10000;
-}
-
-.toast {
   position: absolute;
   right: 0;
   top: 0;
+  z-index: 10000;
+  width: 250px;
 }
 
 .toast-body {
