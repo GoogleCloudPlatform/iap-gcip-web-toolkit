@@ -23,7 +23,7 @@ const main = handlebars.compile(`
   <body>
     <div id="loading-spinner" class="d-flex justify-content-center">
       <div class="spinner-border text-secondary" role="status">
-        <span class="sr-only">Loading...</span>
+        <span class="sr-only"></span>
       </div>
     </div>
     <div class="main-container blend">
@@ -52,7 +52,7 @@ const admin = handlebars.compile(`
   <body>
     <div id="loading-spinner" class="d-flex justify-content-center">
       <div class="spinner-border text-secondary" role="status">
-        <span class="sr-only">Loading...</span>
+        <span class="sr-only"></span>
       </div>
     </div>
     <div class="toast-container">
