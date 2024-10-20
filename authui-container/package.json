@@ -20,7 +20,7 @@
   "license": "Apache-2.0",
   "homepage": "https://github.com/GoogleCloudPlatform/iap-gcip-web-toolkit",
   "dependencies": {
-    "express": "^4.17.1",
+    "express": "^4.21.1",
     "http-proxy-middleware": "^2.0.6",
     "request": "^2.88.2",
     "request-promise": "^4.2.6"
