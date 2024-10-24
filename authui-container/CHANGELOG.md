@@ -109,3 +109,9 @@ Updated authui-container to use latest IAP SDK.
 gcr.io/gcip-iap/authui@sha256:ccd62095da439d2685df163eb2ce61ce7d709f7fb88bd98cedf3bcbe5fcfe218
 
 Dependency version bump to fix known vulnerabilities in the older versions
+
+#v1.0.4
+
+gcr.io/gcip-iap/authui@sha256:1fdafdadd1c723cdcb7287984a90f7b5a156b0ffa292f162891df8cfd03682c0
+
+Fix /versionz URL which  is supposed to display the version of authui-container.

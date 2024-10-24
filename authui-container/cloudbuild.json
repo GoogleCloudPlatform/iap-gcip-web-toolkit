@@ -1,0 +1,16 @@
+{
+  "steps": [
+    {
+      "name": "gcr.io/cloud-builders/docker",
+      "args": [
+        "build",
+        "-t",
+        "<docker image path goes here>",
+        "."
+      ]
+    }
+  ],
+  "images": [
+    "<docker image path goes here>"
+  ]
+}

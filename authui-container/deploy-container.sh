@@ -22,6 +22,8 @@ PROJECT_ID="gcip-iap"
 IMG_NAME="authui"
 # Version placeholder to replace in file.
 VERSION_PLACEHOLDER="__XXX_HOSTED_UI_VERSION_XXX__"
+# GCR path where the image is stored
+GCR_PATH=gcr.io/$PROJECT_ID/$IMG_NAME
 
 printusage() {
   echo "deploy-container.sh <version>"
@@ -91,9 +93,24 @@ if [[ $VERSION != "test" ]]; then
   UI_VERSION=$(jq -r ".version" package.json)
   echo "Made a $VERSION version: $UI_VERSION."
   # Substitute version in file.
+  trap "echo 'Failed to update container version in auth-server.js'; exit 1" ERR
   chmod 755 dist/server/auth-server.js
-  sed -i "" "s/${VERSION_PLACEHOLDER}/${UI_VERSION}/g" dist/server/auth-server.js
+
+  case "$OSTYPE" in
+    darwin*|bsd*)
+      echo "Using BSD sed style"
+      sed_no_backup=( -i '' )
+      ;;
+    *)
+      echo "Using GNU sed style"
+      sed_no_backup=( -i )
+      ;;
+  esac
+
+  sed -i ${sed_no_backup[@]} "s/${VERSION_PLACEHOLDER}/${UI_VERSION}/g" dist/server/auth-server.js
+  trap - ERR
 fi
+
 # Set expected GCP project where the container image lives.
 gcloud config set project $PROJECT_ID
 # Skip for non-production builds.
@@ -104,14 +121,26 @@ if [[ $VERSION != "test" ]]; then
   vim $CHANGELOG_FILE
   change_summary=$(cat ${CHANGELOG_FILE})
 fi
+
+# Update cloudbuild.json file with GCR path
+tmp=$(mktemp)
+# Update path in the steps attribute in cloudbuild.json
+jq --arg gcr_path "$GCR_PATH" '.steps[0].args[2] = $gcr_path' cloudbuild.json > "$tmp" && mv "$tmp" cloudbuild.json
+# Update path in the images attribute in cloudbuild.json
+jq --arg gcr_path "$GCR_PATH" '.images[0] = $gcr_path' cloudbuild.json > "$tmp" && mv "$tmp" cloudbuild.json
+
 # Containerize the authui app. Save output to temporary file.
 OUTPUT_FILE=$(mktemp)
 # Note that the authui container image should be made public.
 # Cloud Console -> Container Registry -> Settings
-gcloud builds submit --tag gcr.io/$PROJECT_ID/$IMG_NAME | tee "${OUTPUT_FILE}"
+gcloud builds submit --config cloudbuild.json ./ | tee "${OUTPUT_FILE}"
 # Find new image hash. This is needed to keep track of the current image for the current build.
 GCR_VERSION=$(grep "latest: digest: sha256:" "${OUTPUT_FILE}" | awk '{ print $3 }')
 echo "Deployed gcr.io/${PROJECT_ID}/${IMG_NAME}@${GCR_VERSION}"
+
+#Generate SBOM explicitly via command as auto generation is not supported when build is triggered via CLI
+gcloud artifacts sbom export --uri=$GCR_PATH
+
 # Clean up.
 rm "${OUTPUT_FILE}"
 # Skip for non-production builds.
