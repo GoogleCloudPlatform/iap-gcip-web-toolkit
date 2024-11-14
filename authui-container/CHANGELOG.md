@@ -115,3 +115,9 @@ Dependency version bump to fix known vulnerabilities in the older versions
 gcr.io/gcip-iap/authui@sha256:1fdafdadd1c723cdcb7287984a90f7b5a156b0ffa292f162891df8cfd03682c0
 
 Fix /versionz URL which  is supposed to display the version of authui-container.
+
+#v1.0.5
+
+gcr.io/gcip-iap/authui@sha256:160419e85324f51889bc9e6f972cdbaf61bec3c2d2accb883da9d579c5b4d7dd
+
+Bump dependencies(http-proxy-middleware, tough-cookie, cookie, css-loader, @types/supertest) to fix vulnerabilities
