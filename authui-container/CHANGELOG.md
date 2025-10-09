@@ -121,3 +121,9 @@ Fix /versionz URL which  is supposed to display the version of authui-container.
 gcr.io/gcip-iap/authui@sha256:160419e85324f51889bc9e6f972cdbaf61bec3c2d2accb883da9d579c5b4d7dd
 
 Bump dependencies(http-proxy-middleware, tough-cookie, cookie, css-loader, @types/supertest) to fix vulnerabilities
+
+#v1.0.6
+
+gcr.io/gcip-iap/authui@sha256:a30838180fa67c34b0bb86f19d68d5ec4c0afbb60cb22fc5b0fa249ddc8d6b8a
+
+Refreshed the container image with the latest OS updates.
