@@ -76,7 +76,7 @@
     "karma-verbose-reporter": "^0.0.6",
     "lodash": "^4.17.19",
     "minimist": "^1.2.5",
-    "mocha": "^10.2.0",
+    "mocha": "^10.8.2",
     "nock": "^13.0.2",
     "npm-run-all": "^4.1.5",
     "object.entries": "^1.1.2",
