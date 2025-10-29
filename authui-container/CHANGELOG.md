@@ -127,3 +127,9 @@ Bump dependencies(http-proxy-middleware, tough-cookie, cookie, css-loader, @type
 gcr.io/gcip-iap/authui@sha256:a30838180fa67c34b0bb86f19d68d5ec4c0afbb60cb22fc5b0fa249ddc8d6b8a
 
 Refreshed the container image with the latest OS updates.
+
+#v1.0.7
+
+gcr.io/gcip-iap/authui@sha256:072f3ef7c2eebb3a32b26ad784d1a8d10dd171838bc4db9e8b7cbb3712b1999e
+
+Update multiple js dependency versions.
