@@ -71,6 +71,22 @@ describe('getBrowserName', () => {
         'FBSS/3; FBCR/vodafoneIE;FBID/phone;FBLC/en_US;FBOP/5]';
     expect(getBrowserName(ua)).to.equal(BrowserName.Other);
   });
+
+  it('should not crash when the arg was undefined', () => {
+    const originalUserAgent = window.navigator.userAgent;
+
+    Object.defineProperty(window.navigator, 'userAgent', {
+      value: 'Obscure user agent 999.99',
+      configurable: true,
+    });
+
+    expect(getBrowserName()).to.equal(BrowserName.Other);
+
+    Object.defineProperty(window.navigator, 'userAgent', {
+      value: originalUserAgent,
+      configurable: true,
+    });
+  })
 });
 
 describe('isMobileBrowser', () => {
