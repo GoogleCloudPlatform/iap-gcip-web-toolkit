@@ -913,6 +913,96 @@ describe('DefaultUiConfigBuilder', () => {
     });
   });
 
+  describe('Japanese character support with isSafeWideString', () => {
+    it('should accept Japanese characters in selectTenantUiTitle', () => {
+      expect(() => {
+        const configWithJapanese: any = deepCopy(expectedUiConfig);
+        configWithJapanese[API_KEY].selectTenantUiTitle = 'テナント選択';
+        DefaultUiConfigBuilder.validateConfig(configWithJapanese);
+      }).not.to.throw();
+    });
+
+    it('should accept mixed Japanese and English in selectTenantUiTitle', () => {
+      expect(() => {
+        const configWithJapanese: any = deepCopy(expectedUiConfig);
+        configWithJapanese[API_KEY].selectTenantUiTitle = 'Portal ポータル';
+        DefaultUiConfigBuilder.validateConfig(configWithJapanese);
+      }).not.to.throw();
+    });
+
+    it('should accept Japanese punctuation in selectTenantUiTitle', () => {
+      expect(() => {
+        const configWithJapanese: any = deepCopy(expectedUiConfig);
+        configWithJapanese[API_KEY].selectTenantUiTitle = 'こんにちは、世界！';
+        DefaultUiConfigBuilder.validateConfig(configWithJapanese);
+      }).not.to.throw();
+    });
+
+    it('should accept Japanese characters in tenant displayName', () => {
+      expect(() => {
+        const configWithJapanese: any = deepCopy(expectedUiConfig);
+        configWithJapanese[API_KEY].tenants._.displayName = '会社名';
+        DefaultUiConfigBuilder.validateConfig(configWithJapanese);
+      }).not.to.throw();
+    });
+
+    it('should accept hiragana, katakana, and kanji in tenant displayName', () => {
+      expect(() => {
+        const configWithJapanese: any = deepCopy(expectedUiConfig);
+        configWithJapanese[API_KEY].tenants._.displayName = 'ひらがな カタカナ 漢字';
+        DefaultUiConfigBuilder.validateConfig(configWithJapanese);
+      }).not.to.throw();
+    });
+
+    it('should accept Japanese characters in provider providerName', () => {
+      expect(() => {
+        const configWithJapanese: any = deepCopy(expectedUiConfig);
+        configWithJapanese[API_KEY].tenants._.signInOptions[2].providerName = 'SAML プロバイダー';
+        DefaultUiConfigBuilder.validateConfig(configWithJapanese);
+      }).not.to.throw();
+    });
+
+    it('should accept full-width characters in providerName', () => {
+      expect(() => {
+        const configWithJapanese: any = deepCopy(expectedUiConfig);
+        configWithJapanese[API_KEY].tenants._.signInOptions[2].providerName = 'ＳＡＭＬプロバイダー１２３';
+        DefaultUiConfigBuilder.validateConfig(configWithJapanese);
+      }).not.to.throw();
+    });
+
+    it('should accept Japanese text with brackets and punctuation in displayName', () => {
+      expect(() => {
+        const configWithJapanese: any = deepCopy(expectedUiConfig);
+        configWithJapanese[API_KEY].tenants._.displayName = '株式会社（テスト）';
+        DefaultUiConfigBuilder.validateConfig(configWithJapanese);
+      }).not.to.throw();
+    });
+
+    it('should reject HTML-like content mixed with Japanese in selectTenantUiTitle', () => {
+      expect(() => {
+        const configWithJapanese: any = deepCopy(expectedUiConfig);
+        configWithJapanese[API_KEY].selectTenantUiTitle = 'こんにちは<script>alert("test")</script>';
+        DefaultUiConfigBuilder.validateConfig(configWithJapanese);
+      }).to.throw('"API_KEY.selectTenantUiTitle" should be a valid string.');
+    });
+
+    it('should reject unsafe characters mixed with Japanese in displayName', () => {
+      expect(() => {
+        const configWithJapanese: any = deepCopy(expectedUiConfig);
+        configWithJapanese[API_KEY].tenants._.displayName = '会社名<div>';
+        DefaultUiConfigBuilder.validateConfig(configWithJapanese);
+      }).to.throw('"API_KEY.tenants._.displayName" should be a valid string.');
+    });
+
+    it('should reject unsafe characters in providerName with Japanese', () => {
+      expect(() => {
+        const configWithJapanese: any = deepCopy(expectedUiConfig);
+        configWithJapanese[API_KEY].tenants._.signInOptions[2].providerName = 'プロバイダー"test"';
+        DefaultUiConfigBuilder.validateConfig(configWithJapanese);
+      }).to.throw('"API_KEY.tenants._.signInOptions[].providerName" should be a valid string.');
+    });
+  });
+
   describe('build()', () => {
     it('should return expected populated UiConfig', () => {
       const configBuilder = new DefaultUiConfigBuilder(PROJECT_ID, '', gcipConfig, tenantUiConfigMap);

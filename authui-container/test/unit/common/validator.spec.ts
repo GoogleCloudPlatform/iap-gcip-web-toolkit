@@ -23,7 +23,7 @@ import {
   isArray, isNonEmptyArray, isBoolean, isNumber, isString, isNonEmptyString,
   isNonNullObject, isObject, isURL, isHttpsURL,
   isLocalhostOrHttpsURL, isEmail, isProviderId, JsonObjectValidator,
-  isEmptyObject, isValidColorString, isSafeString,
+  isEmptyObject, isValidColorString, isSafeString, isSafeWideString,
 } from '../../../common/validator';
 import {deepCopy} from '../../../common/deep-copy';
 
@@ -531,6 +531,88 @@ describe('isSafeString()', () => {
     expect(isSafeString(
       `${alphabet.toLowerCase()} ${alphabet.toUpperCase()} ${numbers} - _ . , + ! ? & ;`)
     ).to.be.true;
+  });
+});
+
+describe('isSafeWideString()', () => {
+  it('should return false given no argument', () => {
+    expect(isSafeWideString(undefined as any)).to.be.false;
+  });
+
+  const nonStrings = [null, NaN, 0, 1, true, false, [], ['a'], {}, { a: 1 }, _.noop];
+  nonStrings.forEach((nonString) => {
+    it('should return false given a non-string argument: ' + JSON.stringify(nonString), () => {
+      expect(isSafeWideString(nonString as any)).to.be.false;
+    });
+  });
+
+  it('should return false given an empty string', () => {
+    expect(isSafeWideString('')).to.be.false;
+  });
+
+  it('should return true given a string with only whitespace', () => {
+    expect(isSafeWideString(' ')).to.be.true;
+  });
+
+  it('should return true given a non-empty ASCII string', () => {
+    expect(isSafeWideString('foo')).to.be.true;
+  });
+
+  it('should return true given hiragana characters', () => {
+    expect(isSafeWideString('ひらがな')).to.be.true;
+    expect(isSafeWideString('こんにちは')).to.be.true;
+  });
+
+  it('should return true given katakana characters', () => {
+    expect(isSafeWideString('カタカナ')).to.be.true;
+    expect(isSafeWideString('コンニチハ')).to.be.true;
+  });
+
+  it('should return true given kanji characters', () => {
+    expect(isSafeWideString('漢字')).to.be.true;
+    expect(isSafeWideString('日本語')).to.be.true;
+  });
+
+  it('should return true given Japanese punctuation', () => {
+    expect(isSafeWideString('、。・「」『』（）')).to.be.true;
+  });
+
+  it('should return true given full-width characters and spaces', () => {
+    expect(isSafeWideString('　')).to.be.true; // full-width space
+    expect(isSafeWideString('１２３')).to.be.true; // full-width numbers
+    expect(isSafeWideString('ＡＢＣ')).to.be.true; // full-width letters
+  });
+
+  it('should return true given mixed Japanese and ASCII text', () => {
+    expect(isSafeWideString('Hello こんにちは')).to.be.true;
+    expect(isSafeWideString('テスト123')).to.be.true;
+    expect(isSafeWideString('日本語 English 混合')).to.be.true;
+  });
+
+  it('should return true given Japanese text with punctuation', () => {
+    expect(isSafeWideString('こんにちは、元気ですか？')).to.be.true;
+    expect(isSafeWideString('「はい」と言いました。')).to.be.true;
+    expect(isSafeWideString('テスト（成功）')).to.be.true;
+  });
+
+  const unsafeStrings = ['<', '<a>', '"', '\'', '\\', '/'];
+  unsafeStrings.forEach((unsafeString) => {
+    it(`should return false given an unsafe string: "${unsafeString}"`, () => {
+      expect(isSafeWideString(unsafeString)).to.be.false;
+    });
+  });
+
+  it('should return true given all allowed ASCII characters', () => {
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    expect(isSafeWideString(
+      `${alphabet.toLowerCase()} ${alphabet.toUpperCase()} ${numbers} - _ . , + ! ? & ;`)
+    ).to.be.true;
+  });
+
+  it('should return false given strings with HTML-like content mixed with Japanese', () => {
+    expect(isSafeWideString('こんにちは<script>')).to.be.false;
+    expect(isSafeWideString('<div>日本語</div>')).to.be.false;
   });
 });
 
