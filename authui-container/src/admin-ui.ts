@@ -57,7 +57,7 @@ const MSG_ALERT_SUCCESS = 'Success';
 // Alert message title on error.
 const MSG_ALERT_ERROR = 'Error';
 // The expected network timeout duration in milliseconds.
-export const TIMEOUT_DURATION = 30000;
+export const TIMEOUT_DURATION = 60000;
 // The OAuth scopes needed to call Google APIs needed for managing config.
 export const OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/devstorage.read_write',
