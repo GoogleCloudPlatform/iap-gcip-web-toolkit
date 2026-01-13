@@ -133,3 +133,9 @@ Refreshed the container image with the latest OS updates.
 gcr.io/gcip-iap/authui@sha256:072f3ef7c2eebb3a32b26ad784d1a8d10dd171838bc4db9e8b7cbb3712b1999e
 
 Update multiple js dependency versions.
+
+#v1.0.8
+
+gcr.io/gcip-iap/authui@sha256:3c4353484d51d255ab8ed05d01a9415ccf743389c0a38ddb008ae6cef6dd082a
+
+Update Admin page timeout to 60 seconds
