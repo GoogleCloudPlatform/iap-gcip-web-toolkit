@@ -17,6 +17,7 @@ import bodyParser = require('body-parser');
 import * as templates from  './templates';
 import path = require('path');
 import { Server } from 'http';
+import { Agent } from 'https';
 import { MetadataServer } from './api/metadata-server';
 import { CloudStorageHandler } from './api/cloud-storage-handler';
 import { ErrorResponse, ERROR_MAP } from '../server/utils/error';
@@ -146,6 +147,7 @@ export class AuthServer {
       log(`Proxy auth requests to target ${authDomainProxyTarget}`);
       this.app.use('/__/auth/', createProxyMiddleware({
         target: authDomainProxyTarget,
+        agent: new Agent({family: 4, keepAlive: false}),
         // set to true to pass SSL cert checks.
         // This causes the SNI/Host Header of the proxy request to be set to the targetURL
         // '<project>.firebaseapp.com'.
