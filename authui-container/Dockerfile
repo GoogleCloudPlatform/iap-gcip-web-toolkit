@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Use the official lightweight Node.js 22 image.
+# Use the official lightweight Node.js 24 image.
 # https://hub.docker.com/_/node
-FROM node:22-slim
+FROM node:24-slim
 
 # Update OS image
 RUN apt update && apt -y upgrade
@@ -27,6 +27,9 @@ WORKDIR /usr/src/app
 # A wildcard is used to ensure both package.json AND package-lock.json are copied.
 # Copying this separately prevents re-running npm install on every code change.
 COPY package*.json ./
+
+# Update npm to ensure bundled dependencies are patched
+RUN npm install -g npm@latest
 
 # Install production dependencies.
 RUN npm install --only=production
