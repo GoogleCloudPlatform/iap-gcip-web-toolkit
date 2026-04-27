@@ -139,3 +139,9 @@ Update multiple js dependency versions.
 gcr.io/gcip-iap/authui@sha256:3c4353484d51d255ab8ed05d01a9415ccf743389c0a38ddb008ae6cef6dd082a
 
 Update Admin page timeout to 60 seconds
+
+#v1.0.10
+
+gcr.io/gcip-iap/authui@
+
+Update few javascript dependencies
