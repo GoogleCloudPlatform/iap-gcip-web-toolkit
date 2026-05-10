@@ -25,7 +25,7 @@
     "typescript": "3.9.7",
     "url-polyfill": "^1.1.10",
     "webpack": "4.42.0",
-    "webpack-dev-server": "^3.11.0",
+    "webpack-dev-server": "^5.1.0",
     "whatwg-fetch": "^3.2.0"
   },
   "scripts": {
