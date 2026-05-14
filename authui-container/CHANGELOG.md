@@ -145,3 +145,9 @@ Update Admin page timeout to 60 seconds
 gcr.io/gcip-iap/authui@
 
 Update few javascript dependencies
+
+#v1.0.11
+
+gcr.io/gcip-iap/authui@
+
+Bump firebase, protobufjs and few other dependencies
