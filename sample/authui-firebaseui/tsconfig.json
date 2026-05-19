@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "es5",
+    "ignoreDeprecations": "6.0",
     "noImplicitAny": false,
     "sourceMap": true,
     "skipLibCheck": true,
