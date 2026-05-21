@@ -23,8 +23,8 @@ import { Alert, AlertParameters } from './alert';
 // Import Firebase dependencies.
 // tslint:disable-next-line:no-submodule-imports
 import {initializeApp, getApp} from 'firebase/app';
-import { GoogleAuthProvider, FacebookAuthProvider, SAMLAuthProvider, getAuth, UserCredential,
-        Auth, signInWithRedirect, fetchSignInMethodsForEmail, signInWithEmailAndPassword,
+import { GoogleAuthProvider, FacebookAuthProvider, SAMLAuthProvider, getAuth,
+        signInWithRedirect, fetchSignInMethodsForEmail, signInWithEmailAndPassword,
         // tslint:disable-next-line:no-submodule-imports
         createUserWithEmailAndPassword } from 'firebase/auth';
 import 'jquery/dist/jquery.min.js';
@@ -110,7 +110,7 @@ class App extends React.Component<{}, AppState> implements ciap.AuthenticationHa
     );
   }
 
-  public getAuth(apiKey: string, tenantId: string | null): Auth {
+  public getAuth(apiKey: string, tenantId: string | null): any {
     let auth = null;
     if (apiKey !== this.config.apiKey) {
       throw new Error('Invalid project!');
@@ -158,7 +158,7 @@ class App extends React.Component<{}, AppState> implements ciap.AuthenticationHa
     });
   }
 
-  public startSignIn(auth: Auth): Promise<UserCredential> {
+  public startSignIn(auth: any): Promise<any> {
     return new Promise((resolve, reject) => {
       this.signIn(
           !!auth.tenantId,
