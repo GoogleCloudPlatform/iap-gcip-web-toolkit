@@ -49,7 +49,7 @@ const VALIDATION_TREE: validators.ValidationTree = {
       },
       selectTenantUiTitle: {
         validator: (value: any, key: string) => {
-          if (!validators.isSafeString(value)) {
+          if (!validators.isSafeWideString(value)) {
             throw new Error(`"${key}" should be a valid string.`);
           }
         },
@@ -95,7 +95,7 @@ const VALIDATION_TREE: validators.ValidationTree = {
               },
               displayName: {
                 validator: (value: any, key: string) => {
-                  if (!validators.isSafeString(value)) {
+                  if (!validators.isSafeWideString(value)) {
                     throw new Error(`"${key}" should be a valid string.`);
                   }
                 },
@@ -191,7 +191,7 @@ const VALIDATION_TREE: validators.ValidationTree = {
                   },
                   providerName: {
                     validator: (value: any, key: string) => {
-                      if (!validators.isSafeString(value)) {
+                      if (!validators.isSafeWideString(value)) {
                         throw new Error(`"${key}" should be a valid string.`);
                       }
                     },
@@ -356,7 +356,7 @@ const VALIDATION_TREE: validators.ValidationTree = {
 /** Utility for building the default UI config object. */
 export class DefaultUiConfigBuilder {
   private static uiConfigValidator: validators.JsonObjectValidator =
-      new validators.JsonObjectValidator(VALIDATION_TREE, REQUIRED_FIELDS);
+    new validators.JsonObjectValidator(VALIDATION_TREE, REQUIRED_FIELDS);
 
   /**
    * Validates the provided UiConfig object.
@@ -373,9 +373,9 @@ export class DefaultUiConfigBuilder {
    * @param tenantUiConfigMap The map of tenant IDs to TenantUiConfig object.
    */
   constructor(
-      private readonly projectId: string,
-      private readonly hostName: string,
-      private readonly gcipConfig: GcipConfig,
+    private readonly projectId: string,
+    private readonly hostName: string,
+    private readonly gcipConfig: GcipConfig,
       private readonly tenantUiConfigMap: {[key: string]: TenantUiConfig}) {}
 
   /**
@@ -400,12 +400,12 @@ export class DefaultUiConfigBuilder {
       if (tenantId.charAt(0) === '_') {
         key = '_';
         displayName = (optionsMap[key] && optionsMap[key].displayName) ||
-            'My Company';
+          'My Company';
         fullLabel = optionsMap[key] && optionsMap[key].fullLabel;
       } else {
         key = tenantId;
         displayName = (optionsMap[key] && optionsMap[key].displayName) ||
-            `Company ${String.fromCharCode(charCode)}`;
+          `Company ${String.fromCharCode(charCode)}`;
         fullLabel = optionsMap[key] && optionsMap[key].fullLabel;
         charCode++;
       }
