@@ -289,6 +289,7 @@ describe('AuthServer', () => {
       js: /javascript/,
       css: /css/,
       html: /html/,
+      txt: /plain/,
     }
     // npm run bundle needs to be run to generate the static files.
     fs.readdirSync('public/').forEach((file) => {
