@@ -157,3 +157,9 @@ Bump firebase, protobufjs and few other dependencies
 gcr.io/gcip-iap/authui@
 
 Update gcip-iap and few other dependency versions
+
+#v1.0.13
+
+gcr.io/gcip-iap/authui@sha256:f7cf5e51cc662a729b1fa3ece5a29374e45c3203e8ef1c342ae504477022097a
+
+Update dependency (undici, protobufjs, form-data, js-yaml, ws)
