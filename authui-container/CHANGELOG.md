@@ -163,3 +163,9 @@ Update gcip-iap and few other dependency versions
 gcr.io/gcip-iap/authui@sha256:f7cf5e51cc662a729b1fa3ece5a29374e45c3203e8ef1c342ae504477022097a
 
 Update dependency (undici, protobufjs, form-data, js-yaml, ws)
+
+#v1.0.14
+
+gcr.io/gcip-iap/authui@
+
+Replaced request library with native http/https libraries

@@ -12,7 +12,8 @@
  * limitations under the License.
  */
 
-import requestPromise = require('request-promise');
+import * as http from 'http';
+import * as https from 'https';
 import { deepCopy, deepExtend } from '../../common/deep-copy';
 import { isNonNullObject } from '../../common/validator';
 import { addReadonlyGetter, formatString } from '../../common/index';
@@ -62,6 +63,89 @@ interface RequestPromiseOptions extends BaseRequestOptions, RequestOptions {
 export interface HttpResponse {
   statusCode: number;
   body: any;
+}
+
+/** Helper function to send requests using native http/https modules. */
+function makeRequest(options: RequestPromiseOptions): Promise<HttpResponse> {
+  return new Promise((resolve, reject) => {
+    const parsedUrl = new URL(options.url);
+    const isHttps = parsedUrl.protocol === 'https:';
+    const lib = isHttps ? https : http;
+
+    const headers: {[key: string]: any} = { ...options.headers };
+
+    let bodyData: any = null;
+    if (options.body) {
+      if (options.json) {
+        bodyData = JSON.stringify(options.body);
+        const hasContentType = Object.keys(headers).some(
+          (key) => key.toLowerCase() === 'content-type'
+        );
+        if (!hasContentType) {
+          headers['content-type'] = 'application/json';
+        }
+      } else {
+        bodyData = options.body;
+      }
+      Object.keys(headers).forEach((key) => {
+        if (key.toLowerCase() === 'content-length') {
+          delete headers[key];
+        }
+      });
+      headers['content-length'] = Buffer.byteLength(bodyData);
+    }
+
+    const requestOptions: http.RequestOptions = {
+      method: options.method,
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port || (isHttps ? 443 : 80),
+      path: parsedUrl.pathname + parsedUrl.search,
+      headers,
+      timeout: options.timeout,
+    };
+
+    const req = lib.request(requestOptions, (res) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk) => {
+        chunks.push(chunk);
+      });
+      res.on('error', (err) => {
+        reject({ error: err });
+      });
+      res.on('end', () => {
+        const data = Buffer.concat(chunks).toString('utf8');
+        let parsedBody: any;
+        if (data) {
+          parsedBody = data;
+          if (options.json) {
+            try {
+              parsedBody = JSON.parse(data);
+            } catch (e) {
+              // Keep as string if parsing fails
+            }
+          }
+        }
+        resolve({
+          statusCode: res.statusCode || 0,
+          body: parsedBody,
+        });
+      });
+    });
+
+    req.on('error', (err) => {
+      reject({ error: err });
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      reject({ error: new Error('ESOCKETTIMEDOUT') });
+    });
+
+    if (bodyData) {
+      req.write(bodyData);
+    }
+    req.end();
+  });
 }
 
 /** Defines a utility for sending server side HTTP requests. */
@@ -132,10 +216,11 @@ export class HttpServerRequestHandler {
     if (requestPromiseOptions.body) {
       this.log('Request body:', requestPromiseOptions.body)
     }
-    return Promise.resolve(requestPromise(requestPromiseOptions))
+    return makeRequest(requestPromiseOptions)
       .catch((reason) => {
-        this.log('Error encountered:', reason.error);
-        throw reason.error;
+        const error = (reason && reason.error) || reason;
+        this.log('Error encountered:', error);
+        throw error;
       })
       .then((httpResponse) => {
         // To be safe, we will not log successful responses as they may contain
