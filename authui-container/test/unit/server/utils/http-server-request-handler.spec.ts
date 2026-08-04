@@ -249,6 +249,44 @@ describe('HttpServerRequest', () => {
         });
     });
 
+    it('will respect case-insensitive Content-Type and Content-Length headers for a POST request', () => {
+      const data = {
+        a: 1,
+        b: 2,
+        c: false,
+      };
+      const postHandler = new HttpServerRequestHandler({
+        method: 'POST',
+        url: 'http://www.example.com:5000/path/to/api',
+        headers: {
+          'Metadata-Flavor': 'Google',
+        },
+        timeout: 10000,
+      });
+      const scope = nock('http://www.example.com:5000', {
+        reqheaders: {
+          'content-type': 'application/json; charset=utf-8',
+          'content-length': (value) => Number(value) === 23,
+          'metadata-flavor': 'Google',
+        },
+      }).post('/path/to/api', data)
+        .reply(200, expectedResponse);
+      mockedRequests.push(scope);
+      const requestParams = {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Content-Length': '999',
+        },
+        body: data,
+      };
+
+      return postHandler.send(requestParams)
+        .then((response) => {
+          expect(response.statusCode).to.be.equal(200);
+          expect(response.body).to.deep.equal(expectedResponse);
+        });
+    });
+
     it('will log expected data for a POST request with parameters', () => {
       const data = {
         a: 1,
