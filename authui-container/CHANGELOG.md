@@ -169,3 +169,15 @@ Update dependency (undici, protobufjs, form-data, js-yaml, ws)
 gcr.io/gcip-iap/authui@
 
 Replaced request library with native http/https libraries
+
+#v1.0.15
+
+gcr.io/gcip-iap/authui@
+
+Update dependencies to fix vulnerabilities (vm2, postcss, ip-address, undici, brace-expansion, nanoid)
+
+#v1.0.16
+
+gcr.io/gcip-iap/authui@sha256:a862b5989e953e5a03c852973125267691ed643ee4a945e6073a5035eda270ea
+
+Update dependencies for vulnerability remediation (protobufjs, undici, brace-expansion, shell-quote, fast-uri, ip-address, nanoid, socket.io-parser, vm2, postcss)
