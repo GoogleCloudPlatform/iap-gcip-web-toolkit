@@ -181,3 +181,9 @@ Update dependencies to fix vulnerabilities (vm2, postcss, ip-address, undici, br
 gcr.io/gcip-iap/authui@sha256:a862b5989e953e5a03c852973125267691ed643ee4a945e6073a5035eda270ea
 
 Update dependencies for vulnerability remediation (protobufjs, undici, brace-expansion, shell-quote, fast-uri, ip-address, nanoid, socket.io-parser, vm2, postcss)
+
+#v1.0.17
+
+gcr.io/gcip-iap/authui@sha256:0b6d268020ca06895638fc84b4fe877307cbe99d423ff8f262d96a6b00be2f79
+
+Update dependencies for vulnerability remediation (tar)
