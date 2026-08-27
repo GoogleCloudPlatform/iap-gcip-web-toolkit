@@ -28,14 +28,13 @@ WORKDIR /usr/src/app
 # Copying this separately prevents re-running npm install on every code change.
 COPY package*.json ./
 
-# Update npm to ensure bundled dependencies are patched
-RUN npm install -g npm@latest
-
-# Install production dependencies.
-RUN npm install --only=production
+# Install production dependencies and remove global npm CLI to eliminate build tooling CVEs
+RUN npm install --only=production && \
+    npm cache clean --force && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Copy local code to the container image.
 COPY . ./
 
-# Run the web service on container startup.
-CMD [ "sh","-c","npm start" ]
+# Run the web service on container startup directly via node.
+CMD [ "node", "dist/server/app.js" ]

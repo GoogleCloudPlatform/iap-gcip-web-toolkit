@@ -187,3 +187,9 @@ Update dependencies for vulnerability remediation (protobufjs, undici, brace-exp
 gcr.io/gcip-iap/authui@sha256:0b6d268020ca06895638fc84b4fe877307cbe99d423ff8f262d96a6b00be2f79
 
 Rebuild container image with updated global npm toolchain for vulnerability remediation (tar / CVE-2026-73566)
+
+#v1.0.18
+
+gcr.io/gcip-iap/authui@sha256:c352298cefc5bb4c42f6804e2db378dc79dde9d5d666c450e2018998a309ebce
+
+Remove global npm tooling from runtime container for vulnerability remediation (tar / CVE-2026-73566)
