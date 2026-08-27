@@ -16,9 +16,9 @@
 # https://hub.docker.com/_/node
 FROM node:24-slim
 
-# Update OS image
-RUN apt update && apt -y upgrade
-RUN apt -y autoremove
+# Update OS image and purge unused perl-base to eliminate upstream Perl CVEs
+RUN apt update && apt -y upgrade && apt -y autoremove && rm -rf /var/lib/apt/lists/* && \
+    dpkg --purge --force-depends --force-remove-essential perl-base
 
 # Create and change to the app directory.
 WORKDIR /usr/src/app

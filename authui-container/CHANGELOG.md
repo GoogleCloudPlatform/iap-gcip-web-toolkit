@@ -199,3 +199,9 @@ Remove global npm tooling from runtime container for vulnerability remediation (
 gcr.io/gcip-iap/authui@sha256:264a006d3239900ac00cc59270b2a42131b3a3ebc81da2849c28f4011454b545
 
 Update nanoid to 3.3.18 and exclude host node_modules from container build for vulnerability remediation (CVE-2026-67213)
+
+#v1.0.20
+
+gcr.io/gcip-iap/authui@sha256:267f77166a2ee546eff89f816fc16f846d65dc55cadee82735c9be01301d2e89
+
+Remove unused perl-base from OS image for vulnerability remediation
