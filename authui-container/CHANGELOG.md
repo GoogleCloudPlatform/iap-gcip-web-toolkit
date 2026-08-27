@@ -193,3 +193,9 @@ Rebuild container image with updated global npm toolchain for vulnerability reme
 gcr.io/gcip-iap/authui@sha256:c352298cefc5bb4c42f6804e2db378dc79dde9d5d666c450e2018998a309ebce
 
 Remove global npm tooling from runtime container for vulnerability remediation (tar / CVE-2026-73566)
+
+#v1.0.19
+
+gcr.io/gcip-iap/authui@sha256:264a006d3239900ac00cc59270b2a42131b3a3ebc81da2849c28f4011454b545
+
+Update nanoid to 3.3.18 and exclude host node_modules from container build for vulnerability remediation (CVE-2026-67213)
