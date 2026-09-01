@@ -8,7 +8,7 @@
     "@angular/animations": "^10.0.4",
     "@angular/common": "^10.0.4",
     "@angular/compiler": "^10.0.4",
-    "@angular/core": "^10.0.4",
+    "@angular/core": "^19.2.18",
     "@angular/forms": "^10.0.4",
     "@angular/platform-browser": "^10.0.4",
     "@angular/platform-browser-dynamic": "^10.0.4",
