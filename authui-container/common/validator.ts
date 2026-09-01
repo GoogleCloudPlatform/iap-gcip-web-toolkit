@@ -147,8 +147,8 @@ export function isURL(urlStr: any): boolean {
     const pathnameRe = /^(\/+[\w\-\.\~\!\$\'\(\)\*\+\,\;\=\:\@\%]+)*\/*$/;
     // Validate pathname.
     if (pathname &&
-        !/^\/+$/.test(pathname) &&
-        !pathnameRe.test(pathname)) {
+      !/^\/+$/.test(pathname) &&
+      !pathnameRe.test(pathname)) {
       return false;
     }
     // Allow any query string and hash as long as no invalid character is used.
@@ -180,7 +180,7 @@ export function isLocalhostOrHttpsURL(urlStr: any): boolean {
   if (isURL(urlStr)) {
     const uri = new URL(urlStr);
     return (uri.protocol === 'http:' && uri.hostname === 'localhost') ||
-        uri.protocol === 'https:';
+      uri.protocol === 'https:';
   }
   return false;
 }
@@ -253,6 +253,21 @@ export function isSafeString(value: any): boolean {
   }
   // This check only allows limited set of characters and spaces.
   const re = /^[a-zA-Z0-9\-\_\.\s\,\+\?\!\&\;]+$/;
+  return isNonEmptyString(value) && re.test(value);
+}
+
+/**
+ * Validates that the input is a safe string including Japanese characters. This minimizes the risk of XSS.
+ *
+ * @param value The string to validate.
+ * @return Whether the string is safe or not.
+ */
+export function isSafeWideString(value: any): boolean {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  // This check allows alphanumeric characters, spaces, basic punctuation, and Japanese characters (hiragana, katakana, kanji, punctuation).
+  const re = /^[a-zA-Z0-9\-\_\.\s\,\+\?\!\&\;\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u3400-\u4DBF\u3000-\u303F\uFF00-\uFFEF]+$/;
   return isNonEmptyString(value) && re.test(value);
 }
 
