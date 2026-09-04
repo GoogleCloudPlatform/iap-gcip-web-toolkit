@@ -205,3 +205,10 @@ Update nanoid to 3.3.18 and exclude host node_modules from container build for v
 gcr.io/gcip-iap/authui@sha256:267f77166a2ee546eff89f816fc16f846d65dc55cadee82735c9be01301d2e89
 
 Remove unused perl-base from OS image for vulnerability remediation
+
+#v1.0.21
+
+gcr.io/gcip-iap/authui@sha256:72b1cb8bd84065dd79661bfefe84c1c50a19206848e5c31d404c5c211516ef07
+
+Update qs to 6.16.0 for vulnerability remediation (CVE-2026-82417, CVE-2026-82562)
+
