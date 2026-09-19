@@ -58,6 +58,11 @@ export interface SignInOption {
   providerName?: string;
 }
 
+export interface SamlSignInOption extends SignInOption {
+  idpUrl: string,
+  issuerId: string;
+}
+
 export interface TenantUiConfig {
   displayName?: string;
   signInOptions: SignInOption[];
@@ -334,13 +339,15 @@ export class GcipHandler {
         const config: ListInboundSamlConfigsResponse = typeof httpResponse.body === 'object' ?
             httpResponse.body : JSON.parse(httpResponse.body);
         const delimiter = 'inboundSamlConfigs/';
-        const signInOptions: SignInOption[] = [];
+        const signInOptions: SamlSignInOption[] = [];
         (config.inboundSamlConfigs || []).forEach((inboundSamlConfig: any) => {
           if (inboundSamlConfig && inboundSamlConfig.enabled) {
             const name = inboundSamlConfig.name;
             signInOptions.push({
               provider: name.substring(name.indexOf(delimiter) + delimiter.length),
               providerName: inboundSamlConfig.displayName,
+              idpUrl: inboundSamlConfig.idpConfig.ssoUrl,
+              issuerId: inboundSamlConfig.spConfig.spEntityId,
             });
           }
         });
