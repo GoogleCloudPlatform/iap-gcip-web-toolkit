@@ -218,3 +218,9 @@ Update qs to 6.16.0 for vulnerability remediation (CVE-2026-82417, CVE-2026-8256
 gcr.io/gcip-iap/authui@sha256:dabfddfac985f66b703599c70bef0933dc535f5217bb5bdfb9ee24e5ba0e2ade
 
 Update OS dependencies (pcre2 10.42-1+deb12u1 for CVE-2026-86145)
+
+#v1.0.23
+
+gcr.io/gcip-iap/authui@sha256:1807aa3f8c6ed85d8c39b6ed960560443563a3d418b5ef1766aace0b5545c124
+
+No-op update to verify new release pipeline
