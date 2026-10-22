@@ -224,3 +224,9 @@ Update OS dependencies (pcre2 10.42-1+deb12u1 for CVE-2026-86145)
 gcr.io/gcip-iap/authui@sha256:1807aa3f8c6ed85d8c39b6ed960560443563a3d418b5ef1766aace0b5545c124
 
 No-op update to verify new release pipeline
+
+#v1.0.24
+
+gcr.io/gcip-iap/authui@sha256:ab10baac2f2e1e2254374f49c92e66dca6c3911f6ed57754e923e7b542595f46
+
+Update dependencies for vulnerability remediation (follow-redirects, proxy-addr, handlebars)
