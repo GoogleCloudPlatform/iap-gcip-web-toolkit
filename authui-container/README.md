@@ -686,3 +686,10 @@ resources protected by IAP external identities in the
 In addition, the domain `${SERVICE_NAME}-${RANDOM_CHARS}-uc.a.run.app`
 should also be whitelisted with Identity Platform in the settings &gt;
 security section and saved.
+
+### Image Tagging Lifecycle
+
+The pre-built Google hosted container images are tagged with the following convention:
+- `latest` and `public-latest-image`: These floating tags will always point to the newest, stable image.
+- `public-image-<version>`: This tag is fixed to a specific, immutable release version (e.g., `public-image-1.2.3`).
+- `deprecated-public-image-<version>`: When a new version is released, the previous 'latest' image is superseded and retagged as deprecated (e.g., `deprecated-public-image-1.2.2`).
