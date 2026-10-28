@@ -1,6 +1,6 @@
 {
   "name": "knative-serving-iap-gcip-authui",
-  "version": "1.0.24",
+  "version": "1.0.25",
   "description": "Containerized Authentication UI for IAP external identities",
   "main": "dist/app.js",
   "scripts": {
@@ -20,7 +20,7 @@
   "license": "Apache-2.0",
   "homepage": "https://github.com/GoogleCloudPlatform/iap-gcip-web-toolkit",
   "dependencies": {
-    "body-parser": "^1.19.0",
+    "body-parser": "^1.20.9",
     "express": "^4.17.1",
     "handlebars": "^4.7.10",
     "http-proxy-middleware": "^2.0.7"
