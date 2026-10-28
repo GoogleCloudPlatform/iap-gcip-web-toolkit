@@ -230,3 +230,9 @@ No-op update to verify new release pipeline
 gcr.io/gcip-iap/authui@sha256:ab10baac2f2e1e2254374f49c92e66dca6c3911f6ed57754e923e7b542595f46
 
 Update dependencies for vulnerability remediation (follow-redirects, proxy-addr, handlebars)
+
+#v1.0.25
+
+gcr.io/gcip-iap/authui@sha256:fa7aca1371774383298e4f8df48cbe7543dae604d5a938fceead4fc70fb6f69a
+
+Update body-parser to 1.20.9 for vulnerability remediation (CVE-2026-111181)
