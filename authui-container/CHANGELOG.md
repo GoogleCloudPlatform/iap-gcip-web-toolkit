@@ -236,3 +236,9 @@ Update dependencies for vulnerability remediation (follow-redirects, proxy-addr,
 gcr.io/gcip-iap/authui@sha256:fa7aca1371774383298e4f8df48cbe7543dae604d5a938fceead4fc70fb6f69a
 
 Update body-parser to 1.20.9 for vulnerability remediation (CVE-2026-111181)
+
+#v1.0.26
+
+gcr.io/gcip-iap/authui@sha256:0f52f24f5072cdc7f100fbb5b4bad358bfdd2f1cedd2c0a078162753711acf4c
+
+Update qs to 6.16.1 for vulnerability remediation (CVE-2026-110816)
