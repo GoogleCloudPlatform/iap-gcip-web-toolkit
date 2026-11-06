@@ -242,3 +242,9 @@ Update body-parser to 1.20.9 for vulnerability remediation (CVE-2026-111181)
 gcr.io/gcip-iap/authui@sha256:0f52f24f5072cdc7f100fbb5b4bad358bfdd2f1cedd2c0a078162753711acf4c
 
 Update qs to 6.16.1 for vulnerability remediation (CVE-2026-110816)
+
+#v1.0.27
+
+gcr.io/gcip-iap/authui@sha256:2e78543c7524f875b858848340cca1c2b237cdee3da514f7faae9b3e94e76cfb
+
+Update follow-redirects to 1.16.2 for vulnerability remediation (CVE-2026-116689)
