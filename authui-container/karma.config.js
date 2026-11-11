@@ -56,7 +56,12 @@ module.exports = function(config) {
          })],
       },
     },
-    reporters: ['verbose', 'progress', 'coverage', 'karma-typescript'],
+    reporters: ['verbose', 'progress', 'coverage', 'karma-typescript', 'junit'],
+    junitReporter: {
+      outputDir: 'test-results',
+      outputFile: 'karma.xml',
+      useBrowserName: false
+    },
     client: {
       clearContext: false
     },
@@ -68,7 +73,14 @@ module.exports = function(config) {
     port: 9876,
     colors: true,
     logLevel: config.LOG_INFO,
-    browsers: ['ChromeHeadless'],
+    browsers: ['ChromeHeadlessNoSandbox'],
+
+    customLaunchers: {
+      ChromeHeadlessNoSandbox: {
+        base: 'ChromeHeadless',
+        flags: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
+      }
+    },
     autoWatch: false,
     concurrency: Infinity,
     coverageReporter: {
