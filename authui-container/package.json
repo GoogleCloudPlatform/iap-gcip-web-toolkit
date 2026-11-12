@@ -1,6 +1,6 @@
 {
   "name": "knative-serving-iap-gcip-authui",
-  "version": "1.0.27",
+  "version": "1.0.28",
   "description": "Containerized Authentication UI for IAP external identities",
   "main": "dist/app.js",
   "scripts": {
@@ -11,7 +11,7 @@
     "lint:server": "tslint --format stylish -p tsconfig.server.json server/*.ts server/**/*.ts",
     "lint:client": "tslint --format stylish -p tsconfig.webpack.json src/*.ts src/**/*.ts",
     "lint:unit": "tslint -c tslint-test.json --format stylish test/unit/*.ts test/unit/**/*.ts test/unit/**/**/*.ts",
-    "test:server": "mocha test/unit/common/*.spec.ts test/unit/server/*.spec.ts test/unit/server/*/*.spec.ts --timeout 20000 --require ts-node/register",
+    "test:server": "mocha --no-experimental-strip-types test/unit/common/*.spec.ts test/unit/server/*.spec.ts test/unit/server/*/*.spec.ts --timeout 20000 --require ts-node/register --reporter mocha-junit-reporter --reporter-options mochaFile=./test-results/mocha.xml,toConsole=true",
     "test:client": "karma start karma.config.js",
     "test:unit": "npm run test:server && npm run test:client",
     "test": "run-s lint test:unit"
@@ -65,6 +65,7 @@
     "karma-chrome-launcher": "^3.1.0",
     "karma-cli": "^2.0.0",
     "karma-coverage": "^2.0.2",
+    "karma-junit-reporter": "^2.0.1",
     "karma-mocha": "^2.0.1",
     "karma-sinon": "^1.0.5",
     "karma-typescript": "^5.0.3",
@@ -74,6 +75,7 @@
     "lodash": "^4.17.19",
     "minimist": "^1.2.5",
     "mocha": "^10.2.0",
+    "mocha-junit-reporter": "^2.2.1",
     "nock": "^13.5.6",
     "npm-run-all": "^4.1.5",
     "object.entries": "^1.1.2",
