@@ -11,7 +11,8 @@
     "lint:server": "tslint --format stylish -p tsconfig.server.json server/*.ts server/**/*.ts",
     "lint:client": "tslint --format stylish -p tsconfig.webpack.json src/*.ts src/**/*.ts",
     "lint:unit": "tslint -c tslint-test.json --format stylish test/unit/*.ts test/unit/**/*.ts test/unit/**/**/*.ts",
-    "test:server": "mocha --no-experimental-strip-types test/unit/common/*.spec.ts test/unit/server/*.spec.ts test/unit/server/*/*.spec.ts --timeout 20000 --require ts-node/register --reporter mocha-junit-reporter --reporter-options mochaFile=./test-results/mocha.xml,toConsole=true",
+    "test:server": "mocha --no-experimental-strip-types test/unit/common/*.spec.ts test/unit/server/*.spec.ts test/unit/server/*/*.spec.ts --timeout 20000 --require ts-node/register",
+    "test:server:ci": "npm run test:server -- --reporter mocha-junit-reporter --reporter-options mochaFile=./test-results/mocha.xml,toConsole=true",
     "test:client": "karma start karma.config.js",
     "test:unit": "npm run test:server && npm run test:client",
     "test": "run-s lint test:unit"
@@ -99,7 +100,7 @@
     "whatwg-fetch": "^3.2.0"
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=22.6.0"
   },
   "overrides": {
     "tough-cookie": "4.1.3",
