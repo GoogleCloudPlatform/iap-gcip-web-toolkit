@@ -19,7 +19,7 @@ import * as chai from 'chai';
 import * as sinonChai from 'sinon-chai';
 import * as chaiAsPromised from 'chai-as-promised';
 import * as proxy from 'http-proxy-middleware';
-import * as request from 'supertest';
+import request = require('supertest');
 import * as templates from  '../../../server/templates';
 import * as fs from 'fs';
 import * as sinon from 'sinon';
@@ -28,7 +28,7 @@ import {
   AuthServer, AUTH_SERVER_SCOPES, HOSTED_UI_VERSION, MAX_BUCKET_STRING_LENGTH,
   ALLOWED_LAST_CHAR,
 } from '../../../server/auth-server';
-import * as express from 'express';
+import express = require('express');
 import * as storage from '../../../server/api/cloud-storage-handler';
 import * as metadata from '../../../server/api/metadata-server';
 import { ERROR_MAP, ErrorResponse } from '../../../server/utils/error';
