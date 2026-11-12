@@ -248,9 +248,3 @@ Update qs to 6.16.1 for vulnerability remediation (CVE-2026-110816)
 gcr.io/gcip-iap/authui@sha256:2e78543c7524f875b858848340cca1c2b237cdee3da514f7faae9b3e94e76cfb
 
 Update follow-redirects to 1.16.2 for vulnerability remediation (CVE-2026-116689)
-
-#v1.0.28
-
-gcr.io/gcip-iap/authui@sha256:be585fb5943c4fa40b8f5361971a8a205e69a8a73ec4bf21fa17dc996316cf73
-
-Update zlib to 1.3.dfsg+really1.3.1-1+deb13u1 in distroless base image for vulnerability remediation (CVE-2026-85091, CVE-2026-76844, CVE-2026-27171)
