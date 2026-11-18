@@ -37,7 +37,8 @@ export enum BrowserName {
  * @return The browser name, eg Safari, Firefox, etc.
  */
 export function getBrowserName(userAgent?: string): string {
-  const ua = (userAgent || getUserAgentString()).toLowerCase();
+  const uaString = userAgent || getUserAgentString();
+  const ua = uaString.toLowerCase();
   if (ua.indexOf('opera/') !== -1 ||
       ua.indexOf('opr/') !== -1 ||
       ua.indexOf('opios/') !== -1) {
@@ -75,7 +76,7 @@ export function getBrowserName(userAgent?: string): string {
   } else {
     // Most modern browsers have name/version at end of user agent string.
     const re = new RegExp('([a-zA-Z\\d\\.]+)\/[a-zA-Z\\d\\.]*$');
-    const matches = userAgent.match(re);
+    const matches = uaString.match(re);
     if (matches && matches.length === 2) {
       return matches[1];
     }
