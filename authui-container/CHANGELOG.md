@@ -254,3 +254,9 @@ Update follow-redirects to 1.16.2 for vulnerability remediation (CVE-2026-116689
 gcr.io/gcip-iap/authui@sha256:be585fb5943c4fa40b8f5361971a8a205e69a8a73ec4bf21fa17dc996316cf73
 
 Update zlib to 1.3.dfsg+really1.3.1-1+deb13u1 in distroless base image for vulnerability remediation (CVE-2026-85091, CVE-2026-76844, CVE-2026-27171)
+
+#v1.0.29
+
+gcr.io/gcip-iap/authui@sha256:c58da12112303f26463de27f988d37654ee15b3f0cc00146c9586f5250790b52
+
+Validate Host and X-Forwarded-Host headers against trusted IAP and Identity Platform domains and decouple cached default config to prevent authDomain cache poisoning.
