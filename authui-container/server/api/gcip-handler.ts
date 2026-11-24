@@ -65,6 +65,7 @@ export interface TenantUiConfig {
 
 // List of backend response interfaces.
 export interface Config {
+  authorizedDomains?: string[];
   client?: {
     apiKey?: string;
     firebaseSubdomain?: string;
@@ -130,6 +131,7 @@ export class GcipHandler {
   private getSamlIdpsHandler: AuthenticatedRequestHandler;
   private getOidcIdpsHandler: AuthenticatedRequestHandler;
   private getTenantBasicConfigHandler: AuthenticatedRequestHandler;
+  private authorizedDomains: string[] = [];
 
   /**
    * Instantiates an GCIP handler.
@@ -182,11 +184,18 @@ export class GcipHandler {
         if (!config.client || !config.client.apiKey || !config.client.firebaseSubdomain) {
           throw new Error(DEFAULT_ERROR_GET_GCIP_CONFIG);
         }
+        this.authorizedDomains = Array.isArray(config.authorizedDomains) ?
+            config.authorizedDomains.filter((domain): domain is string => typeof domain === 'string') : [];
         return {
           apiKey: config.client.apiKey,
           authDomain: `${config.client.firebaseSubdomain}.firebaseapp.com`,
         };
       });
+  }
+
+  /** @return The authorized domains from the most recent GCIP config fetch. */
+  getAuthorizedDomains(): string[] {
+    return this.authorizedDomains.slice();
   }
 
   /**

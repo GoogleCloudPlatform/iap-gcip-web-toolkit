@@ -17,10 +17,13 @@ import bodyParser = require('body-parser');
 import * as templates from  './templates';
 import path = require('path');
 import { Server } from 'http';
+import { isIP } from 'net';
+import { URL } from 'url';
 import { MetadataServer } from './api/metadata-server';
 import { CloudStorageHandler } from './api/cloud-storage-handler';
 import { ErrorResponse, ERROR_MAP } from '../server/utils/error';
-import { isNonNullObject } from '../common/validator';
+import { isNonNullObject, isSafeString } from '../common/validator';
+import { deepCopy } from '../common/deep-copy';
 import { DefaultUiConfigBuilder } from '../common/config-builder';
 import { UiConfig } from '../common/config';
 import { IapSettingsHandler, IapSettings } from './api/iap-settings-handler';
@@ -44,6 +47,148 @@ export const MAX_BUCKET_STRING_LENGTH = 63;
 // Character to substitute at the end of a bucket name to ensure it
 // ends with a letter or number.
 export const ALLOWED_LAST_CHAR = '0';
+// Matches a multi-label RFC 1123 hostname (lowercase ASCII letters, digits, hyphens).
+const VALID_HOSTNAME_REGEXP =
+    /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
+// Bare multi-tenant hosting suffixes that are never valid authui-container hosts.
+const DISALLOWED_SHARED_HOSTING_SUFFIXES = [
+  'a.run.app',
+  'run.app',
+  'cloud.run',
+  'r.appspot.com',
+  'appspot.com',
+  'firebaseapp.com',
+  'web.app',
+  'hosted.app',
+  'cloudfunctions.net',
+  'gateway.dev',
+  'cloud.goog',
+];
+
+/** Trusted host allowlist extracted from IAP loginPageUri and GCIP authorizedDomains. */
+interface TrustedHosts {
+  trustedLoginHosts: Set<string>;
+  trustedAuthorizedDomains: Set<string>;
+}
+
+/** Cached default UI config paired with hostnames trusted for authDomain overrides. */
+interface DefaultConfigWithTrustedHosts extends TrustedHosts {
+  config: UiConfig;
+}
+
+/**
+ * Checks whether a normalized hostname is a disallowed googleapis.com host
+ * or a bare shared multi-tenant hosting suffix.
+ * @param hostname The normalized candidate hostname.
+ * @return Whether the hostname must never be accepted as an authDomain override.
+ */
+function isDisallowedTrustedHost(hostname: string): boolean {
+  return hostname === 'googleapis.com' ||
+      hostname.endsWith('.googleapis.com') ||
+      DISALLOWED_SHARED_HOSTING_SUFFIXES.indexOf(hostname) !== -1;
+}
+
+/**
+ * Normalizes and validates a candidate hostname for use as an authDomain override.
+ * Rejects empty values, localhost, IP literals, googleapis.com hosts, bare shared
+ * hosting suffixes, and non-hostname strings.
+ * @param hostname The candidate hostname string.
+ * @return The normalized lowercase hostname if valid, or null otherwise.
+ */
+function normalizeTrustedHostname(hostname: any): string | null {
+  if (typeof hostname !== 'string') {
+    return null;
+  }
+  const normalized = hostname.trim().toLowerCase();
+  if (!normalized || normalized.length > 253) {
+    return null;
+  }
+  if (normalized === 'localhost' || normalized.endsWith('.localhost')) {
+    return null;
+  }
+  const unbracketed = normalized.startsWith('[') && normalized.endsWith(']') ?
+      normalized.slice(1, -1) : normalized;
+  if (isIP(unbracketed) !== 0 || /\.\d+$/.test(normalized)) {
+    return null;
+  }
+  if (!VALID_HOSTNAME_REGEXP.test(normalized) || !isSafeString(normalized)) {
+    return null;
+  }
+  if (isDisallowedTrustedHost(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+/**
+ * Extracts and validates the first hostname from a Host or X-Forwarded-Host header value,
+ * stripping an optional numeric port suffix.
+ * @param headerValue The raw HTTP header value.
+ * @return The normalized lowercase hostname if valid, or null otherwise.
+ */
+function extractHeaderHostname(headerValue: string | string[] | undefined): string | null {
+  const raw = Array.isArray(headerValue) ? headerValue[0] : headerValue;
+  if (typeof raw !== 'string') {
+    return null;
+  }
+  const firstHost = raw.split(',')[0].trim();
+  if (!firstHost) {
+    return null;
+  }
+  const offset = firstHost[0] === '[' ? firstHost.indexOf(']') + 1 : 0;
+  const portIndex = firstHost.indexOf(':', offset);
+  if (portIndex !== -1) {
+    const portPart = firstHost.substring(portIndex + 1);
+    if (!/^\d+$/.test(portPart)) {
+      return null;
+    }
+  }
+  const hostWithoutPort = portIndex !== -1 ? firstHost.substring(0, portIndex) : firstHost;
+  return normalizeTrustedHostname(hostWithoutPort);
+}
+
+/**
+ * Builds the exact-match trusted host allowlists for authDomain overrides from
+ * IAP loginPageUri settings and Identity Platform authorizedDomains.
+ * @param iapSettings The list of IAP settings for the project.
+ * @param authorizedDomains The list of authorized domains from GCIP config.
+ * @return The exact trusted login hosts and exact trusted authorized domains.
+ */
+function extractTrustedHosts(
+    iapSettings: IapSettings[],
+    authorizedDomains: string[]): TrustedHosts {
+  const trustedLoginHosts = new Set<string>();
+  (iapSettings || []).forEach((iapConfig) => {
+    const loginPageUri = iapConfig &&
+        iapConfig.accessSettings &&
+        iapConfig.accessSettings.gcipSettings &&
+        iapConfig.accessSettings.gcipSettings.loginPageUri;
+    if (typeof loginPageUri === 'string' && loginPageUri.trim() !== '') {
+      try {
+        const parsedUrl = new URL(loginPageUri.trim());
+        if (parsedUrl.protocol === 'https:' && parsedUrl.port === '') {
+          const normalized = normalizeTrustedHostname(parsedUrl.hostname);
+          if (normalized) {
+            trustedLoginHosts.add(normalized);
+          }
+        }
+      } catch (e) {
+        // Ignore malformed loginPageUri entries.
+      }
+    }
+  });
+  const trustedAuthorizedDomains = new Set<string>();
+  (authorizedDomains || []).forEach((domain) => {
+    const normalized = normalizeTrustedHostname(domain);
+    if (normalized) {
+      trustedAuthorizedDomains.add(normalized);
+    }
+  });
+  return {
+    trustedLoginHosts,
+    trustedAuthorizedDomains,
+  };
+}
 
 /**
  * Executes post actions when proxy failed.
@@ -88,8 +233,8 @@ export class AuthServer {
   private gcipHandler: GcipHandler;
   /** IAP settings handler. */
   private iapSettingsHandler: IapSettingsHandler;
-  /** Default config promise. This stores the default config in memory. */
-  private defaultConfigPromise: Promise<UiConfig> | null;
+  /** Default config promise. This stores the default config and trusted hostnames in memory. */
+  private defaultConfigPromise: Promise<DefaultConfigWithTrustedHosts | null> | null;
 
   /**
    * Creates an instance of the auth server using the specified express application instance.
@@ -137,7 +282,9 @@ export class AuthServer {
    * Initializes the server endpoints.
    */
   private init() {
-    this.app.enable('trust proxy');
+    // Explicitly disable 'trust proxy' so req.hostname always reads the Host header
+    // rather than blindly trusting unauthenticated X-Forwarded-Host headers.
+    this.app.disable('trust proxy');
     // Oauth handler widget code.
     // Proxy these requests to <project>.firebaseapp.com.
     // set this up before adding json body parser to the app. This causes POST requests to fail as mentioned in
@@ -245,6 +392,8 @@ export class AuthServer {
       // This could be either saved in GCS (custom config), environment variable (custom config)
       // or in memory (default config).
       this.app.get('/get_admin_config', (req: express.Request, res: express.Response) => {
+        res.set('Cache-Control', 'no-store');
+        res.vary('Authorization').vary('Host').vary('X-Forwarded-Host');
         if (!req.headers.authorization ||
             req.headers.authorization.split(' ').length <= 1) {
           this.handleErrorResponse(res, ERROR_MAP.UNAUTHENTICATED);
@@ -253,7 +402,8 @@ export class AuthServer {
           // This should be used as authDomain in admin config, unless it was overridden to a different value.
           // This enables authDomain to be in the same origin as the sign-in UI.
           const accessToken = req.headers.authorization.split(' ')[1];
-          this.getConfigForAdmin(accessToken, req.hostname).then((config) => {
+          this.getConfigForAdmin(
+              accessToken, req.hostname, req.headers['x-forwarded-host']).then((config) => {
             res.set('Content-Type', 'application/json');
             res.send(JSON.stringify(config || {}));
           }).catch((err) => {
@@ -278,10 +428,12 @@ export class AuthServer {
     // Returns the custom config (if available) or the default config, needed to render
     // the sign-in UI for IAP.
     this.app.get('/config', (req: express.Request, res: express.Response) => {
+      res.set('Cache-Control', 'no-store');
+      res.vary('Host').vary('X-Forwarded-Host');
       // Use the hostname of the request to figure out the URL of the hosted UI.
       // This should be used as authDomain in config, unless it was overridden to a different value.
       // This enables authDomain to be in the same origin as the sign-in UI.
-      this.getFallbackConfig(req.hostname)
+      this.getFallbackConfig(req.hostname, req.headers['x-forwarded-host'])
         .then((currentConfig) => {
           if (!currentConfig) {
             this.handleErrorResponse(res, ERROR_MAP.NOT_FOUND);
@@ -314,7 +466,9 @@ export class AuthServer {
    * @return A promise that resolves with the current UI config.
    * The hostname parameter is used to override the authDomain to the hostname of the signin-page, i.e the requester UI.
    */
-  private getFallbackConfig(hostname: string): Promise<UiConfig | null> {
+  private getFallbackConfig(
+      hostname: string,
+      forwardedHostHeader?: string | string[]): Promise<UiConfig | null> {
     // Parse config from environment variable first.
     if (process.env.UI_CONFIG) {
       try {
@@ -335,21 +489,27 @@ export class AuthServer {
       .catch((error) => {
         // If not available in GCS, use default config.
         if (!this.defaultConfigPromise) {
-          // Default config should be retrieved once and cached in memory.
-          this.defaultConfigPromise = this.getDefaultConfig(hostname);
+          // Default config should be retrieved once and cached in memory without
+          // binding it to any request-specific Host header.
+          this.defaultConfigPromise = this.getDefaultConfig();
         }
-        return this.defaultConfigPromise.then((config) => {
-          if (!config) {
+        const currentDefaultConfigPromise = this.defaultConfigPromise;
+        return currentDefaultConfigPromise.then((defaultConfig) => {
+          if (!defaultConfig) {
             // Do not cache config if IAP is not yet enabled.
-            this.defaultConfigPromise = null;
+            if (this.defaultConfigPromise === currentDefaultConfigPromise) {
+              this.defaultConfigPromise = null;
+            }
             // Return default config.
             return null;
           }
-          return config;
+          return this.applyTrustedAuthDomain(defaultConfig, hostname, forwardedHostHeader);
         })
         .catch((err) => {
           // Do not cache errors in building default config.
-          this.defaultConfigPromise = null;
+          if (this.defaultConfigPromise === currentDefaultConfigPromise) {
+            this.defaultConfigPromise = null;
+          }
           throw err;
         });
       });
@@ -383,26 +543,29 @@ export class AuthServer {
   }
 
   /**
-   * @return A promise that resolves with the constructed default UI config if available.
-   *     If IAP is not configured, null is returned instead.
-   * @param hostname The hostname of the requesting app. This will be used as the authDomain field in UiConfig.
+   * @return A promise that resolves with the constructed default UI config and its
+   *     trusted hostnames if available. If IAP is not configured, null is returned instead.
    */
-  private getDefaultConfig(hostname: string): Promise<UiConfig | null> {
+  private getDefaultConfig(): Promise<DefaultConfigWithTrustedHosts | null> {
     let gcipConfig: GcipConfig;
     let projectId: string;
+    let authorizedDomains: string[] = [];
+    let trustedHosts: TrustedHosts;
     return this.metadataServer.getProjectId()
       .then((retrievedProjectId) => {
         projectId = retrievedProjectId;
         return this.gcipHandler.getGcipConfig();
       })
       .then((retrievedGcipConfig) => {
-        gcipConfig = retrievedGcipConfig
+        gcipConfig = retrievedGcipConfig;
+        authorizedDomains = this.gcipHandler.getAuthorizedDomains();
         return this.iapSettingsHandler.listIapSettings()
           .catch((error) => {
             return [] as IapSettings[];
           });
       })
       .then((iapSettings) => {
+        trustedHosts = extractTrustedHosts(iapSettings, authorizedDomains);
         // Get list of all tenants used.
         const tenantIdsSet = new Set<string>();
         iapSettings.forEach((iapConfig) => {
@@ -422,9 +585,60 @@ export class AuthServer {
         return this.getTenantUiConfigForTenants(tenantIds);
       })
       .then((optionsMap) => {
-        const defaultUiConfig = new DefaultUiConfigBuilder(projectId, hostname, gcipConfig, optionsMap);
-        return defaultUiConfig.build();
+        const defaultUiConfig = new DefaultUiConfigBuilder(projectId, '', gcipConfig, optionsMap);
+        const config = defaultUiConfig.build();
+        if (!config) {
+          return null;
+        }
+        return {
+          config,
+          trustedLoginHosts: trustedHosts.trustedLoginHosts,
+          trustedAuthorizedDomains: trustedHosts.trustedAuthorizedDomains,
+        };
       });
+  }
+
+  /**
+   * Applies a per-request authDomain override on a copy of the default UI config
+   * only when the requesting hostname is validated against the project's trusted hosts.
+   * X-Forwarded-Host is only honored if it matches an exact HTTPS IAP loginPageUri
+   * hostname (preserving Host-rewriting reverse proxies such as Firebase Hosting);
+   * otherwise req.hostname (from Host) is checked by exact match against IAP
+   * loginPageUri hostnames and Identity Platform authorizedDomains.
+   * @param defaultConfig The cached default UI config and trusted host allowlists.
+   * @param hostname The hostname of the requesting app (from the Host header).
+   * @param forwardedHostHeader The optional raw X-Forwarded-Host header value.
+   * @return The UI config with a validated authDomain override, or null.
+   */
+  private applyTrustedAuthDomain(
+      defaultConfig: DefaultConfigWithTrustedHosts | null,
+      hostname: string,
+      forwardedHostHeader?: string | string[]): UiConfig | null {
+    if (!defaultConfig) {
+      return null;
+    }
+    let resolvedAuthDomain: string | null = null;
+    const forwardedHostname = extractHeaderHostname(forwardedHostHeader);
+    if (forwardedHostname && defaultConfig.trustedLoginHosts.has(forwardedHostname)) {
+      resolvedAuthDomain = forwardedHostname;
+    } else {
+      const normalizedHostname = normalizeTrustedHostname(hostname);
+      if (normalizedHostname && (
+          defaultConfig.trustedLoginHosts.has(normalizedHostname) ||
+          defaultConfig.trustedAuthorizedDomains.has(normalizedHostname))) {
+        resolvedAuthDomain = normalizedHostname;
+      }
+    }
+    if (!resolvedAuthDomain) {
+      return defaultConfig.config;
+    }
+    const configCopy = deepCopy(defaultConfig.config);
+    Object.keys(configCopy).forEach((apiKey) => {
+      if (configCopy[apiKey]) {
+        configCopy[apiKey].authDomain = resolvedAuthDomain;
+      }
+    });
+    return configCopy;
   }
 
   /** @return A promise that resolves with the service GCS bucket name. */
@@ -461,7 +675,10 @@ export class AuthServer {
    * @param hostname The hostname of the requesting app. This will be used as the authDomain field in UiConfig.
    * @return A promise that resolves with the UI config.
    */
-  private getConfigForAdmin(accessToken: string, hostname: string): Promise<UiConfig | null> {
+  private getConfigForAdmin(
+      accessToken: string,
+      hostname: string,
+      forwardedHostHeader?: string | string[]): Promise<UiConfig | null> {
     let bucketName: string;
     const fileName = CONFIG_FILE_NAME;
     // Required OAuth scope: https://www.googleapis.com/auth/devstorage.read_write
@@ -484,7 +701,9 @@ export class AuthServer {
             .then(() => {
               // If not found, but user can list buckets, return default config.
               // Otherwise throw an error.
-              return this.getDefaultConfig(hostname);
+              return this.getDefaultConfig().then((defaultConfig) => {
+                return this.applyTrustedAuthDomain(defaultConfig, hostname, forwardedHostHeader);
+              });
             });
         }
         throw error;

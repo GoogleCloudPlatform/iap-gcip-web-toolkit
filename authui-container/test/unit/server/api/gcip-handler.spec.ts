@@ -99,6 +99,111 @@ describe('GcipHandler', () => {
             `GET to https://identitytoolkit.googleapis.com/admin/v2/projects/${PROJECT_ID}/config`);
           expect((app.log as sinon.SinonStub).secondCall).to.be.calledWith('200 response');
           expect(result).to.deep.equal(expectedGcipConfig);
+          expect(gcipsHandler.getAuthorizedDomains()).to.deep.equal([]);
+        });
+    });
+
+    it('should record authorizedDomains internally without changing returned GcipConfig', () => {
+      const expectedGcipConfig = {
+        apiKey: API_KEY,
+        authDomain: `${APP_SUBDOMAIN}.firebaseapp.com`,
+      };
+      const config: Config = {
+        authorizedDomains: ['auth.example.com', 'localhost', 123 as any],
+        client: {
+          apiKey: API_KEY,
+          firebaseSubdomain: APP_SUBDOMAIN,
+        },
+      };
+      const scope = nock('https://identitytoolkit.googleapis.com', {
+        reqheaders: {
+          'Authorization': `Bearer ${ACCESS_TOKEN}`,
+        },
+      }).get(`/admin/v2/projects/${PROJECT_ID}/config`)
+        .reply(200, config);
+      mockedRequests.push(scope);
+
+      return gcipsHandler.getGcipConfig()
+        .then((result) => {
+          expect(result).to.deep.equal(expectedGcipConfig);
+          const domains = gcipsHandler.getAuthorizedDomains();
+          expect(domains).to.deep.equal(['auth.example.com', 'localhost']);
+          // Mutating the returned array must not mutate internal state.
+          domains.push('mutated.example.com');
+          expect(gcipsHandler.getAuthorizedDomains()).to.deep.equal(['auth.example.com', 'localhost']);
+        });
+    });
+
+    it('should preserve authorizedDomains on failed fetch and reset when omitted on next success', () => {
+      const firstConfig: Config = {
+        authorizedDomains: ['auth.example.com'],
+        client: {
+          apiKey: API_KEY,
+          firebaseSubdomain: APP_SUBDOMAIN,
+        },
+      };
+      const malformedConfig: Config = {
+        authorizedDomains: ['malformed.example.com'],
+        client: {
+          apiKey: API_KEY,
+        },
+      };
+      const thirdConfig: Config = {
+        client: {
+          apiKey: API_KEY,
+          firebaseSubdomain: APP_SUBDOMAIN,
+        },
+      };
+      mockedRequests.push(nock('https://identitytoolkit.googleapis.com', {
+        reqheaders: {
+          'Authorization': `Bearer ${ACCESS_TOKEN}`,
+        },
+      }).get(`/admin/v2/projects/${PROJECT_ID}/config`)
+        .reply(200, firstConfig));
+      mockedRequests.push(nock('https://identitytoolkit.googleapis.com', {
+        reqheaders: {
+          'Authorization': `Bearer ${ACCESS_TOKEN}`,
+        },
+      }).get(`/admin/v2/projects/${PROJECT_ID}/config`)
+        .reply(200, malformedConfig));
+      mockedRequests.push(nock('https://identitytoolkit.googleapis.com', {
+        reqheaders: {
+          'Authorization': `Bearer ${ACCESS_TOKEN}`,
+        },
+      }).get(`/admin/v2/projects/${PROJECT_ID}/config`)
+        .reply(400, errorResponse));
+      mockedRequests.push(nock('https://identitytoolkit.googleapis.com', {
+        reqheaders: {
+          'Authorization': `Bearer ${ACCESS_TOKEN}`,
+        },
+      }).get(`/admin/v2/projects/${PROJECT_ID}/config`)
+        .reply(200, thirdConfig));
+
+      return gcipsHandler.getGcipConfig()
+        .then(() => {
+          expect(gcipsHandler.getAuthorizedDomains()).to.deep.equal(['auth.example.com']);
+          return gcipsHandler.getGcipConfig()
+            .then(() => {
+              throw new Error('Unexpected success');
+            })
+            .catch((error) => {
+              expect(error.message).to.be.equal(DEFAULT_ERROR_GET_GCIP_CONFIG);
+              expect(gcipsHandler.getAuthorizedDomains()).to.deep.equal(['auth.example.com']);
+            });
+        })
+        .then(() => {
+          return gcipsHandler.getGcipConfig()
+            .then(() => {
+              throw new Error('Unexpected success');
+            })
+            .catch((error) => {
+              expect(error.message).to.be.equal('Invalid request');
+              expect(gcipsHandler.getAuthorizedDomains()).to.deep.equal(['auth.example.com']);
+            });
+        })
+        .then(() => gcipsHandler.getGcipConfig())
+        .then(() => {
+          expect(gcipsHandler.getAuthorizedDomains()).to.deep.equal([]);
         });
     });
 

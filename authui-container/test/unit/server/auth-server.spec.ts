@@ -22,6 +22,7 @@ import * as proxy from 'http-proxy-middleware';
 import request = require('supertest');
 import * as templates from  '../../../server/templates';
 import * as fs from 'fs';
+import * as nock from 'nock';
 import * as sinon from 'sinon';
 import * as http from 'http';
 import {
@@ -150,6 +151,7 @@ describe('AuthServer', () => {
     fetchAuthSpy.restore();
     _.forEach(stubs, (stub) => stub.restore());
     stubs = [];
+    nock.cleanAll();
     authServer.stop();
     proxyRequest = undefined;
   });
@@ -997,7 +999,7 @@ describe('AuthServer', () => {
         accessSettings: {
           gcipSettings: {
             tenantIds: ['tenantId1', 'tenantId2'],
-            loginPageUri: 'https://auth.example.com/login',
+            loginPageUri: `https://${HOST_NAME}/login`,
           },
         },
       },
@@ -1187,6 +1189,7 @@ describe('AuthServer', () => {
           // Try again. Cached result should be returned.
           return request(authServer.server)
             .get('/config')
+            .set('Host', HOST_NAME)
             .expect('Content-Type', /json/)
             .expect(200);
         })
@@ -1310,6 +1313,8 @@ describe('AuthServer', () => {
 
       return request(authServer.server)
         .get('/config')
+        .expect('Cache-Control', 'no-store')
+        .expect('Vary', 'Host, X-Forwarded-Host')
         .expect('Content-Type', /json/)
         .expect(404)
         .then((response) => {
@@ -1328,6 +1333,7 @@ describe('AuthServer', () => {
           // Result should be cached now.
           return request(authServer.server)
             .get('/config')
+            .set('Host', HOST_NAME)
             .expect('Content-Type', /json/)
             .expect(200);
         })
@@ -1390,6 +1396,7 @@ describe('AuthServer', () => {
           // Result should be cached now.
           return request(authServer.server)
             .get('/config')
+            .set('Host', HOST_NAME)
             .expect('Content-Type', /json/)
             .expect(200);
         })
@@ -1397,6 +1404,697 @@ describe('AuthServer', () => {
           // No additional calls.
           expect(listIapSettingsStub).to.have.been.calledOnce;
           expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
+        });
+    });
+
+    it('ignores X-Forwarded-Host and untrusted Host without poisoning cached default config', () => {
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(new Error('Not found'));
+      stubs.push(readFileStub);
+      const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
+      getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
+      getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
+      getTenantUiConfigStub.withArgs('tenantId2').resolves(tenantUiConfigMap.tenantId2);
+      stubs.push(getTenantUiConfigStub);
+      const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
+        .resolves(iapSettings);
+      stubs.push(listIapSettingsStub);
+      const expectedAuthExampleConfig =
+        new DefaultUiConfigBuilder(PROJECT_ID, 'auth.example.com', gcipConfig, tenantUiConfigMap).build();
+
+      // Cold request with attacker-controlled Host and X-Forwarded-Host must fall back to
+      // gcipConfig.authDomain and must not poison the in-memory cache.
+      return request(authServer.server)
+        .get('/config')
+        .set('Host', 'evil.example')
+        .set('X-Forwarded-Host', 'attacker.example')
+        .expect('Cache-Control', 'no-store')
+        .expect('Vary', 'Host, X-Forwarded-Host')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+
+          // Subsequent request with trusted Host + spoofed X-Forwarded-Host uses trusted Host
+          // from the same cached default config without extra backend calls.
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', HOST_NAME)
+            .set('X-Forwarded-Host', 'attacker.example')
+            .expect('Cache-Control', 'no-store')
+            .expect('Vary', 'Host, X-Forwarded-Host')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(getGcipConfigStub).to.have.been.calledTwice;
+          expect(listIapSettingsStub).to.have.been.calledOnce;
+          expect(getTenantUiConfigStub).to.have.been.calledThrice;
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
+
+          // Another trusted hostname receives its own authDomain without mutating cached state.
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'auth.example.com')
+            .expect('Cache-Control', 'no-store')
+            .expect('Vary', 'Host, X-Forwarded-Host')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(getGcipConfigStub).to.have.been.calledTwice;
+          expect(listIapSettingsStub).to.have.been.calledOnce;
+          expect(JSON.parse(response.text)).to.deep.equal(expectedAuthExampleConfig);
+
+          // Untrusted Host after trusted requests still receives the default authDomain.
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'another-evil.example')
+            .expect('Cache-Control', 'no-store')
+            .expect('Vary', 'Host, X-Forwarded-Host')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+        });
+    });
+
+    it('allows exact trusted GCIP authorizedDomains and rejects subdomains, shared suffixes, localhost, or IPs',
+        () => {
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(new Error('Not found'));
+      stubs.push(readFileStub);
+      // Populate authorizedDomains asynchronously only after getGcipConfig resolves
+      // to verify call ordering and promise settlement.
+      let resolvedAuthorizedDomains: string[] = [];
+      getGcipConfigStub.onSecondCall().callsFake(() => {
+        return Promise.resolve().then(() => {
+          resolvedAuthorizedDomains = [
+            'custom-login.example.org',
+            'example.net',
+            'my-svc-123.us-central1.run.app',
+            'a.run.app',
+            'us-central1.run.app',
+            'uc.r.appspot.com',
+            'hosted.app',
+            'gateway.dev',
+            'cloud.goog',
+            'vercel.app',
+            'github.io',
+            'co.uk',
+            'storage.googleapis.com',
+            'iap.googleapis.com',
+            'localhost',
+            'sub.localhost',
+            '127.0.0.1',
+            '[::1]',
+          ];
+          return gcipConfig;
+        });
+      });
+      const getAuthorizedDomainsStub = sinon.stub(gcip.GcipHandler.prototype, 'getAuthorizedDomains')
+        .callsFake(() => resolvedAuthorizedDomains.slice());
+      stubs.push(getAuthorizedDomainsStub);
+      const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
+      getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
+      getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
+      getTenantUiConfigStub.withArgs('tenantId2').resolves(tenantUiConfigMap.tenantId2);
+      stubs.push(getTenantUiConfigStub);
+      const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
+        .resolves(iapSettings);
+      stubs.push(listIapSettingsStub);
+      const expectedAuthorizedDomainConfig = new DefaultUiConfigBuilder(
+        PROJECT_ID, 'custom-login.example.org', gcipConfig, tenantUiConfigMap).build();
+      const expectedRegionalRunConfig = new DefaultUiConfigBuilder(
+        PROJECT_ID, 'my-svc-123.us-central1.run.app', gcipConfig, tenantUiConfigMap).build();
+
+      return request(authServer.server)
+        .get('/config')
+        .set('Host', 'CUSTOM-LOGIN.EXAMPLE.ORG')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .then((response) => {
+          expect(getAuthorizedDomainsStub).to.have.been.calledOnce;
+          expect(getAuthorizedDomainsStub.firstCall).to.have.been.calledAfter(getGcipConfigStub.secondCall);
+          expect(JSON.parse(response.text)).to.deep.equal(expectedAuthorizedDomainConfig);
+          // Exact match on a single-tenant regional Cloud Run URL remains allowed.
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'my-svc-123.us-central1.run.app')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedRegionalRunConfig);
+          // Subdomains of authorizedDomains entries must not match (exact match only).
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'login.example.net')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          // Suffix spoofing without a dot boundary must not match example.net.
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'evil-example.net')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          // Subdomains under public or multi-tenant hosting suffixes must not match.
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'attacker.co.uk')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'attacker.github.io')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'attacker.vercel.app')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'attacker.gateway.dev')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'attacker.cloud.goog')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'evil.a.run.app')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'a.run.app')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'gateway.dev')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'cloud.goog')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'attacker-123.us-central1.run.app')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'attacker.uc.r.appspot.com')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'evil.hosted.app')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'evil-bucket.storage.googleapis.com')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'iap.googleapis.com')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'localhost')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'sub.localhost')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', '127.0.0.1')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', '[::1]')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+        });
+    });
+
+    it('wires real GcipHandler.getGcipConfig() authorizedDomains into /config allowlist via nock', () => {
+      getGcipConfigStub.restore();
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(new Error('Not found'));
+      stubs.push(readFileStub);
+      const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
+      getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
+      getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
+      getTenantUiConfigStub.withArgs('tenantId2').resolves(tenantUiConfigMap.tenantId2);
+      stubs.push(getTenantUiConfigStub);
+      const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
+        .resolves(iapSettings);
+      stubs.push(listIapSettingsStub);
+
+      const gcipScope = nock('https://identitytoolkit.googleapis.com', {
+        reqheaders: {
+          'Authorization': `Bearer ${METADATA_ACCESS_TOKEN}`,
+        },
+      }).get(`/admin/v2/projects/${PROJECT_ID}/config`)
+        .reply(200, {
+          client: {
+            apiKey: API_KEY,
+            firebaseSubdomain: AUTH_SUBDOMAIN,
+          },
+          authorizedDomains: [
+            'nock-authorized.example.org',
+            'example.net',
+            'storage.googleapis.com',
+          ],
+        });
+      const expectedNockAuthorizedConfig = new DefaultUiConfigBuilder(
+        PROJECT_ID, 'nock-authorized.example.org', gcipConfig, tenantUiConfigMap).build();
+
+      return request(authServer.server)
+        .get('/config')
+        .set('Host', 'nock-authorized.example.org')
+        .expect('Cache-Control', 'no-store')
+        .expect('Vary', 'Host, X-Forwarded-Host')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .then((response) => {
+          expect(gcipScope.isDone()).to.be.true;
+          expect(JSON.parse(response.text)).to.deep.equal(expectedNockAuthorizedConfig);
+          // Subdomain of authorizedDomains entry and googleapis.com must fall back to default.
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'sub.example.net')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'storage.googleapis.com')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+        });
+    });
+
+    it('honors X-Forwarded-Host only when it matches an exact HTTPS IAP loginPageUri hostname', () => {
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(new Error('Not found'));
+      stubs.push(readFileStub);
+      const getAuthorizedDomainsStub = sinon.stub(gcip.GcipHandler.prototype, 'getAuthorizedDomains')
+        .returns(['custom-only.example.org', 'iap.googleapis.com']);
+      stubs.push(getAuthorizedDomainsStub);
+      const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
+      getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
+      getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
+      getTenantUiConfigStub.withArgs('tenantId2').resolves(tenantUiConfigMap.tenantId2);
+      stubs.push(getTenantUiConfigStub);
+      const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
+        .resolves(iapSettings);
+      stubs.push(listIapSettingsStub);
+      const expectedAuthExampleConfig =
+        new DefaultUiConfigBuilder(PROJECT_ID, 'auth.example.com', gcipConfig, tenantUiConfigMap).build();
+
+      // Host-rewriting reverse proxy (e.g. Firebase Hosting) sends backend Host + custom loginPageUri in
+      // X-Forwarded-Host; exact IAP loginPageUri host is honored without breaking same-origin authDomain.
+      return request(authServer.server)
+        .get('/config')
+        .set('Host', 'custom-only.example.org')
+        .set('X-Forwarded-Host', 'auth.example.com')
+        .expect('Cache-Control', 'no-store')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedAuthExampleConfig);
+          // Comma-separated proxy list with port suffix extracts the first host cleanly.
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'custom-only.example.org')
+            .set('X-Forwarded-Host', 'auth.example.com:443, proxy.internal')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedAuthExampleConfig);
+          // X-Forwarded-Host matching only authorizedDomains (not IAP loginPageUri) must be ignored.
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'evil.example')
+            .set('X-Forwarded-Host', 'custom-only.example.org')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          // X-Forwarded-Host matching iap.googleapis.com must be ignored in favor of trusted Host.
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', HOST_NAME)
+            .set('X-Forwarded-Host', 'iap.googleapis.com')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
+          // Subdomain of loginPageUri or malformed port in X-Forwarded-Host must be ignored.
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'evil.example')
+            .set('X-Forwarded-Host', 'sub.auth.example.com')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'evil.example')
+            .set('X-Forwarded-Host', 'auth.example.com:invalid')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+        });
+    });
+
+    it('coalesces concurrent cold-start /config requests without cross-request authDomain leakage', () => {
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      let resolveIapSettings: (value: iap.IapSettings[]) => void;
+      const deferredIapSettings = new Promise<iap.IapSettings[]>((resolve) => {
+        resolveIapSettings = resolve;
+      });
+      let readFileCount = 0;
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .callsFake(() => {
+          readFileCount++;
+          if (readFileCount === 3) {
+            setImmediate(() => resolveIapSettings(iapSettings));
+          }
+          return Promise.reject(new Error('Not found'));
+        });
+      stubs.push(readFileStub);
+      const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
+      getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
+      getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
+      getTenantUiConfigStub.withArgs('tenantId2').resolves(tenantUiConfigMap.tenantId2);
+      stubs.push(getTenantUiConfigStub);
+      const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
+        .returns(deferredIapSettings);
+      stubs.push(listIapSettingsStub);
+      const expectedAuthExampleConfig =
+        new DefaultUiConfigBuilder(PROJECT_ID, 'auth.example.com', gcipConfig, tenantUiConfigMap).build();
+
+      const reqEvil = request(authServer.server)
+        .get('/config')
+        .set('Host', 'evil.example')
+        .set('X-Forwarded-Host', 'attacker.example')
+        .expect(200);
+      const reqHostName = request(authServer.server)
+        .get('/config')
+        .set('Host', HOST_NAME)
+        .expect(200);
+      const reqAuthExample = request(authServer.server)
+        .get('/config')
+        .set('Host', 'auth.example.com')
+        .expect(200);
+
+      return Promise.all([reqEvil, reqHostName, reqAuthExample])
+        .then(([resEvil, resHostName, resAuthExample]) => {
+          expect(readFileStub).to.have.been.calledThrice;
+          expect(listIapSettingsStub).to.have.been.calledOnce;
+          expect(JSON.parse(resEvil.text)).to.deep.equal(expectedUiConfig);
+          expect(JSON.parse(resHostName.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
+          expect(JSON.parse(resAuthExample.text)).to.deep.equal(expectedAuthExampleConfig);
+        });
+    });
+
+    it('explicitly disables trust proxy even if the supplied Express app had it enabled', () => {
+      authServer.stop();
+      app = express();
+      app.enable('trust proxy');
+      authServer = new AuthServer(app);
+      expect(app.get('trust proxy')).to.equal(false);
+
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(new Error('Not found'));
+      stubs.push(readFileStub);
+      const getAuthorizedDomainsStub = sinon.stub(gcip.GcipHandler.prototype, 'getAuthorizedDomains')
+        .returns(['custom-only.example.org']);
+      stubs.push(getAuthorizedDomainsStub);
+      const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
+      getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
+      getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
+      getTenantUiConfigStub.withArgs('tenantId2').resolves(tenantUiConfigMap.tenantId2);
+      stubs.push(getTenantUiConfigStub);
+      const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
+        .resolves(iapSettings);
+      stubs.push(listIapSettingsStub);
+
+      return authServer.start().then(() => {
+        return request(authServer.server)
+          .get('/config')
+          .set('Host', 'evil.example')
+          .set('X-Forwarded-Host', 'custom-only.example.org')
+          .expect(200)
+          .then((response) => {
+            expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          });
+      });
+    });
+
+    it('ignores non-HTTPS, non-default port, disallowed, and malformed loginPageUri values', () => {
+      const mixedIapSettings = [
+        {
+          name: 'RESOURCE_HTTP',
+          accessSettings: {
+            gcipSettings: {
+              tenantIds: [`_${PROJECT_NUMBER}`],
+              loginPageUri: 'http://insecure.example.com/login',
+            },
+          },
+        },
+        {
+          name: 'RESOURCE_PORT',
+          accessSettings: {
+            gcipSettings: {
+              tenantIds: ['tenantId1'],
+              loginPageUri: 'https://port.example.com:8443/login',
+            },
+          },
+        },
+        {
+          name: 'RESOURCE_MALFORMED',
+          accessSettings: {
+            gcipSettings: {
+              tenantIds: ['tenantId2'],
+              loginPageUri: 'not-a-valid-url',
+            },
+          },
+        },
+        {
+          name: 'RESOURCE_GOOGLEAPIS',
+          accessSettings: {
+            gcipSettings: {
+              tenantIds: ['tenantId2'],
+              loginPageUri: 'https://storage.googleapis.com/?apiKey=API_KEY',
+            },
+          },
+        },
+        {
+          name: 'RESOURCE_BARE_SHARED_SUFFIX',
+          accessSettings: {
+            gcipSettings: {
+              tenantIds: ['tenantId2'],
+              loginPageUri: 'https://a.run.app/?apiKey=API_KEY',
+            },
+          },
+        },
+        {
+          name: 'RESOURCE_VALID_443',
+          accessSettings: {
+            gcipSettings: {
+              tenantIds: ['tenantId2'],
+              loginPageUri: 'https://valid.example.com:443/login',
+            },
+          },
+        },
+      ];
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(new Error('Not found'));
+      stubs.push(readFileStub);
+      const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
+      getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
+      getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
+      getTenantUiConfigStub.withArgs('tenantId2').resolves(tenantUiConfigMap.tenantId2);
+      stubs.push(getTenantUiConfigStub);
+      const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
+        .resolves(mixedIapSettings);
+      stubs.push(listIapSettingsStub);
+      const expectedValidConfig = new DefaultUiConfigBuilder(
+        PROJECT_ID, 'valid.example.com', gcipConfig, tenantUiConfigMap).build();
+
+      return request(authServer.server)
+        .get('/config')
+        .set('Host', 'insecure.example.com')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'port.example.com')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'storage.googleapis.com')
+            .set('X-Forwarded-Host', 'storage.googleapis.com')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'a.run.app')
+            .set('X-Forwarded-Host', 'a.run.app')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/config')
+            .set('Host', 'valid.example.com')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedValidConfig);
         });
     });
   });
@@ -1421,7 +2119,7 @@ describe('AuthServer', () => {
         accessSettings: {
           gcipSettings: {
             tenantIds: ['tenantId1', 'tenantId2'],
-            loginPageUri: 'https://auth.example.com/login',
+            loginPageUri: `https://${HOST_NAME}/login`,
           },
         },
       },
@@ -1702,6 +2400,8 @@ describe('AuthServer', () => {
       // Simulate request with no authorization header.
       return request(authServer.server)
         .get('/get_admin_config')
+        .expect('Cache-Control', 'no-store')
+        .expect('Vary', 'Authorization, Host, X-Forwarded-Host')
         .expect('Content-Type', /json/)
         .expect(401)
         .then((response) => {
@@ -1841,6 +2541,80 @@ describe('AuthServer', () => {
           expect(getTenantUiConfigStub).to.have.been.calledThrice.and.calledAfter(listIapSettingsStub);
           // Expected default config returned.
           expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
+        });
+    });
+
+    it('validates Host and X-Forwarded-Host when falling back to default config', () => {
+      const personalAccessToken = 'PERSONAL_ACCESS_TOKEN';
+      const getProjectNumberStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectNumber')
+        .resolves(PROJECT_NUMBER);
+      stubs.push(getProjectNumberStub);
+      const getProjectIdStub = sinon.stub(metadata.MetadataServer.prototype, 'getProjectId')
+        .resolves(PROJECT_ID);
+      stubs.push(getProjectIdStub);
+      const readFileStub = sinon.stub(storage.CloudStorageHandler.prototype, 'readFile')
+        .rejects(new Error('Not found'));
+      stubs.push(readFileStub);
+      const listBucketsStub = sinon.stub(storage.CloudStorageHandler.prototype, 'listBuckets')
+        .resolves(listBucketsResponse);
+      stubs.push(listBucketsStub);
+      const getAuthorizedDomainsStub = sinon.stub(gcip.GcipHandler.prototype, 'getAuthorizedDomains')
+        .returns(['custom-only.example.org']);
+      stubs.push(getAuthorizedDomainsStub);
+      const getTenantUiConfigStub = sinon.stub(gcip.GcipHandler.prototype, 'getTenantUiConfig');
+      getTenantUiConfigStub.withArgs(`_${PROJECT_NUMBER}`).resolves(tenantUiConfigMap._);
+      getTenantUiConfigStub.withArgs('tenantId1').resolves(tenantUiConfigMap.tenantId1);
+      getTenantUiConfigStub.withArgs('tenantId2').resolves(tenantUiConfigMap.tenantId2);
+      stubs.push(getTenantUiConfigStub);
+      const listIapSettingsStub = sinon.stub(iap.IapSettingsHandler.prototype, 'listIapSettings')
+        .resolves(iapSettings);
+      stubs.push(listIapSettingsStub);
+      const expectedAuthExampleConfig =
+        new DefaultUiConfigBuilder(PROJECT_ID, 'auth.example.com', gcipConfig, tenantUiConfigMap).build();
+
+      return request(authServer.server)
+        .get('/get_admin_config')
+        .set({
+          'Authorization': `Bearer ${personalAccessToken}`,
+          'Host': 'evil.example',
+          'X-Forwarded-Host': 'custom-only.example.org',
+        })
+        .expect('Cache-Control', 'no-store')
+        .expect('Vary', 'Authorization, Host, X-Forwarded-Host')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .then((response) => {
+          // X-Forwarded-Host matching only authorizedDomains (not loginPageUri) is ignored.
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfig);
+          return request(authServer.server)
+            .get('/get_admin_config')
+            .set({
+              'Authorization': `Bearer ${personalAccessToken}`,
+              'Host': HOST_NAME,
+              'X-Forwarded-Host': 'attacker.example',
+            })
+            .expect('Cache-Control', 'no-store')
+            .expect('Vary', 'Authorization, Host, X-Forwarded-Host')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedUiConfigWithHostNameAuthDomain);
+          // Exact IAP loginPageUri hostname in X-Forwarded-Host is honored for Host-rewriting proxies.
+          return request(authServer.server)
+            .get('/get_admin_config')
+            .set({
+              'Authorization': `Bearer ${personalAccessToken}`,
+              'Host': 'custom-only.example.org',
+              'X-Forwarded-Host': 'auth.example.com',
+            })
+            .expect('Cache-Control', 'no-store')
+            .expect('Vary', 'Authorization, Host, X-Forwarded-Host')
+            .expect('Content-Type', /json/)
+            .expect(200);
+        })
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal(expectedAuthExampleConfig);
         });
     });
 
